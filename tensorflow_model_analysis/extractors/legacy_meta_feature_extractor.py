@@ -17,20 +17,19 @@ For example usage, see the tests associated with this file.
 """
 
 import copy
-
 from typing import Any, Callable
 
 import apache_beam as beam
 import numpy as np
 import tensorflow as tf
-
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import encoding
 
 
-def get_feature_value(fpl: types.FeaturesPredictionsLabels,
-                      feature_key: str) -> Any:
+def get_feature_value(
+    fpl: types.FeaturesPredictionsLabels, feature_key: str
+) -> Any:
   """Helper to get value from FPL dict."""
   node_value = fpl.features[feature_key][encoding.NODE_SUFFIX]
   if isinstance(node_value, tf.compat.v1.SparseTensorValue):
@@ -38,12 +37,15 @@ def get_feature_value(fpl: types.FeaturesPredictionsLabels,
   return node_value
 
 
-def _set_feature_value(features: types.DictOfFetchedTensorValues,
-                       feature_key: str,
-                       feature_value: Any) -> types.DictOfFetchedTensorValues:
+def _set_feature_value(
+    features: types.DictOfFetchedTensorValues,
+    feature_key: str,
+    feature_value: Any,
+) -> types.DictOfFetchedTensorValues:
   """Helper to set feature in FPL dict."""
   if not isinstance(feature_value, np.ndarray) and not isinstance(
-      feature_value, tf.compat.v1.SparseTensorValue):
+      feature_value, tf.compat.v1.SparseTensorValue
+  ):
     feature_value = np.array([feature_value])
   features[feature_key] = {encoding.NODE_SUFFIX: feature_value}
   return features  # pytype: disable=bad-return-type
@@ -61,12 +63,15 @@ def get_fpl_copy(extracts: types.Extracts) -> types.FeaturesPredictionsLabels:
       features=copy.copy(fpl_orig.features),
       labels=fpl_orig.labels,
       predictions=fpl_orig.predictions,
-      input_ref=fpl_orig.input_ref)
+      input_ref=fpl_orig.input_ref,
+  )
   return fpl_copy
 
 
-def update_fpl_features(fpl: types.FeaturesPredictionsLabels,
-                        new_features: types.DictOfFetchedTensorValues):
+def update_fpl_features(
+    fpl: types.FeaturesPredictionsLabels,
+    new_features: types.DictOfFetchedTensorValues,
+):
   """Add new features to the FPL."""
   for key, value in new_features.items():
     # if the key already exists in the dictionary, throw an error.
@@ -77,8 +82,9 @@ def update_fpl_features(fpl: types.FeaturesPredictionsLabels,
 
 def _ExtractMetaFeature(  # pylint: disable=invalid-name
     extracts: types.Extracts,
-    new_features_fn: Callable[[types.FeaturesPredictionsLabels],
-                              types.DictOfFetchedTensorValues]
+    new_features_fn: Callable[
+        [types.FeaturesPredictionsLabels], types.DictOfFetchedTensorValues
+    ],
 ) -> types.Extracts:
   """Augments FPL dict with new feature(s)."""
   # Create a new feature from existing ones.
@@ -98,8 +104,9 @@ def _ExtractMetaFeature(  # pylint: disable=invalid-name
 @beam.typehints.with_output_types(types.Extracts)
 def ExtractMetaFeature(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    new_features_fn: Callable[[types.FeaturesPredictionsLabels],
-                              types.DictOfFetchedTensorValues]
+    new_features_fn: Callable[
+        [types.FeaturesPredictionsLabels], types.DictOfFetchedTensorValues
+    ],
 ) -> beam.pvalue.PCollection:
   """Extracts meta-features derived from existing features.
 
@@ -118,6 +125,6 @@ def ExtractMetaFeature(  # pylint: disable=invalid-name
   Returns:
     PCollection of Extracts
   """
-  return (
-      extracts
-      | 'ExtractMetaFeature' >> beam.Map(_ExtractMetaFeature, new_features_fn))
+  return extracts | 'ExtractMetaFeature' >> beam.Map(
+      _ExtractMetaFeature, new_features_fn
+  )

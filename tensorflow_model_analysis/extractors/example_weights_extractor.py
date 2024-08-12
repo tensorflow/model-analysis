@@ -26,7 +26,8 @@ _EXAMPLE_WEIGHTS_EXTRACTOR_STAGE_NAME = 'ExtractExampleWeights'
 
 
 def ExampleWeightsExtractor(
-    eval_config: config_pb2.EvalConfig) -> extractor.Extractor:
+    eval_config: config_pb2.EvalConfig,
+) -> extractor.Extractor:
   """Creates an extractor for extracting example weights.
 
   The extractor's PTransform uses the config's ModelSpec.example_weight_key(s)
@@ -44,15 +45,16 @@ def ExampleWeightsExtractor(
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=_EXAMPLE_WEIGHTS_EXTRACTOR_STAGE_NAME,
-      ptransform=_ExtractExampleWeights(eval_config=eval_config))
+      ptransform=_ExtractExampleWeights(eval_config=eval_config),
+  )
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractExampleWeights(
-    extracts: beam.pvalue.PCollection,
-    eval_config: config_pb2.EvalConfig) -> beam.pvalue.PCollection:
+    extracts: beam.pvalue.PCollection, eval_config: config_pb2.EvalConfig
+) -> beam.pvalue.PCollection:
   """Extracts example weights from features extracts.
 
   Args:
@@ -65,12 +67,16 @@ def _ExtractExampleWeights(
   """
 
   def extract_example_weights(  # pylint: disable=invalid-name
-      batched_extracts: types.Extracts) -> types.Extracts:
+      batched_extracts: types.Extracts,
+  ) -> types.Extracts:
     """Extract example weights from extracts containing features."""
     result = copy.copy(batched_extracts)
     example_weights = model_util.get_feature_values_for_model_spec_field(
-        list(eval_config.model_specs), 'example_weight_key',
-        'example_weight_keys', result)
+        list(eval_config.model_specs),
+        'example_weight_key',
+        'example_weight_keys',
+        result,
+    )
     if example_weights is not None:
       result[constants.EXAMPLE_WEIGHTS_KEY] = example_weights
     return result

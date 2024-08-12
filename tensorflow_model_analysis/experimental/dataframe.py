@@ -80,17 +80,23 @@ class _ColumnPrefixes:
 _metric_columns = _ColumnPrefixes(_SLICES, _METRIC_KEYS, _METRIC_VALUES)
 _plot_columns = _ColumnPrefixes(_SLICES, _PLOT_KEYS, _PLOT_DATA)
 
-_WRAPPED_PRIMITIVES = (wrappers_pb2.DoubleValue, wrappers_pb2.FloatValue,
-                       wrappers_pb2.BoolValue, wrappers_pb2.BytesValue,
-                       wrappers_pb2.StringValue, wrappers_pb2.Int64Value,
-                       wrappers_pb2.Int32Value)
+_WRAPPED_PRIMITIVES = (
+    wrappers_pb2.DoubleValue,
+    wrappers_pb2.FloatValue,
+    wrappers_pb2.BoolValue,
+    wrappers_pb2.BytesValue,
+    wrappers_pb2.StringValue,
+    wrappers_pb2.Int64Value,
+    wrappers_pb2.Int32Value,
+)
 
 
 def _flatten_proto(
     root_field: message.Message,
     field_name: str,
     index: int,
-    include_empty_columns: bool = False) -> Iterator[Tuple[str, Any, int]]:
+    include_empty_columns: bool = False,
+) -> Iterator[Tuple[str, Any, int]]:
   """Generates the leaf primitive fields by traversing the proto recursively.
 
   Traverses a proto and emits a tuple of the name, value, index at which the
@@ -113,15 +119,18 @@ def _flatten_proto(
   """
 
   def _is_repeated_field(parent, field_name):
-    return (parent.DESCRIPTOR.fields_by_name[field_name].label ==
-            descriptor.FieldDescriptor.LABEL_REPEATED)
+    return (
+        parent.DESCRIPTOR.fields_by_name[field_name].label
+        == descriptor.FieldDescriptor.LABEL_REPEATED
+    )
 
   def _flatten_proto_in(
       parent: message.Message,
       field_name: str,
       field_value: Any,
       index: int,
-      is_repeated_field: bool = False) -> Iterator[Tuple[str, Any, int]]:
+      is_repeated_field: bool = False,
+  ) -> Iterator[Tuple[str, Any, int]]:
     if isinstance(field_value, message.Message):
       # Test the message field is unset.
       if not is_repeated_field and not parent.HasField(field_name):
@@ -133,8 +142,9 @@ def _flatten_proto(
         yield (field_name, field_value.value, index)
       else:
         for field in field_value.DESCRIPTOR.fields:
-          yield from _flatten_proto_in(field_value, field.name,
-                                       getattr(field_value, field.name), index)
+          yield from _flatten_proto_in(
+              field_value, field.name, getattr(field_value, field.name), index
+          )
     # Handling repeated field.
     elif _is_repeated_field(parent, field_name):
       for i, single_field_value in enumerate(field_value):
@@ -143,7 +153,8 @@ def _flatten_proto(
             field_name,
             single_field_value,
             index + i,
-            is_repeated_field=True)
+            is_repeated_field=True,
+        )
     # Python primitives.
     else:
       yield (field_name, field_value, index)
@@ -153,7 +164,7 @@ def _flatten_proto(
 
 
 def _get_slice_value(
-    slice_key: metrics_for_slice_pb2.SingleSliceKey
+    slice_key: metrics_for_slice_pb2.SingleSliceKey,
 ) -> Union[float, bytes, int]:
   """Determines the primitive value stored by the slice."""
   value_type = slice_key.WhichOneof('kind')
@@ -191,9 +202,10 @@ def _to_dataframes(
   index = 0
   # For each slice.
   for metrics_or_plots_for_slice in metrics_or_plots:
-    slices = [(single_slice_key.column, _get_slice_value(single_slice_key))
-              for single_slice_key in
-              metrics_or_plots_for_slice.slice_key.single_slice_keys]
+    slices = [
+        (single_slice_key.column, _get_slice_value(single_slice_key))
+        for single_slice_key in metrics_or_plots_for_slice.slice_key.single_slice_keys
+    ]
     # For each metric inside the slice.
     if isinstance(metrics_or_plots_for_slice, MetricsForSlice):
       key_and_values = metrics_or_plots_for_slice.metric_keys_and_values
@@ -201,14 +213,18 @@ def _to_dataframes(
       key_and_values = metrics_or_plots_for_slice.plot_keys_and_values
     else:
       raise NotImplementedError(
-          f'{type(metrics_or_plots_for_slice)} is not supported.')
+          f'{type(metrics_or_plots_for_slice)} is not supported.'
+      )
     for key_and_value in key_and_values:
       metric_value = key_and_value.value
       for field in metric_value.DESCRIPTOR.fields:
         metric_type = field.name
         metric = getattr(metric_value, metric_type)
-        if (isinstance(metric, message.Message) and
-            not metric_value.HasField(metric_type) or not metric):
+        if (
+            isinstance(metric, message.Message)
+            and not metric_value.HasField(metric_type)
+            or not metric
+        ):
           continue
         # Flattens the metric_values.
         # Initializes index_end to 'index - 1' to indicate that there is no item
@@ -224,18 +240,21 @@ def _to_dataframes(
             key_and_value,
             'key',
             index,
-            include_empty_columns=include_empty_columns):
-          column_data[metric_type].metric_keys[k].extend([
-              (v, i) for i in range(index, index_end)
-          ])
+            include_empty_columns=include_empty_columns,
+        ):
+          column_data[metric_type].metric_keys[k].extend(
+              [(v, i) for i in range(index, index_end)]
+          )
         # Insert each slice
         if slices:
           for slice_name, slice_value in slices:
             column_data[metric_type].slices[slice_name].extend(
-                [slice_value, i] for i in range(index, index_end))
+                [slice_value, i] for i in range(index, index_end)
+            )
         else:
           column_data[metric_type].slices[_OVERALL].extend(
-              ['', i] for i in range(index, index_end))
+              ['', i] for i in range(index, index_end)
+          )
         index = index_end
   dfs = {}
   for metric_type, data in column_data.items():
@@ -244,8 +263,9 @@ def _to_dataframes(
         + [(metric_key_name, key) for key in data.metric_keys]
         + [(metric_value_name, key) for key in data.values]
     )
-    all_data = itertools.chain(data.slices.values(), data.metric_keys.values(),
-                               data.values.values())
+    all_data = itertools.chain(
+        data.slices.values(), data.metric_keys.values(), data.values.values()
+    )
     df = pd.DataFrame({
         column: pd.Series(*zip(*values))
         for column, values in zip(columns, all_data)
@@ -335,7 +355,8 @@ def metrics_as_dataframes(
   dfs = _to_dataframes(
       metrics,
       column_prefixes=_metric_columns,
-      include_empty_columns=include_empty_columns)
+      include_empty_columns=include_empty_columns,
+  )
   return MetricsDataFrames(**dfs)
 
 
@@ -428,7 +449,8 @@ def plots_as_dataframes(
   dfs = _to_dataframes(
       plots,
       column_prefixes=_plot_columns,
-      include_empty_columns=include_empty_columns)
+      include_empty_columns=include_empty_columns,
+  )
   return PlotsDataFrames(**dfs)
 
 
@@ -438,9 +460,9 @@ def _collapse_column_names(columns: pd.MultiIndex) -> pd.Index:
   return columns.droplevel(dropables)
 
 
-def _stringify_slices(df: pd.DataFrame,
-                      slice_key_name: str = _SLICES,
-                      drop_slices: bool = True) -> pd.DataFrame:
+def _stringify_slices(
+    df: pd.DataFrame, slice_key_name: str = _SLICES, drop_slices: bool = True
+) -> pd.DataFrame:
   """Stringify all the slice columns into one column.
 
   For example, if there are two slice column of 'sex' and 'age', the function
@@ -460,8 +482,10 @@ def _stringify_slices(df: pd.DataFrame,
 
   def _concatenate(x):
     return '; '.join(
-        f'{col}:{val}' for col, val in zip(df[slice_key_name].columns, x)
-        if pd.notnull(val))
+        f'{col}:{val}'
+        for col, val in zip(df[slice_key_name].columns, x)
+        if pd.notnull(val)
+    )
 
   t = df.slices.agg(_concatenate, axis=1)
   df = df.drop(slice_key_name, axis=1, level=0) if drop_slices else df.copy()
@@ -469,9 +493,12 @@ def _stringify_slices(df: pd.DataFrame,
   return df.sort_values((slice_key_name, _SLICE_STR))
 
 
-def _auto_pivot(df: pd.DataFrame, column_prefixes: _ColumnPrefixes,
-                stringify_slices: bool,
-                collapse_column_names: bool) -> pd.DataFrame:
+def _auto_pivot(
+    df: pd.DataFrame,
+    column_prefixes: _ColumnPrefixes,
+    stringify_slices: bool,
+    collapse_column_names: bool,
+) -> pd.DataFrame:
   """Implements auto_pivot."""
   df = _stringify_slices(df, column_prefixes.slices) if stringify_slices else df
   # TODO(b/277280388): Use Series.sort_values after upgrading to pandas > 1.2.
@@ -487,9 +514,11 @@ def _auto_pivot(df: pd.DataFrame, column_prefixes: _ColumnPrefixes,
   _, tags = np.unique(df_unique.values, return_inverse=True)
   df_unique = df_unique.iloc[np.argsort(-tags, kind='stable')]
 
-  pivot_columns = [(column_prefixes.metric_keys, column)
-                   for column, nunique in df_unique.items()
-                   if nunique > 1]
+  pivot_columns = [
+      (column_prefixes.metric_keys, column)
+      for column, nunique in df_unique.items()
+      if nunique > 1
+  ]
   metric_value_columns = df[column_prefixes.metric_values].columns
   slice_columns = df[column_prefixes.slices].columns
   value_columns = [
@@ -497,7 +526,8 @@ def _auto_pivot(df: pd.DataFrame, column_prefixes: _ColumnPrefixes,
   ]
   index_columns = [(column_prefixes.slices, c) for c in slice_columns]
   result = df.pivot(
-      index=index_columns, columns=pivot_columns, values=value_columns)
+      index=index_columns, columns=pivot_columns, values=value_columns
+  )
   if stringify_slices:
     result.index.name = column_prefixes.slices
   if collapse_column_names and isinstance(result.columns, pd.MultiIndex):
@@ -505,9 +535,11 @@ def _auto_pivot(df: pd.DataFrame, column_prefixes: _ColumnPrefixes,
   return result
 
 
-def auto_pivot(df: pd.DataFrame,
-               stringify_slices: bool = True,
-               collapse_column_names: bool = True) -> pd.DataFrame:
+def auto_pivot(
+    df: pd.DataFrame,
+    stringify_slices: bool = True,
+    collapse_column_names: bool = True,
+) -> pd.DataFrame:
   """Automatically pivots a metric or plots DataFrame.
 
   Given a DataFrame provided by metrics/plots_as_dataframes, one can
@@ -536,6 +568,7 @@ def auto_pivot(df: pd.DataFrame,
       default.
     collapse_column_names: collapsing the multi-index column names by removing
       layer(s) with only the same string. This is turned on by default.
+
   Returns:
     A DataFrame that pivoted from the metrics DataFrame or plots DataFrame.
   """
@@ -545,14 +578,17 @@ def auto_pivot(df: pd.DataFrame,
           df,
           _plot_columns,
           stringify_slices=stringify_slices,
-          collapse_column_names=collapse_column_names)
+          collapse_column_names=collapse_column_names,
+      )
     elif _METRIC_KEYS in df and _METRIC_VALUES in df:
       return _auto_pivot(
           df,
           _metric_columns,
           stringify_slices=stringify_slices,
-          collapse_column_names=collapse_column_names)
+          collapse_column_names=collapse_column_names,
+      )
 
   raise NotImplementedError(
       'Only a metrics or a plots DataFrame is supported. This DataFrame has'
-      f'the following columns: {df.columns}')
+      f'the following columns: {df.columns}'
+  )

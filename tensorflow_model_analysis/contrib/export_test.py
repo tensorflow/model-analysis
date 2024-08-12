@@ -17,7 +17,6 @@ import os
 import tempfile
 
 import tensorflow as tf
-
 from tensorflow_model_analysis.contrib import export
 from tensorflow_model_analysis.eval_saved_model import constants
 from tensorflow_model_analysis.eval_saved_model import testutil
@@ -33,7 +32,8 @@ class ExportTest(testutil.TensorflowModelAnalysisTest):
     temp_eval_export_dir = os.path.join(self._getTempDir(), 'eval_export_dir')
     estimator_metadata = dnn_classifier.get_simple_dnn_classifier_and_metadata()
     estimator_metadata['estimator'].train(
-        input_fn=estimator_metadata['train_input_fn'], steps=1000)
+        input_fn=estimator_metadata['train_input_fn'], steps=1000
+    )
 
     graph = tf.Graph()
     with graph.as_default():
@@ -42,14 +42,18 @@ class ExportTest(testutil.TensorflowModelAnalysisTest):
           export_dir_base=temp_eval_export_dir,
           eval_input_receiver_fn=estimator_metadata['eval_input_receiver_fn'],
           serving_input_receiver_fn=(
-              estimator_metadata['serving_input_receiver_fn']))
+              estimator_metadata['serving_input_receiver_fn']
+          ),
+      )
 
       sess = tf.compat.v1.Session(graph=graph)
-      tf.compat.v1.saved_model.loader.load(sess, [constants.EVAL_TAG],
-                                           eval_export_dir)
+      tf.compat.v1.saved_model.loader.load(
+          sess, [constants.EVAL_TAG], eval_export_dir
+      )
 
       feature_metadata = export.load_and_resolve_feature_metadata(
-          eval_export_dir, graph)
+          eval_export_dir, graph
+      )
 
       features = feature_metadata['features']
       feature_columns = feature_metadata['feature_columns']
@@ -69,10 +73,12 @@ class ExportTest(testutil.TensorflowModelAnalysisTest):
       cols_to_tensors[feature_columns[1]['key']] = associated_tensors[1]
 
       self.assertSetEqual(
-          set(['language_embedding', 'age']), set(cols_to_tensors.keys()))
+          set(['language_embedding', 'age']), set(cols_to_tensors.keys())
+      )
       self.assertIn('age', cols_to_tensors['age'].name)
-      self.assertIn('language_embedding',
-                    cols_to_tensors['language_embedding'].name)
+      self.assertIn(
+          'language_embedding', cols_to_tensors['language_embedding'].name
+      )
 
 
 if __name__ == '__main__':

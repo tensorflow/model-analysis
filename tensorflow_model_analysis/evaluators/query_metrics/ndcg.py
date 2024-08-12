@@ -47,11 +47,14 @@ def _get_feature_value(fpl: query_types.FPL, key: str) -> float:
   """
   feature = fpl['features'].get(key)
   if feature is None:
-    raise ValueError('feature %s not found in features %s' %
-                     (key, fpl['features']))
+    raise ValueError(
+        'feature %s not found in features %s' % (key, fpl['features'])
+    )
   if feature.size != 1:
-    raise ValueError('feature %s did not contain exactly 1 value. '
-                     'value was: %s' % (key, feature))
+    raise ValueError(
+        'feature %s did not contain exactly 1 value. value was: %s'
+        % (key, feature)
+    )
   return feature[0][0]
 
 
@@ -85,7 +88,8 @@ class NdcgMetricCombineFn(beam.CombineFn):
       The value of DCG@k.
     """
     return np.sum(
-        np.array(sorted_values)[:k] / np.log2(np.array(range(2, k + 2))))
+        np.array(sorted_values)[:k] / np.log2(np.array(range(2, k + 2)))
+    )
 
   def _calculate_ndcg(self, values: List[Tuple[int, float]], k: int) -> float:
     """Calculate nDCG@k, based on given rank and gain values.
@@ -123,8 +127,9 @@ class NdcgMetricCombineFn(beam.CombineFn):
       ndcg_dict[at] = left.ndcg[at] + right.ndcg[at]
     return _State(ndcg_dict, left.weight + right.weight)
 
-  def add_input(self, accumulator: _State,
-                query_fpl: query_types.QueryFPL) -> _State:
+  def add_input(
+      self, accumulator: _State, query_fpl: query_types.QueryFPL
+  ) -> _State:
     weight = 1.0
     if self._weight_key:
       weights = [
@@ -133,15 +138,19 @@ class NdcgMetricCombineFn(beam.CombineFn):
       ]
       if weights:
         if min(weights) != max(weights):
-          raise ValueError('weights were not identical for all examples in the '
-                           'query. query_id was: %s, weights were: %s' %
-                           (query_fpl.query_id, weights))
+          raise ValueError(
+              'weights were not identical for all examples in the '
+              'query. query_id was: %s, weights were: %s'
+              % (query_fpl.query_id, weights)
+          )
         weight = weights[0]
 
     ndcg_dict = {}
     for at in self._at_vals:
-      rank_gain = [(pos + 1, float(_get_feature_value(fpl, self._gain_key)))
-                   for pos, fpl in enumerate(query_fpl.fpls)]
+      rank_gain = [
+          (pos + 1, float(_get_feature_value(fpl, self._gain_key)))
+          for pos, fpl in enumerate(query_fpl.fpls)
+      ]
       ndcg_dict[at] = self._calculate_ndcg(rank_gain, at) * weight
 
     return self._add_states(accumulator, _State(ndcg=ndcg_dict, weight=weight))

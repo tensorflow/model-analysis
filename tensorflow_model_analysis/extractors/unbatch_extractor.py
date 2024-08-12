@@ -37,11 +37,13 @@ def UnbatchExtractor() -> extractor.Extractor:
   """
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
-      stage_name=UNBATCH_EXTRACTOR_STAGE_NAME, ptransform=_UnbatchInputs())
+      stage_name=UNBATCH_EXTRACTOR_STAGE_NAME, ptransform=_UnbatchInputs()
+  )
 
 
 def _extract_unbatched_inputs(  # pylint: disable=invalid-name
-    mixed_legacy_batched_extract: types.Extracts) -> Sequence[types.Extracts]:
+    mixed_legacy_batched_extract: types.Extracts,
+) -> Sequence[types.Extracts]:
   """Extract features, predictions, labels and weights from batched extract."""
   batched_extract = {}
   # TODO(mdreves): Remove record batch
@@ -59,7 +61,8 @@ def _extract_unbatched_inputs(  # pylint: disable=invalid-name
       except Exception as e:
         raise RuntimeError(
             f'Exception encountered while adding key {key} with '
-            f'batched length {len(mixed_legacy_batched_extract[key])}') from e
+            f'batched length {len(mixed_legacy_batched_extract[key])}'
+        ) from e
     else:
       batched_extract[key] = mixed_legacy_batched_extract[key]
   unbatched_extracts = util.split_extracts(batched_extract)
@@ -70,10 +73,12 @@ def _extract_unbatched_inputs(  # pylint: disable=invalid-name
           f'Batch sizes have differing values: {len(unbatched_extracts)} != '
           f'{len(legacy_unbatched_extracts)}, '
           f'unbatched_extracts={unbatched_extracts}, '
-          f'legacy_unbatched_extracts={legacy_unbatched_extracts}')
+          f'legacy_unbatched_extracts={legacy_unbatched_extracts}'
+      )
     result = []
     for unbatched_extract, legacy_unbatched_extract in zip(
-        unbatched_extracts, legacy_unbatched_extracts):
+        unbatched_extracts, legacy_unbatched_extracts
+    ):
       legacy_unbatched_extract.update(unbatched_extract)
       result.append(legacy_unbatched_extract)
     return result
@@ -87,7 +92,8 @@ def _extract_unbatched_inputs(  # pylint: disable=invalid-name
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 def _UnbatchInputs(
-    extracts: beam.pvalue.PCollection) -> beam.pvalue.PCollection:
+    extracts: beam.pvalue.PCollection,
+) -> beam.pvalue.PCollection:
   """Extracts unbatched inputs from batched extracts.
 
   Args:

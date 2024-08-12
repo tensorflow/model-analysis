@@ -60,24 +60,29 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
   def _getExportDir(self):
     return os.path.join(self._getTempDir(), 'export_dir')
 
-  def _create_tfxio_and_feature_extractor(self,
-                                          eval_config: config_pb2.EvalConfig,
-                                          schema: schema_pb2.Schema):
+  def _create_tfxio_and_feature_extractor(
+      self, eval_config: config_pb2.EvalConfig, schema: schema_pb2.Schema
+  ):
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN
+    )
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
+        tensor_representations=tfx_io.TensorRepresentations(),
+    )
     feature_extractor = features_extractor.FeaturesExtractor(
         eval_config=eval_config,
-        tensor_representations=tensor_adapter_config.tensor_representations)
+        tensor_representations=tensor_adapter_config.tensor_representations,
+    )
     return tfx_io, feature_extractor
 
   def testRegressionModel(self):
     temp_export_dir = self._getExportDir()
     export_dir, _ = (
-        fixed_prediction_estimator_extra_fields
-        .simple_fixed_prediction_estimator_extra_fields(temp_export_dir, None))
+        fixed_prediction_estimator_extra_fields.simple_fixed_prediction_estimator_extra_fields(
+            temp_export_dir, None
+        )
+    )
 
     eval_config = config_pb2.EvalConfig(
         model_specs=[
@@ -87,7 +92,8 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         ]
     )
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING]
+    )
     tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
         eval_config,
         text_format.Parse(
@@ -123,37 +129,45 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
             label=1.0,
             fixed_int=1,
             fixed_float=1.0,
-            fixed_string='fixed_string1'),
+            fixed_string='fixed_string1',
+        ),
         self._makeExample(
             prediction=0.8,
             label=0.0,
             fixed_int=1,
             fixed_float=1.0,
-            fixed_string='fixed_string2'),
+            fixed_string='fixed_string2',
+        ),
         self._makeExample(
             prediction=0.5,
             label=0.0,
             fixed_int=2,
             fixed_float=1.0,
-            fixed_string='fixed_string3')
+            fixed_string='fixed_string3',
+        ),
     ]
     num_examples = len(examples)
 
     tfx_bsl_inference_ptransform = inference_base.RunInference(
         tfx_bsl_predictions_extractor.TfxBslInferenceWrapper(
-            eval_config.model_specs, {'': eval_shared_model}),
-        output_batch_size=num_examples)
+            eval_config.model_specs, {'': eval_shared_model}
+        ),
+        output_batch_size=num_examples,
+    )
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
+          | 'Create'
+          >> beam.Create(
+              [e.SerializeToString() for e in examples], reshuffle=False
+          )
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
-          | 'RunInferenceBase' >> tfx_bsl_inference_ptransform)
+          | 'RunInferenceBase' >> tfx_bsl_inference_ptransform
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -162,8 +176,8 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           self.assertLen(got, 1)
           self.assertIn(constants.PREDICTIONS_KEY, got[0])
           self.assertAllClose(
-              np.array([[0.2], [0.8], [0.5]]),
-              got[0][constants.PREDICTIONS_KEY])
+              np.array([[0.2], [0.8], [0.5]]), got[0][constants.PREDICTIONS_KEY]
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -207,10 +221,15 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     )
     temp_dir = self.create_tempdir()
     temp_dir.create_file(
-        'saved_model.pb', content=saved_model_proto.SerializeToString())
-    eval_config = config_pb2.EvalConfig(model_specs=[
-        config_pb2.ModelSpec(name='model_1', signature_name='serving_default')
-    ])
+        'saved_model.pb', content=saved_model_proto.SerializeToString()
+    )
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(
+                name='model_1', signature_name='serving_default'
+            )
+        ]
+    )
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=temp_dir.full_path,
         model_name='model_1',
@@ -220,7 +239,9 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
 
     self.assertTrue(
         inference_base.is_valid_config_for_bulk_inference(
-            eval_config, eval_shared_model))
+            eval_config, eval_shared_model
+        )
+    )
 
   def testIsValidConfigForBulkInferencePassDefaultSignatureLookUp(self):
     saved_model_proto = text_format.Parse(
@@ -254,12 +275,16 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           }
         }
       }
-      """, saved_model_pb2.SavedModel())
+      """,
+        saved_model_pb2.SavedModel(),
+    )
     temp_dir = self.create_tempdir()
     temp_dir.create_file(
-        'saved_model.pb', content=saved_model_proto.SerializeToString())
+        'saved_model.pb', content=saved_model_proto.SerializeToString()
+    )
     eval_config = config_pb2.EvalConfig(
-        model_specs=[config_pb2.ModelSpec(name='model_1')])
+        model_specs=[config_pb2.ModelSpec(name='model_1')]
+    )
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=temp_dir.full_path,
         model_name='model_1',
@@ -269,7 +294,9 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
 
     self.assertTrue(
         inference_base.is_valid_config_for_bulk_inference(
-            eval_config, eval_shared_model))
+            eval_config, eval_shared_model
+        )
+    )
 
   def testIsValidConfigForBulkInferenceFailNoSignatureFound(self):
     saved_model_proto = text_format.Parse(
@@ -303,13 +330,18 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           }
         }
       }
-      """, saved_model_pb2.SavedModel())
+      """,
+        saved_model_pb2.SavedModel(),
+    )
     temp_dir = self.create_tempdir()
     temp_dir.create_file(
-        'saved_model.pb', content=saved_model_proto.SerializeToString())
-    eval_config = config_pb2.EvalConfig(model_specs=[
-        config_pb2.ModelSpec(name='model_1', signature_name='not_found')
-    ])
+        'saved_model.pb', content=saved_model_proto.SerializeToString()
+    )
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(name='model_1', signature_name='not_found')
+        ]
+    )
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=temp_dir.full_path,
         model_name='model_1',
@@ -317,7 +349,9 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     )
     self.assertFalse(
         inference_base.is_valid_config_for_bulk_inference(
-            eval_config, eval_shared_model))
+            eval_config, eval_shared_model
+        )
+    )
 
   def testIsValidConfigForBulkInferenceFailKerasModel(self):
     saved_model_proto = text_format.Parse(
@@ -351,13 +385,20 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           }
         }
       }
-      """, saved_model_pb2.SavedModel())
+      """,
+        saved_model_pb2.SavedModel(),
+    )
     temp_dir = self.create_tempdir()
     temp_dir.create_file(
-        'saved_model.pb', content=saved_model_proto.SerializeToString())
-    eval_config = config_pb2.EvalConfig(model_specs=[
-        config_pb2.ModelSpec(name='model_1', signature_name='serving_default')
-    ])
+        'saved_model.pb', content=saved_model_proto.SerializeToString()
+    )
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(
+                name='model_1', signature_name='serving_default'
+            )
+        ]
+    )
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=temp_dir.full_path,
         model_name='model_1',
@@ -365,7 +406,9 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     )
     self.assertFalse(
         inference_base.is_valid_config_for_bulk_inference(
-            eval_config, eval_shared_model))
+            eval_config, eval_shared_model
+        )
+    )
 
   def testIsValidConfigForBulkInferenceFailMoreThanOneInput(self):
     saved_model_proto = text_format.Parse(
@@ -399,13 +442,20 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           }
         }
       }
-      """, saved_model_pb2.SavedModel())
+      """,
+        saved_model_pb2.SavedModel(),
+    )
     temp_dir = self.create_tempdir()
     temp_dir.create_file(
-        'saved_model.pb', content=saved_model_proto.SerializeToString())
-    eval_config = config_pb2.EvalConfig(model_specs=[
-        config_pb2.ModelSpec(name='model_1', signature_name='serving_default')
-    ])
+        'saved_model.pb', content=saved_model_proto.SerializeToString()
+    )
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(
+                name='model_1', signature_name='serving_default'
+            )
+        ]
+    )
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=temp_dir.full_path,
         model_name='model_1',
@@ -413,7 +463,9 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     )
     self.assertFalse(
         inference_base.is_valid_config_for_bulk_inference(
-            eval_config, eval_shared_model))
+            eval_config, eval_shared_model
+        )
+    )
 
   def testIsValidConfigForBulkInferenceFailWrongInputType(self):
     saved_model_proto = text_format.Parse(
@@ -447,13 +499,20 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
           }
         }
       }
-      """, saved_model_pb2.SavedModel())
+      """,
+        saved_model_pb2.SavedModel(),
+    )
     temp_dir = self.create_tempdir()
     temp_dir.create_file(
-        'saved_model.pb', content=saved_model_proto.SerializeToString())
-    eval_config = config_pb2.EvalConfig(model_specs=[
-        config_pb2.ModelSpec(name='model_1', signature_name='serving_default')
-    ])
+        'saved_model.pb', content=saved_model_proto.SerializeToString()
+    )
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(
+                name='model_1', signature_name='serving_default'
+            )
+        ]
+    )
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=temp_dir.full_path,
         model_name='model_1',
@@ -461,7 +520,9 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
     )
     self.assertFalse(
         inference_base.is_valid_config_for_bulk_inference(
-            eval_config, eval_shared_model))
+            eval_config, eval_shared_model
+        )
+    )
 
   def testInsertSinglePredictionLogIntoExtract(self):
     model_names_to_prediction_logs = {'prediction_log1': self.prediction_log1}

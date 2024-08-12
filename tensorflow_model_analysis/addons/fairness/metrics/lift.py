@@ -42,12 +42,14 @@ class Lift(metric_types.Metric):
   Raises an exception when tfma.CrossSlicingSpec is not provided.
   """
 
-  def __init__(self,
-               num_buckets: Optional[int] = None,
-               left: Optional[float] = None,
-               right: Optional[float] = None,
-               name: Optional[str] = None,
-               ignore_out_of_bound_examples: bool = False):
+  def __init__(
+      self,
+      num_buckets: Optional[int] = None,
+      left: Optional[float] = None,
+      right: Optional[float] = None,
+      name: Optional[str] = None,
+      ignore_out_of_bound_examples: bool = False,
+  ):
     """Initializes lift metrics.
 
     Args:
@@ -67,7 +69,8 @@ class Lift(metric_types.Metric):
         left=left,
         right=right,
         name=name,
-        ignore_out_of_bound_examples=ignore_out_of_bound_examples)
+        ignore_out_of_bound_examples=ignore_out_of_bound_examples,
+    )
 
 
 def _lift_metrics(
@@ -88,7 +91,8 @@ def _lift_metrics(
   if eval_config is None or not eval_config.cross_slicing_specs:
     raise ValueError(
         'tfma.CrossSlicingSpec with a baseline and at least one comparison '
-        'slicing spec must be provided for Lift metrics')
+        'slicing spec must be provided for Lift metrics'
+    )
 
   if num_buckets is None:
     num_buckets = DEFAULT_NUM_BUCKETS
@@ -98,7 +102,8 @@ def _lift_metrics(
       model_name=model_name,
       output_name=output_name,
       sub_key=sub_key,
-      example_weighted=example_weighted)
+      example_weighted=example_weighted,
+  )
 
   computations = calibration_histogram.calibration_histogram(
       eval_config=eval_config,
@@ -112,7 +117,8 @@ def _lift_metrics(
       class_weights=class_weights,
       example_weighted=example_weighted,
       prediction_based_bucketing=False,
-      fractional_labels=False)
+      fractional_labels=False,
+  )
   metric_key = computations[-1].keys[-1]
 
   def cross_slice_comparison(
@@ -148,7 +154,8 @@ def _lift_metrics(
       if bucket_id in comparison_bucket:
         num_examples = comparison_bucket[bucket_id].weighted_examples
         comparison_pred_values += comparison_bucket[
-            bucket_id].weighted_predictions
+            bucket_id
+        ].weighted_predictions
         comparison_num_examples += num_examples
 
       if bucket_id in baseline_bucket:
@@ -157,15 +164,18 @@ def _lift_metrics(
         # density by the background density so that the marginal ground truth
         # distributions of in-slice items and background items appear similar.
         weight = num_examples / baseline_bucket[bucket_id].weighted_examples
-        baseline_pred_values += weight * baseline_bucket[
-            bucket_id].weighted_predictions
+        baseline_pred_values += (
+            weight * baseline_bucket[bucket_id].weighted_predictions
+        )
 
-    lift_value = (comparison_pred_values -
-                  baseline_pred_values) / comparison_num_examples
+    lift_value = (
+        comparison_pred_values - baseline_pred_values
+    ) / comparison_num_examples
     return {key: lift_value}
 
   cross_slice_computation = metric_types.CrossSliceMetricComputation(
-      keys=[key], cross_slice_comparison=cross_slice_comparison)
+      keys=[key], cross_slice_comparison=cross_slice_comparison
+  )
 
   computations.append(cross_slice_computation)
   return computations

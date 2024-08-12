@@ -31,8 +31,9 @@ Extractor = NamedTuple(  # pylint: disable=invalid-name
     [
         ('stage_name', str),
         # PTransform Extracts -> Extracts
-        ('ptransform', beam.PTransform)
-    ])
+        ('ptransform', beam.PTransform),
+    ],
+)
 
 
 @beam.ptransform_fn
@@ -41,8 +42,8 @@ Extractor = NamedTuple(  # pylint: disable=invalid-name
 def Filter(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
     include: Optional[Union[Iterable[str], Dict[str, Any]]] = None,
-    exclude: Optional[Union[Iterable[str],
-                            Dict[str, Any]]] = None) -> beam.pvalue.PCollection:
+    exclude: Optional[Union[Iterable[str], Dict[str, Any]]] = None,
+) -> beam.pvalue.PCollection:
   """Filters extracts to include/exclude specified keys.
 
   Args:
@@ -51,14 +52,14 @@ def Filter(  # pylint: disable=invalid-name
       passed then the keys and sub-keys that exist in the map will be included
       in the output. An empty dict behaves as a wildcard matching all keys or
       the value itself. Since matching on feature values is not currently
-      supported, an empty dict must be used to represent the leaf nodes.
-      For example: {'key1': {'key1-subkey': {}}, 'key2': {}}.
+      supported, an empty dict must be used to represent the leaf nodes. For
+      example, {'key1': {'key1-subkey': {}}, 'key2': {}}.
     exclude: List or map of keys to exclude from output. If a map of keys is
       passed then the keys and sub-keys that exist in the map will be excluded
       from the output. An empty dict behaves as a wildcard matching all keys or
       the value itself. Since matching on feature values is not currently
-      supported, an empty dict must be used to represent the leaf nodes.
-      For example: {'key1': {'key1-subkey': {}}, 'key2': {}}.
+      supported, an empty dict must be used to represent the leaf nodes. For
+      example, {'key1': {'key1-subkey': {}}, 'key2': {}}.
 
   Returns:
     Filtered PCollection of Extracts.

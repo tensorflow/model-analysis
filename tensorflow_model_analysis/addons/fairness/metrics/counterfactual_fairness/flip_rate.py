@@ -14,7 +14,6 @@
 """Flip Rate Metrics."""
 
 import random
-
 from typing import Dict, Optional, Sequence, Union
 
 import numpy as np
@@ -54,7 +53,6 @@ class FlipRate(metric_types.Metric):
   - Total Flip Count / Total Example Count
   - Positive to Negative Flip Count / Total Example Count
   - Negative to Positive Flip Count / Total Example Count
-
   """
 
   def __init__(
@@ -70,8 +68,8 @@ class FlipRate(metric_types.Metric):
     Args:
       counterfactual_prediction_key: Prediction label key for counterfactual
         example to be used to measure the flip count. Defaults to None which
-          indicates that the counterfactual_prediction_key should be extracted
-          from the baseline model spec.
+        indicates that the counterfactual_prediction_key should be extracted
+        from the baseline model spec.
       name: Metric name.
       thresholds: Thresholds to be used to measure flips.
       example_id_key: Feature key containing example id.
@@ -84,7 +82,8 @@ class FlipRate(metric_types.Metric):
         thresholds=thresholds,
         name=name,
         example_id_key=example_id_key,
-        example_ids_count=example_ids_count)
+        example_ids_count=example_ids_count,
+    )
 
 
 def _flip_rate(
@@ -96,11 +95,12 @@ def _flip_rate(
     model_name: str = '',
     output_name: str = '',
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    example_weighted: bool = False) -> metric_types.MetricComputations:
+    example_weighted: bool = False,
+) -> metric_types.MetricComputations:
   """Returns computations for flip rate."""
   keys, metric_key_by_name_by_threshold = flip_count.create_metric_keys(
-      thresholds, _METRICS_LIST, name, model_name, output_name,
-      example_weighted)
+      thresholds, _METRICS_LIST, name, model_name, output_name, example_weighted
+  )
 
   computations = flip_count.flip_count(
       thresholds=thresholds,
@@ -110,15 +110,24 @@ def _flip_rate(
       model_name=model_name,
       output_name=output_name,
       eval_config=eval_config,
-      example_weighted=example_weighted)
+      example_weighted=example_weighted,
+  )
 
   _, flip_count_metric_key_by_name_by_threshold = flip_count.create_metric_keys(
-      thresholds, flip_count.METRICS_LIST, flip_count.FLIP_COUNT_NAME,
-      model_name, output_name, example_weighted)
+      thresholds,
+      flip_count.METRICS_LIST,
+      flip_count.FLIP_COUNT_NAME,
+      model_name,
+      output_name,
+      example_weighted,
+  )
 
-  def pick_overall_flip_examples(ntp_examples: np.ndarray,
-                                 ptn_examples: np.ndarray, ntp_count: int,
-                                 ptn_count: int) -> np.ndarray:
+  def pick_overall_flip_examples(
+      ntp_examples: np.ndarray,
+      ptn_examples: np.ndarray,
+      ntp_count: int,
+      ptn_count: int,
+  ) -> np.ndarray:
     """Combine samples of flips in both sides to make samples of overall flips.
 
     Note that what this function does is different of simply combining the
@@ -159,51 +168,66 @@ def _flip_rate(
     return np.array(output)
 
   def result(
-      metrics: Dict[metric_types.MetricKey, Union[float, np.ndarray]]
+      metrics: Dict[metric_types.MetricKey, Union[float, np.ndarray]],
   ) -> Dict[metric_types.MetricKey, Union[float, np.ndarray]]:
     """Returns flip rate metrics values."""
     output = {}
     for threshold in thresholds:
       ptn = flip_count_metric_key_by_name_by_threshold[threshold][
-          _POSITIVE_TO_NEGATIVE]
+          _POSITIVE_TO_NEGATIVE
+      ]
       ntp = flip_count_metric_key_by_name_by_threshold[threshold][
-          _NEGATIVE_TO_POSITIVE]
+          _NEGATIVE_TO_POSITIVE
+      ]
       pos_examples = flip_count_metric_key_by_name_by_threshold[threshold][
-          _POSITIVE_TO_NEGATIVE_EXAMPLE_IDS]
+          _POSITIVE_TO_NEGATIVE_EXAMPLE_IDS
+      ]
       neg_examples = flip_count_metric_key_by_name_by_threshold[threshold][
-          _NEGATIVE_TO_POSITIVE_EXAMPLE_IDS]
+          _NEGATIVE_TO_POSITIVE_EXAMPLE_IDS
+      ]
       pos = flip_count_metric_key_by_name_by_threshold[threshold][
-          _POSITIVE_EXAMPLES_COUNT]
+          _POSITIVE_EXAMPLES_COUNT
+      ]
       neg = flip_count_metric_key_by_name_by_threshold[threshold][
-          _NEGATIVE_EXAMPLES_COUNT]
-      output[metric_key_by_name_by_threshold[threshold]
-             [_OVERALL]] = (metrics[ntp] + metrics[ptn]) / (
-                 (metrics[pos] + metrics[neg]) or float('NaN'))
-      output[metric_key_by_name_by_threshold[threshold]
-             [_POSITIVE_TO_NEGATIVE]] = metrics[ptn] / (
-                 (metrics[pos] + metrics[neg]) or float('NaN'))
-      output[metric_key_by_name_by_threshold[threshold]
-             [_NEGATIVE_TO_POSITIVE]] = metrics[ntp] / (
-                 (metrics[pos] + metrics[neg]) or float('NaN'))
-      output[metric_key_by_name_by_threshold[threshold]
-             [_POSITIVE_TO_NEGATIVE_EXAMPLE_IDS]] = metrics[pos_examples]
-      output[metric_key_by_name_by_threshold[threshold]
-             [_NEGATIVE_TO_POSITIVE_EXAMPLE_IDS]] = metrics[neg_examples]
+          _NEGATIVE_EXAMPLES_COUNT
+      ]
+      output[metric_key_by_name_by_threshold[threshold][_OVERALL]] = (
+          metrics[ntp] + metrics[ptn]
+      ) / ((metrics[pos] + metrics[neg]) or float('NaN'))
+      output[
+          metric_key_by_name_by_threshold[threshold][_POSITIVE_TO_NEGATIVE]
+      ] = metrics[ptn] / ((metrics[pos] + metrics[neg]) or float('NaN'))
+      output[
+          metric_key_by_name_by_threshold[threshold][_NEGATIVE_TO_POSITIVE]
+      ] = metrics[ntp] / ((metrics[pos] + metrics[neg]) or float('NaN'))
+      output[
+          metric_key_by_name_by_threshold[threshold][
+              _POSITIVE_TO_NEGATIVE_EXAMPLE_IDS
+          ]
+      ] = metrics[pos_examples]
+      output[
+          metric_key_by_name_by_threshold[threshold][
+              _NEGATIVE_TO_POSITIVE_EXAMPLE_IDS
+          ]
+      ] = metrics[neg_examples]
       # TODO(sokeefe): Should this depend on  of example_weighted?
       if not example_weighted:
         assert isinstance(metrics[neg_examples], np.ndarray)
         assert isinstance(metrics[pos_examples], np.ndarray)
-        output[metric_key_by_name_by_threshold[threshold]
-               [_SAMPLE_EXAMPLES_IDS]] = pick_overall_flip_examples(
-                   ntp_examples=metrics[neg_examples],
-                   ptn_examples=metrics[pos_examples],
-                   ntp_count=int(metrics[ntp]),
-                   ptn_count=int(metrics[ptn]))
+        output[
+            metric_key_by_name_by_threshold[threshold][_SAMPLE_EXAMPLES_IDS]
+        ] = pick_overall_flip_examples(
+            ntp_examples=metrics[neg_examples],
+            ptn_examples=metrics[pos_examples],
+            ntp_count=int(metrics[ntp]),
+            ptn_count=int(metrics[ptn]),
+        )
 
     return output
 
   derived_computation = metric_types.DerivedMetricComputation(
-      keys=keys, result=result)
+      keys=keys, result=result
+  )
 
   computations.append(derived_computation)
   return computations

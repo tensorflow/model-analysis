@@ -59,7 +59,6 @@ from typing import Any, Dict, List, Optional
 
 import apache_beam as beam
 from apache_beam.testing import util as beam_util
-
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import types
@@ -76,18 +75,21 @@ from tfx_bsl.tfxio import raw_tf_record
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 def Extract(  # pylint: disable=invalid-name
-    extracts: beam.pvalue.PCollection, extractors: List[extractor.Extractor]):
+    extracts: beam.pvalue.PCollection, extractors: List[extractor.Extractor]
+):
   for x in extractors:
-    extracts = (extracts | x.stage_name >> x.ptransform)
+    extracts = extracts | x.stage_name >> x.ptransform
   return extracts
 
 
 class BoundedValue:
   """Represents a bounded value for a metric for the TFMA unit test."""
 
-  def __init__(self,
-               lower_bound: float = float('-inf'),
-               upper_bound: float = float('inf')):
+  def __init__(
+      self,
+      lower_bound: float = float('-inf'),
+      upper_bound: float = float('inf'),
+  ):
     self.lower_bound = lower_bound
     self.upper_bound = upper_bound
 
@@ -115,8 +117,11 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
     """
     return self._makeExample(**kwargs).SerializeToString()
 
-  def assertDictElementsWithinBounds(self, got_values_dict: Dict[str, Any],
-                                     expected_values_dict: Dict[str, Any]):
+  def assertDictElementsWithinBounds(
+      self,
+      got_values_dict: Dict[str, Any],
+      expected_values_dict: Dict[str, Any],
+  ):
     """Checks the elements for two dictionaries.
 
     It asserts all values in `expected_values_dict` are close to values with the
@@ -135,15 +140,20 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
       got_value = got_values_dict[key]
       if isinstance(value, BoundedValue):
         if got_value < value.lower_bound or got_value > value.upper_bound:
-          self.fail('expecting key %s to have value between %f and %f '
-                    '(both ends inclusive), but value was %f instead' %
-                    (key, value.lower_bound, value.upper_bound, got_value))
+          self.fail(
+              'expecting key %s to have value between %f and %f '
+              '(both ends inclusive), but value was %f instead'
+              % (key, value.lower_bound, value.upper_bound, got_value)
+          )
       else:
         self.assertAllClose(got_value, value, msg='key = %s' % key)
 
-  def assertMetricsComputedWithoutBeamAre(self, eval_saved_model_path: str,
-                                          serialized_examples: List[bytes],
-                                          expected_metrics: Dict[str, Any]):
+  def assertMetricsComputedWithoutBeamAre(
+      self,
+      eval_saved_model_path: str,
+      serialized_examples: List[bytes],
+      expected_metrics: Dict[str, Any],
+  ):
     """Checks metrics in-memory using the low-level APIs without Beam.
 
     Example usage:
@@ -160,13 +170,18 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
       expected_metrics: Dictionary of expected metric values.
     """
     self.assertDictElementsWithinBounds(
-        got_values_dict=self._computeMetricsWithoutBeam(eval_saved_model_path,
-                                                        serialized_examples),
-        expected_values_dict=expected_metrics)
+        got_values_dict=self._computeMetricsWithoutBeam(
+            eval_saved_model_path, serialized_examples
+        ),
+        expected_values_dict=expected_metrics,
+    )
 
   def assertMetricsComputedWithoutBeamNoBatchingAre(
-      self, eval_saved_model_path: str, serialized_examples: List[bytes],
-      expected_metrics: Dict[str, Any]):
+      self,
+      eval_saved_model_path: str,
+      serialized_examples: List[bytes],
+      expected_metrics: Dict[str, Any],
+  ):
     """Checks metrics in-memory using the low-level APIs without Beam.
 
     This is the non-batched version of assertMetricsComputedWithoutBeamAre.
@@ -182,12 +197,14 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
     """
     self.assertDictElementsWithinBounds(
         got_values_dict=self._computeMetricsWithoutBeamNoBatching(
-            eval_saved_model_path, serialized_examples),
-        expected_values_dict=expected_metrics)
+            eval_saved_model_path, serialized_examples
+        ),
+        expected_values_dict=expected_metrics,
+    )
 
   def _computeMetricsWithoutBeam(
-      self, eval_saved_model_path: str,
-      serialized_examples: List[bytes]) -> Dict[str, Any]:
+      self, eval_saved_model_path: str, serialized_examples: List[bytes]
+  ) -> Dict[str, Any]:
     """Computes metrics in-memory using the low-level APIs without Beam.
 
     Args:
@@ -203,8 +220,8 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
     return eval_saved_model.get_metric_values()
 
   def _computeMetricsWithoutBeamNoBatching(
-      self, eval_saved_model_path: str,
-      serialized_examples: List[bytes]) -> Dict[str, Any]:
+      self, eval_saved_model_path: str, serialized_examples: List[bytes]
+  ) -> Dict[str, Any]:
     """Computes metrics in-memory using the low-level APIs without Beam.
 
     This is the non-batched version of computeMetricsWithoutBeam. This can be
@@ -231,8 +248,10 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
       eval_saved_model_path: str,
       serialized_examples: List[bytes],
       expected_metrics: Dict[str, Any],
-      add_metrics_callbacks: Optional[List[
-          types.AddMetricsCallbackType]] = None):
+      add_metrics_callbacks: Optional[
+          List[types.AddMetricsCallbackType]
+      ] = None,
+  ):
     """Checks metrics computed using Beam.
 
     Metrics will be computed over all examples, without any slicing. If you
@@ -260,26 +279,33 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
       """Check metrics callback."""
       try:
         self.assertEqual(
-            1, len(got), 'expecting metrics for exactly one slice, but got %d '
-            'slices instead. metrics were: %s' % (len(got), got))
+            1,
+            len(got),
+            'expecting metrics for exactly one slice, but got %d '
+            'slices instead. metrics were: %s' % (len(got), got),
+        )
         (slice_key, value) = got[0]
         self.assertEqual((), slice_key)
         self.assertDictElementsWithinBounds(
-            got_values_dict=value, expected_values_dict=expected_metrics)
+            got_values_dict=value, expected_values_dict=expected_metrics
+        )
       except AssertionError as err:
         raise beam_util.BeamAssertException(err)
 
     eval_config = config_pb2.EvalConfig()
     eval_shared_model = model_eval_lib.default_eval_shared_model(
         eval_saved_model_path=eval_saved_model_path,
-        add_metrics_callbacks=add_metrics_callbacks)
+        add_metrics_callbacks=add_metrics_callbacks,
+    )
     extractors = model_eval_lib.default_extractors(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+        eval_config=eval_config, eval_shared_model=eval_shared_model
+    )
 
     tfx_io = raw_tf_record.RawBeamRecordTFXIO(
         physical_format='inmemory',
         raw_record_column_name=constants.ARROW_INPUT_COLUMN,
-        telemetry_descriptors=['TFMATest'])
+        telemetry_descriptors=['TFMATest'],
+    )
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       (metrics, _), _ = (
@@ -288,19 +314,23 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
           | 'BatchExamples' >> tfx_io.BeamSource()
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'Extract' >> Extract(extractors=extractors)
-          | 'ComputeMetricsAndPlots' >>
-          legacy_metrics_and_plots_evaluator._ComputeMetricsAndPlots(  # pylint: disable=protected-access
-              eval_shared_model=eval_shared_model))
+          | 'ComputeMetricsAndPlots'
+          >> legacy_metrics_and_plots_evaluator._ComputeMetricsAndPlots(  # pylint: disable=protected-access
+              eval_shared_model=eval_shared_model
+          )
+      )
       # pylint: enable=no-value-for-parameter
 
       beam_util.assert_that(metrics, check_metrics)
 
   def assertGeneralMetricsComputedWithBeamAre(
-      self, eval_saved_model_path: str,
+      self,
+      eval_saved_model_path: str,
       examples_pcollection: beam.pvalue.PCollection,
       slice_spec: List[slicer.SingleSliceSpec],
       add_metrics_callbacks: List[types.AddMetricsCallbackType],
-      expected_slice_metrics: Dict[Any, Dict[str, Any]]):
+      expected_slice_metrics: Dict[Any, Dict[str, Any]],
+  ):
     """Checks metrics computed using Beam.
 
     A more general version of assertMetricsComputedWithBeamAre. Note that the
@@ -360,7 +390,8 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
         for slice_key, expected_metrics in expected_slice_metrics.items():
           self.assertDictElementsWithinBounds(
               got_values_dict=slices[slice_key],
-              expected_values_dict=expected_metrics)
+              expected_values_dict=expected_metrics,
+          )
       except AssertionError as err:
         raise beam_util.BeamAssertException(err)
 
@@ -370,23 +401,28 @@ class TestCase(testutil.TensorflowModelAnalysisTest):
     eval_config = config_pb2.EvalConfig(slicing_specs=slicing_specs)
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_saved_model_path,
-        add_metrics_callbacks=add_metrics_callbacks)
+        add_metrics_callbacks=add_metrics_callbacks,
+    )
     extractors = model_eval_lib.default_extractors(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+        eval_config=eval_config, eval_shared_model=eval_shared_model
+    )
 
     tfx_io = raw_tf_record.RawBeamRecordTFXIO(
         physical_format='inmemory',
         raw_record_column_name=constants.ARROW_INPUT_COLUMN,
-        telemetry_descriptors=['TFMATest'])
+        telemetry_descriptors=['TFMATest'],
+    )
     # pylint: disable=no-value-for-parameter
     (metrics, _), _ = (
         examples_pcollection
         | 'BatchExamples' >> tfx_io.BeamSource()
         | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
         | 'Extract' >> Extract(extractors=extractors)
-        | 'ComputeMetricsAndPlots' >>
-        legacy_metrics_and_plots_evaluator._ComputeMetricsAndPlots(  # pylint: disable=protected-access
-            eval_shared_model=eval_shared_model))
+        | 'ComputeMetricsAndPlots'
+        >> legacy_metrics_and_plots_evaluator._ComputeMetricsAndPlots(  # pylint: disable=protected-access
+            eval_shared_model=eval_shared_model
+        )
+    )
     # pylint: enable=no-value-for-parameter
 
     beam_util.assert_that(metrics, check_metrics)

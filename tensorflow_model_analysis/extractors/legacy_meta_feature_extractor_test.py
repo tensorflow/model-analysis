@@ -36,33 +36,31 @@ def create_fpls():
   """Create test FPL dicts that can be used for verification."""
   fpl1 = types.FeaturesPredictionsLabels(
       input_ref=0,
-      features=make_features_dict({
-          'gender': ['f'],
-          'age': [13],
-          'interest': ['cars']
-      }),
+      features=make_features_dict(
+          {'gender': ['f'], 'age': [13], 'interest': ['cars']}
+      ),
       predictions=make_features_dict({
           'kb': [1],
       }),
-      labels=make_features_dict({'ad_risk_score': [0]}))
+      labels=make_features_dict({'ad_risk_score': [0]}),
+  )
   fpl2 = types.FeaturesPredictionsLabels(
       input_ref=1,
-      features=make_features_dict({
-          'gender': ['m'],
-          'age': [10],
-          'interest': ['cars', 'movies']
-      }),
+      features=make_features_dict(
+          {'gender': ['m'], 'age': [10], 'interest': ['cars', 'movies']}
+      ),
       predictions=make_features_dict({
           'kb': [1],
       }),
-      labels=make_features_dict({'ad_risk_score': [0]}))
+      labels=make_features_dict({'ad_risk_score': [0]}),
+  )
   return [fpl1, fpl2]
 
 
 def wrap_fpl(fpl):
   return {
       constants.INPUT_KEY: 'xyz',
-      constants.FEATURES_PREDICTIONS_LABELS_KEY: fpl
+      constants.FEATURES_PREDICTIONS_LABELS_KEY: fpl,
   }
 
 
@@ -82,8 +80,9 @@ class MetaFeatureExtractorTest(test_util.TensorflowModelAnalysisTest):
           pipeline
           | 'CreateTestInput' >> beam.Create(fpls)
           | 'WrapFpls' >> beam.Map(wrap_fpl)
-          | 'ExtractInterestsNum' >>
-          meta_feature_extractor.ExtractMetaFeature(get_num_interests))
+          | 'ExtractInterestsNum'
+          >> meta_feature_extractor.ExtractMetaFeature(get_num_interests)
+      )
 
       def check_result(got):
         try:
@@ -91,15 +90,20 @@ class MetaFeatureExtractorTest(test_util.TensorflowModelAnalysisTest):
           for res in got:
             self.assertIn(
                 'num_interests',
-                res[constants.FEATURES_PREDICTIONS_LABELS_KEY].features)
+                res[constants.FEATURES_PREDICTIONS_LABELS_KEY].features,
+            )
             self.assertEqual(
                 len(
                     meta_feature_extractor.get_feature_value(
                         res[constants.FEATURES_PREDICTIONS_LABELS_KEY],
-                        'interest')),
+                        'interest',
+                    )
+                ),
                 meta_feature_extractor.get_feature_value(
                     res[constants.FEATURES_PREDICTIONS_LABELS_KEY],
-                    'num_interests'))
+                    'num_interests',
+                ),
+            )
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
@@ -118,8 +122,9 @@ class MetaFeatureExtractorTest(test_util.TensorflowModelAnalysisTest):
             pipeline
             | 'CreateTestInput' >> beam.Create(fpls)
             | 'WrapFpls' >> beam.Map(wrap_fpl)
-            | 'ExtractInterestsNum' >>
-            meta_feature_extractor.ExtractMetaFeature(bad_meta_feature_fn))
+            | 'ExtractInterestsNum'
+            >> meta_feature_extractor.ExtractMetaFeature(bad_meta_feature_fn)
+        )
 
   def testSliceOnMetaFeature(self):
     # We want to make sure that slicing on the newly added feature works, so
@@ -130,13 +135,15 @@ class MetaFeatureExtractorTest(test_util.TensorflowModelAnalysisTest):
           pipeline
           | 'CreateTestInput' >> beam.Create(fpls)
           | 'WrapFpls' >> beam.Map(wrap_fpl)
-          | 'ExtractInterestsNum' >>
-          meta_feature_extractor.ExtractMetaFeature(get_num_interests)
-          | 'ExtractSlices' >> slice_key_extractor.ExtractSliceKeys([
+          | 'ExtractInterestsNum'
+          >> meta_feature_extractor.ExtractMetaFeature(get_num_interests)
+          | 'ExtractSlices'
+          >> slice_key_extractor.ExtractSliceKeys([
               slicer.SingleSliceSpec(),
-              slicer.SingleSliceSpec(columns=['num_interests'])
+              slicer.SingleSliceSpec(columns=['num_interests']),
           ])
-          | 'FanoutSlices' >> slicer.FanoutSlices())
+          | 'FanoutSlices' >> slicer.FanoutSlices()
+      )
 
       def check_result(got):
         try:
@@ -149,7 +156,8 @@ class MetaFeatureExtractorTest(test_util.TensorflowModelAnalysisTest):
           ]
           self.assertCountEqual(
               sorted(slice_key for slice_key, _ in got),
-              sorted(expected_slice_keys))
+              sorted(expected_slice_keys),
+          )
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
@@ -159,15 +167,21 @@ class MetaFeatureExtractorTest(test_util.TensorflowModelAnalysisTest):
     sparse_tensor_value = tf.compat.v1.SparseTensorValue(
         indices=[[0, 0, 0], [0, 1, 0], [0, 1, 1]],
         values=['', 'one', 'two'],
-        dense_shape=[1, 2, 2])
+        dense_shape=[1, 2, 2],
+    )
     fpl_with_sparse_tensor = types.FeaturesPredictionsLabels(
-        input_ref=0, features={}, predictions={}, labels={})
+        input_ref=0, features={}, predictions={}, labels={}
+    )
 
-    meta_feature_extractor._set_feature_value(fpl_with_sparse_tensor.features,
-                                              'sparse', sparse_tensor_value)
-    self.assertEqual(['', 'one', 'two'],
-                     meta_feature_extractor.get_feature_value(
-                         fpl_with_sparse_tensor, 'sparse'))
+    meta_feature_extractor._set_feature_value(
+        fpl_with_sparse_tensor.features, 'sparse', sparse_tensor_value
+    )
+    self.assertEqual(
+        ['', 'one', 'two'],
+        meta_feature_extractor.get_feature_value(
+            fpl_with_sparse_tensor, 'sparse'
+        ),
+    )
 
 
 if __name__ == '__main__':

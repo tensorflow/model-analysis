@@ -28,8 +28,9 @@ from tensorflow_model_analysis.metrics import metric_types
 _TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
 
 
-class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
-                              parameterized.TestCase):
+class KerasSavedModelUtilTest(
+    testutil.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
   def _createBinaryClassificationMetrics(self):
     return [
@@ -42,18 +43,19 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
         tf.keras.metrics.TrueNegatives(name='true_negatives'),
         tf.keras.metrics.FalseNegatives(name='false_negatives'),
         tf.keras.metrics.SpecificityAtSensitivity(
-            0.5, name='specificity_at_sensitivity'),
+            0.5, name='specificity_at_sensitivity'
+        ),
         tf.keras.metrics.SensitivityAtSpecificity(
-            0.5, name='sensitivity_at_specificity')
+            0.5, name='sensitivity_at_specificity'
+        ),
     ]
 
   def _createBinaryClassificationLosses(self):
     return [tf.keras.losses.BinaryCrossentropy()]
 
-  def _createBinaryClassificationModel(self,
-                                       sequential=True,
-                                       output_names=None,
-                                       add_custom_metrics=False):
+  def _createBinaryClassificationModel(
+      self, sequential=True, output_names=None, add_custom_metrics=False
+  ):
     if not output_names:
       layer = tf.keras.layers.Input(shape=(1,), name='output')
       if sequential:
@@ -65,7 +67,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
       model.compile(
           loss=self._createBinaryClassificationLosses(),
           metrics=self._createBinaryClassificationMetrics(),
-          weighted_metrics=self._createBinaryClassificationMetrics())
+          weighted_metrics=self._createBinaryClassificationMetrics(),
+      )
       model.fit(np.array([[1]]), np.array([[1]]))
     else:
       layers_per_output = {}
@@ -74,13 +77,17 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
       losses_per_output = {}
       for output_name in output_names:
         layers_per_output[output_name] = tf.keras.layers.Input(
-            shape=(1,), name=output_name)
+            shape=(1,), name=output_name
+        )
         metrics_per_output[output_name] = (
-            self._createBinaryClassificationMetrics())
+            self._createBinaryClassificationMetrics()
+        )
         weighted_metrics_per_output[output_name] = (
-            self._createBinaryClassificationMetrics())
+            self._createBinaryClassificationMetrics()
+        )
         losses_per_output[output_name] = (
-            self._createBinaryClassificationLosses())
+            self._createBinaryClassificationLosses()
+        )
       if sequential:
         raise ValueError('Sequential not supported with multi-output models')
       else:
@@ -89,13 +96,17 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
         for output_name in output_names:
           model.add_metric(
               tf.reduce_sum(layers_per_output[output_name]),
-              name='custom_' + output_name)
+              name='custom_' + output_name,
+          )
       model.compile(
           loss=losses_per_output,
           metrics=metrics_per_output,
-          weighted_metrics=weighted_metrics_per_output)
-      model.fit({n: np.array([[1]]) for n in output_names},
-                {n: np.array([[1]]) for n in output_names})
+          weighted_metrics=weighted_metrics_per_output,
+      )
+      model.fit(
+          {n: np.array([[1]]) for n in output_names},
+          {n: np.array([[1]]) for n in output_names},
+      )
 
     export_path = tempfile.mkdtemp()
     model.save(export_path, save_format='tf')
@@ -106,7 +117,7 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
         tf.keras.metrics.Precision(name='precision@2', top_k=2),
         tf.keras.metrics.Precision(name='precision@3', top_k=3),
         tf.keras.metrics.Recall(name='recall@2', top_k=2),
-        tf.keras.metrics.Recall(name='recall@3', top_k=3)
+        tf.keras.metrics.Recall(name='recall@3', top_k=3),
     ]
 
   def _createMultiClassClassificationLosses(self):
@@ -114,10 +125,9 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
     # and Recall for the metrics which require dense labels.
     return [tf.keras.losses.CategoricalCrossentropy()]
 
-  def _createMultiClassClassificationModel(self,
-                                           sequential=True,
-                                           output_names=None,
-                                           add_custom_metrics=False):
+  def _createMultiClassClassificationModel(
+      self, sequential=True, output_names=None, add_custom_metrics=False
+  ):
     if not output_names:
       layer = tf.keras.layers.Input(shape=(5,), name='output')
       if sequential:
@@ -129,7 +139,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
       model.compile(
           loss=self._createMultiClassClassificationLosses(),
           metrics=self._createMultiClassClassificationMetrics(),
-          weighted_metrics=self._createMultiClassClassificationMetrics())
+          weighted_metrics=self._createMultiClassClassificationMetrics(),
+      )
       model.fit(np.array([[1, 0, 0, 0, 0]]), np.array([[1, 0, 0, 0, 0]]))
     else:
       layers_per_output = {}
@@ -138,13 +149,17 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
       losses_per_output = {}
       for output_name in output_names:
         layers_per_output[output_name] = tf.keras.layers.Input(
-            shape=(5,), name=output_name)
+            shape=(5,), name=output_name
+        )
         metrics_per_output[output_name] = (
-            self._createMultiClassClassificationMetrics())
+            self._createMultiClassClassificationMetrics()
+        )
         weighted_metrics_per_output[output_name] = (
-            self._createMultiClassClassificationMetrics())
+            self._createMultiClassClassificationMetrics()
+        )
         losses_per_output[output_name] = (
-            self._createMultiClassClassificationLosses())
+            self._createMultiClassClassificationLosses()
+        )
       if sequential:
         raise ValueError('Sequential not supported with multi-output models')
       else:
@@ -153,13 +168,17 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
         for output_name in output_names:
           model.add_metric(
               tf.reduce_sum(layers_per_output[output_name]),
-              name='custom_' + output_name)
+              name='custom_' + output_name,
+          )
       model.compile(
           loss=losses_per_output,
           metrics=metrics_per_output,
-          weighted_metrics=weighted_metrics_per_output)
-      model.fit({n: np.array([[1, 0, 0, 0, 0]]) for n in output_names},
-                {n: np.array([[1, 0, 0, 0, 0]]) for n in output_names})
+          weighted_metrics=weighted_metrics_per_output,
+      )
+      model.fit(
+          {n: np.array([[1, 0, 0, 0, 0]]) for n in output_names},
+          {n: np.array([[1, 0, 0, 0, 0]]) for n in output_names},
+      )
 
     export_path = tempfile.mkdtemp()
     model.save(export_path, save_format='tf')
@@ -174,28 +193,34 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
   def testWithBinaryClassification(self, sequential_model, add_custom_metrics):
     # If custom metrics are used, then model.evaluate is called.
     export_dir = self._createBinaryClassificationModel(
-        sequential=sequential_model, add_custom_metrics=add_custom_metrics)
+        sequential=sequential_model, add_custom_metrics=add_custom_metrics
+    )
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir)
+        eval_saved_model_path=export_dir
+    )
     computation = keras_util.metric_computations_using_keras_saved_model(
-        '', eval_shared_model.model_loader, None)[0]
+        '', eval_shared_model.model_loader, None
+    )[0]
 
     inputs = [
         metric_types.StandardMetricInputs(
             labels=np.array([0.0]),
             predictions=np.array([1.0]),
             example_weights=np.array([0.5]),
-            features={'output': np.array([1.0])}),
+            features={'output': np.array([1.0])},
+        ),
         metric_types.StandardMetricInputs(
             labels=np.array([1.0]),
             predictions=np.array([0.7]),
             example_weights=np.array([0.7]),
-            features={'output': np.array([0.7])}),
+            features={'output': np.array([0.7])},
+        ),
         metric_types.StandardMetricInputs(
             labels=np.array([0.0]),
             predictions=np.array([0.5]),
             example_weights=np.array([0.9]),
-            features={'output': np.array([0.5])})
+            features={'output': np.array([0.5])},
+        ),
     ]
 
     expected_values = {
@@ -219,7 +244,7 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
         'weighted_false_negatives': 0.0,
         'weighted_specificity_at_sensitivity': 0.642857,
         'weighted_sensitivity_at_specificity': 1.0,
-        'loss': 2.861993
+        'loss': 2.861993,
     }
     if add_custom_metrics:
       # Loss is different due to rounding errors from tf.Example conversion.
@@ -232,7 +257,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
           pipeline
           | 'Create' >> beam.Create(inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'ComputeMetric' >> beam.CombinePerKey(computation.combiner))
+          | 'ComputeMetric' >> beam.CombinePerKey(computation.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -262,11 +288,14 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
     export_dir = self._createBinaryClassificationModel(
         sequential=False,
         output_names=('output_1', 'output_2'),
-        add_custom_metrics=add_custom_metrics)
+        add_custom_metrics=add_custom_metrics,
+    )
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir)
+        eval_saved_model_path=export_dir
+    )
     computation = keras_util.metric_computations_using_keras_saved_model(
-        '', eval_shared_model.model_loader, None)[0]
+        '', eval_shared_model.model_loader, None
+    )[0]
 
     inputs = [
         metric_types.StandardMetricInputs(
@@ -282,10 +311,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 'output_1': np.array([0.5]),
                 'output_2': np.array([0.1]),
             },
-            features={
-                'output_1': np.array([1.0]),
-                'output_2': np.array([0.0])
-            }),
+            features={'output_1': np.array([1.0]), 'output_2': np.array([0.0])},
+        ),
         metric_types.StandardMetricInputs(
             labels={
                 'output_1': np.array([1.0]),
@@ -299,10 +326,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 'output_1': np.array([0.7]),
                 'output_2': np.array([0.4]),
             },
-            features={
-                'output_1': np.array([0.7]),
-                'output_2': np.array([0.3])
-            }),
+            features={'output_1': np.array([0.7]), 'output_2': np.array([0.3])},
+        ),
         metric_types.StandardMetricInputs(
             labels={
                 'output_1': np.array([0.0]),
@@ -316,10 +341,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
                 'output_1': np.array([0.9]),
                 'output_2': np.array([0.7]),
             },
-            features={
-                'output_1': np.array([0.5]),
-                'output_2': np.array([0.8])
-            })
+            features={'output_1': np.array([0.5]), 'output_2': np.array([0.8])},
+        ),
     ]
 
     expected_values = {
@@ -344,7 +367,7 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             'weighted_false_negatives': 0.0,
             'weighted_specificity_at_sensitivity': 0.642857,
             'weighted_sensitivity_at_specificity': 1.0,
-            'loss': 2.861993
+            'loss': 2.861993,
         },
         'output_2': {
             'auc': 1.0,
@@ -367,11 +390,9 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             'weighted_false_negatives': 0.4,
             'weighted_specificity_at_sensitivity': 1.0,
             'weighted_sensitivity_at_specificity': 1.0,
-            'loss': 0.21259646
+            'loss': 0.21259646,
         },
-        '': {
-            'loss': 2.861993 + 0.21259646
-        }
+        '': {'loss': 2.861993 + 0.21259646},
     }
     if add_custom_metrics:
       # Loss is different due to rounding errors from tf.Example conversion.
@@ -387,7 +408,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
           pipeline
           | 'Create' >> beam.Create(inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'ComputeMetric' >> beam.CombinePerKey(computation.combiner))
+          | 'ComputeMetric' >> beam.CombinePerKey(computation.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -400,7 +422,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
           for output_name, per_output_values in expected_values.items():
             for name, value in per_output_values.items():
               key = metric_types.MetricKey(
-                  name=name, output_name=output_name, example_weighted=None)
+                  name=name, output_name=output_name, example_weighted=None
+              )
               expected[key] = value
           self.assertDictElementsAlmostEqual(got_metrics, expected)
 
@@ -412,16 +435,21 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
   @parameterized.named_parameters(
       ('compiled_metrics_sequential_model', True, False),
       ('compiled_metrics_functional_model', False, False),
-      ('evaluate', False, True))
+      ('evaluate', False, True),
+  )
   @unittest.skipIf(_TF_MAJOR_VERSION < 2, 'not all options supported in TFv1')
-  def testWithMultiClassClassification(self, sequential_model,
-                                       add_custom_metrics):
+  def testWithMultiClassClassification(
+      self, sequential_model, add_custom_metrics
+  ):
     export_dir = self._createMultiClassClassificationModel(
-        sequential=sequential_model, add_custom_metrics=add_custom_metrics)
+        sequential=sequential_model, add_custom_metrics=add_custom_metrics
+    )
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir)
+        eval_saved_model_path=export_dir
+    )
     computation = keras_util.metric_computations_using_keras_saved_model(
-        '', eval_shared_model.model_loader, None)[0]
+        '', eval_shared_model.model_loader, None
+    )[0]
 
     inputs = [
         metric_types.StandardMetricInputs(
@@ -430,28 +458,32 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             example_weights=np.array([0.5]),
             features={
                 'output': np.array([0.1, 0.2, 0.1, 0.25, 0.35]),
-            }),
+            },
+        ),
         metric_types.StandardMetricInputs(
             labels=np.array([0, 1, 0, 0, 0]),
             predictions=np.array([0.2, 0.3, 0.05, 0.15, 0.3]),
             example_weights=np.array([0.7]),
             features={
                 'output': np.array([0.2, 0.3, 0.05, 0.15, 0.3]),
-            }),
+            },
+        ),
         metric_types.StandardMetricInputs(
             labels=np.array([0, 0, 0, 1, 0]),
             predictions=np.array([0.01, 0.2, 0.09, 0.5, 0.2]),
             example_weights=np.array([0.9]),
             features={
                 'output': np.array([0.01, 0.2, 0.09, 0.5, 0.2]),
-            }),
+            },
+        ),
         metric_types.StandardMetricInputs(
             labels=np.array([0, 1, 0, 0, 0]),
             predictions=np.array([0.3, 0.2, 0.05, 0.4, 0.05]),
             example_weights=np.array([0.3]),
             features={
                 'output': np.array([0.3, 0.2, 0.05, 0.4, 0.05]),
-            })
+            },
+        ),
     ]
 
     # Unweighted:
@@ -484,7 +516,7 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
         'weighted_precision@3': 1.9 / (1.9 + 5.3),
         'weighted_recall@2': 1.6 / (1.6 + 0.8),
         'weighted_recall@3': 1.9 / (1.9 + 0.5),
-        'loss': 0.77518
+        'loss': 0.77518,
     }
     if add_custom_metrics:
       expected_values['custom'] = 4.0
@@ -495,7 +527,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
           pipeline
           | 'Create' >> beam.Create(inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'ComputeMetric' >> beam.CombinePerKey(computation.combiner))
+          | 'ComputeMetric' >> beam.CombinePerKey(computation.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -510,7 +543,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             if '@' in name:
               sub_key = metric_types.SubKey(top_k=int(name.split('@')[1]))
             key = metric_types.MetricKey(
-                name=name, sub_key=sub_key, example_weighted=None)
+                name=name, sub_key=sub_key, example_weighted=None
+            )
             expected[key] = value
           self.assertDictElementsAlmostEqual(got_metrics, expected)
 
@@ -519,18 +553,22 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
 
       util.assert_that(result, check_result, label='result')
 
-  @parameterized.named_parameters(('compiled_metrics', False),
-                                  ('evaluate', True))
+  @parameterized.named_parameters(
+      ('compiled_metrics', False), ('evaluate', True)
+  )
   @unittest.skipIf(_TF_MAJOR_VERSION < 2, 'not all options supported in TFv1')
   def testWithMultiClassClassificationMultiOutput(self, add_custom_metrics):
     export_dir = self._createMultiClassClassificationModel(
         sequential=False,
         output_names=('output_1', 'output_2'),
-        add_custom_metrics=add_custom_metrics)
+        add_custom_metrics=add_custom_metrics,
+    )
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir)
+        eval_saved_model_path=export_dir
+    )
     computation = keras_util.metric_computations_using_keras_saved_model(
-        '', eval_shared_model.model_loader, None)[0]
+        '', eval_shared_model.model_loader, None
+    )[0]
 
     inputs = [
         metric_types.StandardMetricInputs(
@@ -548,12 +586,13 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             },
             features={
                 'output_1': np.array([0.0, 0.0, 0.0, 0.0, 0.0]),
-                'output_2': np.array([0.0, 0.0, 0.0, 0.0, 0.0])
+                'output_2': np.array([0.0, 0.0, 0.0, 0.0, 0.0]),
             },
             transformed_features={
                 'output_1': np.array([0.1, 0.2, 0.1, 0.25, 0.35]),
-                'output_2': np.array([0.1, 0.2, 0.1, 0.25, 0.35])
-            }),
+                'output_2': np.array([0.1, 0.2, 0.1, 0.25, 0.35]),
+            },
+        ),
         metric_types.StandardMetricInputs(
             labels={
                 'output_1': np.array([0, 1, 0, 0, 0]),
@@ -569,8 +608,9 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             },
             features={
                 'output_1': np.array([0.2, 0.3, 0.05, 0.15, 0.3]),
-                'output_2': np.array([0.2, 0.3, 0.05, 0.15, 0.3])
-            }),
+                'output_2': np.array([0.2, 0.3, 0.05, 0.15, 0.3]),
+            },
+        ),
         metric_types.StandardMetricInputs(
             labels={
                 'output_1': np.array([0, 0, 0, 1, 0]),
@@ -586,8 +626,9 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             },
             features={
                 'output_1': np.array([0.01, 0.2, 0.09, 0.5, 0.2]),
-                'output_2': np.array([0.01, 0.2, 0.09, 0.5, 0.2])
-            }),
+                'output_2': np.array([0.01, 0.2, 0.09, 0.5, 0.2]),
+            },
+        ),
         metric_types.StandardMetricInputs(
             labels={
                 'output_1': np.array([0, 1, 0, 0, 0]),
@@ -603,8 +644,9 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             },
             features={
                 'output_1': np.array([0.3, 0.2, 0.05, 0.4, 0.05]),
-                'output_2': np.array([0.3, 0.2, 0.05, 0.4, 0.05])
-            })
+                'output_2': np.array([0.3, 0.2, 0.05, 0.4, 0.05]),
+            },
+        ),
     ]
 
     # Unweighted:
@@ -638,7 +680,7 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             'weighted_precision@3': 1.9 / (1.9 + 5.3),
             'weighted_recall@2': 1.6 / (1.6 + 0.8),
             'weighted_recall@3': 1.9 / (1.9 + 0.5),
-            'loss': 0.77518433
+            'loss': 0.77518433,
         },
         'output_2': {
             'precision@2': 2 / (2 + 6),
@@ -649,11 +691,9 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
             'weighted_precision@3': 1.9 / (1.9 + 5.3),
             'weighted_recall@2': 1.6 / (1.6 + 0.8),
             'weighted_recall@3': 1.9 / (1.9 + 0.5),
-            'loss': 0.77518433
+            'loss': 0.77518433,
         },
-        '': {
-            'loss': 0.77518433 + 0.77518433
-        }
+        '': {'loss': 0.77518433 + 0.77518433},
     }
     if add_custom_metrics:
       expected_values['']['custom_output_1'] = 4.0
@@ -665,7 +705,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
           pipeline
           | 'Create' >> beam.Create(inputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'ComputeMetric' >> beam.CombinePerKey(computation.combiner))
+          | 'ComputeMetric' >> beam.CombinePerKey(computation.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -684,7 +725,8 @@ class KerasSavedModelUtilTest(testutil.TensorflowModelAnalysisTest,
                   name=name,
                   output_name=output_name,
                   sub_key=sub_key,
-                  example_weighted=None)
+                  example_weighted=None,
+              )
               expected[key] = value
           self.assertDictElementsAlmostEqual(got_metrics, expected)
 

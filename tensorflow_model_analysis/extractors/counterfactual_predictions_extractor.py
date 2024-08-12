@@ -26,7 +26,9 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
 
 _SUPPORTED_MODEL_TYPES = frozenset([constants.TF_KERAS, constants.TF_GENERIC])
-_COUNTERFACTUAL_PREDICTIONS_EXTRACTOR_NAME = 'CounterfactualPredictionsExtractor'
+_COUNTERFACTUAL_PREDICTIONS_EXTRACTOR_NAME = (
+    'CounterfactualPredictionsExtractor'
+)
 # The extracts key under which the non-CF INPUT_KEY value is temporarily stored,
 # when invoking one or more PredictionsExtractors on modified inputs.
 _TEMP_ORIG_INPUT_KEY = 'non_counterfactual_input'
@@ -36,7 +38,8 @@ CounterfactualConfig = Dict[str, str]
 def CounterfactualPredictionsExtractor(  # pylint: disable=invalid-name
     eval_shared_models: types.MaybeMultipleEvalSharedModels,
     eval_config: config_pb2.EvalConfig,
-    cf_configs: Mapping[str, CounterfactualConfig]) -> extractor.Extractor:
+    cf_configs: Mapping[str, CounterfactualConfig],
+) -> extractor.Extractor:
   """Creates a CF predictions extractor by wrapping the PredictionsExtractor.
 
   Example usage:
@@ -76,7 +79,8 @@ def CounterfactualPredictionsExtractor(  # pylint: disable=invalid-name
     ValueError if eval_shared_models is empty.
   """
   eval_shared_models, cf_configs = _validate_and_update_models_and_configs(
-      eval_shared_models, cf_configs)
+      eval_shared_models, cf_configs
+  )
   cf_ptransforms = {}
   non_cf_models = []
   for model in eval_shared_models:
@@ -92,8 +96,8 @@ def CounterfactualPredictionsExtractor(  # pylint: disable=invalid-name
           output_keypath=(constants.PREDICTIONS_KEY, model.model_name),
       ).ptransform
       cf_ptransforms[model.model_name] = _ExtractCounterfactualPredictions(  # pylint: disable=no-value-for-parameter
-          config=cf_config,
-          predictions_ptransform=predictions_ptransform)
+          config=cf_config, predictions_ptransform=predictions_ptransform
+      )
     else:
       non_cf_models.append(model)
   non_cf_eval_config = _filter_model_specs(eval_config, non_cf_models)
@@ -118,7 +122,8 @@ def CounterfactualPredictionsExtractor(  # pylint: disable=invalid-name
 
 def _validate_and_update_models_and_configs(
     eval_shared_models: types.MaybeMultipleEvalSharedModels,
-    cf_configs: Mapping[str, CounterfactualConfig]):
+    cf_configs: Mapping[str, CounterfactualConfig],
+):
   """Validates and updates the EvalSharedModels and CF configs.
 
   Args:
@@ -136,19 +141,24 @@ def _validate_and_update_models_and_configs(
       - The model names in cf_configs do not match eval_shared_models
   """
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_models)
+      eval_shared_models
+  )
   if not eval_shared_models:
     raise ValueError(
         'The CounterfactualPredictionsExtractor requires at least one '
-        f'EvalSharedModel, but got normalized models: {eval_shared_models}.')
+        f'EvalSharedModel, but got normalized models: {eval_shared_models}.'
+    )
   model_types = {m.model_type for m in eval_shared_models}
   if not model_types.issubset(_SUPPORTED_MODEL_TYPES):
     raise ValueError(
         f'Only {_SUPPORTED_MODEL_TYPES} model types are supported, but found '
-        f'model types: {model_types}.')
+        f'model types: {model_types}.'
+    )
   if not cf_configs:
-    raise ValueError('The CounterfactualPredictionsExtractor requires at least '
-                     'one cf_configs, but got 0.')
+    raise ValueError(
+        'The CounterfactualPredictionsExtractor requires at least '
+        'one cf_configs, but got 0.'
+    )
 
   if len(eval_shared_models) == 1:
     if len(cf_configs) == 1:
@@ -159,7 +169,8 @@ def _validate_and_update_models_and_configs(
       raise ValueError(
           'The CounterfactualPredictionsExtractor was provided only one '
           'EvalSharedModel, in which case exactly one config is expected, but '
-          f'got {len(cf_configs)}: {cf_configs}')
+          f'got {len(cf_configs)}: {cf_configs}'
+      )
 
   configured_model_names = set(cf_configs)
   eval_shared_model_names = {model.model_name for model in eval_shared_models}
@@ -170,13 +181,14 @@ def _validate_and_update_models_and_configs(
         'eval_shared_model model_names. Configured names: '
         f'{configured_model_names}, eval_shared_models names: '
         f'{eval_shared_model_names}. Unmatched configured model names: '
-        f'{unmatched_config_names}.')
+        f'{unmatched_config_names}.'
+    )
   return eval_shared_models, cf_configs
 
 
 def _filter_model_specs(
     eval_config: config_pb2.EvalConfig,
-    eval_shared_models: Iterable[types.EvalSharedModel]
+    eval_shared_models: Iterable[types.EvalSharedModel],
 ) -> config_pb2.EvalConfig:
   """Filters EvalConfig.model_specs to match the set of EvalSharedModels."""
   result = config_pb2.EvalConfig()
@@ -184,7 +196,8 @@ def _filter_model_specs(
   del result.model_specs[:]
   model_names = [model.model_name for model in eval_shared_models]
   result.model_specs.extend(
-      [spec for spec in eval_config.model_specs if spec.name in model_names])
+      [spec for spec in eval_config.model_specs if spec.name in model_names]
+  )
   return result
 
 
@@ -214,7 +227,8 @@ def _cf_preprocess(
     cf_example = tf.train.Example.FromString(serialized_input)
     for dst_key, src_key in config.items():
       cf_example.features.feature[dst_key].CopyFrom(
-          cf_example.features.feature[src_key])
+          cf_example.features.feature[src_key]
+      )
     cf_inputs.append(cf_example.SerializeToString())
   cf_inputs = np.array(cf_inputs, dtype=object)
   result[constants.INPUT_KEY] = cf_inputs

@@ -23,14 +23,14 @@ from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 
-SampleMetrics = NamedTuple('SampleMetrics',
-                           [('metrics', metric_types.MetricsDict),
-                            ('sample_id', int)])
+SampleMetrics = NamedTuple(
+    'SampleMetrics', [('metrics', metric_types.MetricsDict), ('sample_id', int)]
+)
 
 
 def mean_and_std(
-    values: Sequence[types.MetricValueType],
-    ddof: int) -> Tuple[types.MetricValueType, types.MetricValueType]:
+    values: Sequence[types.MetricValueType], ddof: int
+) -> Tuple[types.MetricValueType, types.MetricValueType]:
   """Computes mean and standard deviation for (structued) metric values.
 
   Args:
@@ -55,12 +55,12 @@ def mean_and_std(
   mean = total / len(values)
   squared_residual_total = None
   for value in values:
-    squared_residual = (value - mean)**2
+    squared_residual = (value - mean) ** 2
     if squared_residual_total is None:
       squared_residual_total = squared_residual
     else:
       squared_residual_total = squared_residual_total + squared_residual
-  std = (squared_residual_total / (len(values) - ddof))**0.5
+  std = (squared_residual_total / (len(values) - ddof)) ** 0.5
   return mean, std
 
 
@@ -80,7 +80,8 @@ class SampleCombineFn(beam.CombineFn):
       self,
       num_samples: int,
       full_sample_id: int,
-      skip_ci_metric_keys: Optional[Set[metric_types.MetricKey]] = None):
+      skip_ci_metric_keys: Optional[Set[metric_types.MetricKey]] = None,
+  ):
     """Initializes a SampleCombineFn.
 
     Args:
@@ -94,17 +95,23 @@ class SampleCombineFn(beam.CombineFn):
     self._full_sample_id = full_sample_id
     self._skip_ci_metric_keys = skip_ci_metric_keys
     self._num_slices_counter = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_slices')
+        constants.METRICS_NAMESPACE, 'num_slices'
+    )
     self._missing_samples_counter = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_slices_missing_samples')
+        constants.METRICS_NAMESPACE, 'num_slices_missing_samples'
+    )
     self._missing_metric_samples_counter = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_slices_missing_metric_samples')
+        constants.METRICS_NAMESPACE, 'num_slices_missing_metric_samples'
+    )
 
   def create_accumulator(self) -> 'SampleCombineFn.SampleAccumulator':
     return SampleCombineFn.SampleAccumulator()
 
-  def add_input(self, accumulator: 'SampleCombineFn.SampleAccumulator',
-                sample: SampleMetrics) -> 'SampleCombineFn.SampleAccumulator':
+  def add_input(
+      self,
+      accumulator: 'SampleCombineFn.SampleAccumulator',
+      sample: SampleMetrics,
+  ) -> 'SampleCombineFn.SampleAccumulator':
     sample_id = sample.sample_id
     sample = sample.metrics
     if sample_id == self._full_sample_id:
@@ -112,18 +119,23 @@ class SampleCombineFn(beam.CombineFn):
     else:
       accumulator.num_samples += 1
       for metric_key, value in sample.items():
-        if (not (isinstance(value,
-                            (numbers.Number, types.StructuredMetricValue)) or
-                 (isinstance(value, np.ndarray) and
-                  np.issubdtype(value.dtype, np.number)))):
+        if not (
+            isinstance(value, (numbers.Number, types.StructuredMetricValue))
+            or (
+                isinstance(value, np.ndarray)
+                and np.issubdtype(value.dtype, np.number)
+            )
+        ):
           # A value must be a number, a StructuredMetricValue, or a numeric
           # NumPy array. If none of those matches, skip. The absence of any
           # sample for a specific metric_key will cause _validate_accumulator to
           # remove all samples, which will result in no CI computation for that
           # metric key.
           continue
-        if (self._skip_ci_metric_keys and
-            metric_key in self._skip_ci_metric_keys):
+        if (
+            self._skip_ci_metric_keys
+            and metric_key in self._skip_ci_metric_keys
+        ):
           continue
         accumulator.metric_samples[metric_key].append(value)
     return accumulator
@@ -151,7 +163,8 @@ class SampleCombineFn(beam.CombineFn):
       self._missing_samples_counter.inc(1)
       accumulator.point_estimates[error_metric_key] = (
           f'CI not computed because only {accumulator.num_samples} samples '
-          f'were non-empty. Expected {self._num_samples}.')
+          f'were non-empty. Expected {self._num_samples}.'
+      )
       # If we are missing samples, clear samples for all metrics as they are all
       # unusable.
       accumulator.metric_samples = {}
@@ -169,7 +182,8 @@ class SampleCombineFn(beam.CombineFn):
       accumulator.point_estimates[error_metric_key] = (
           'CI not computed for the following metrics due to incorrect number '
           f'of samples: "{metric_incorrect_sample_counts}".'
-          f'Expected {self._num_samples}.')
+          f'Expected {self._num_samples}.'
+      )
     return accumulator
 
   # TODO(b/195132951): replace with @abc.abstractmethod

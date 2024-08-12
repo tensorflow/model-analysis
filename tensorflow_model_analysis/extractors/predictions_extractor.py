@@ -62,7 +62,8 @@ def PredictionsExtractor(
         'Calling the PredictionsExtractor with eval_shared_model=None is '
         'deprecated and no longer supported. This will break in version 1.0. '
         'Please update your implementation to call '
-        'MaterializedPredictionsExtractor directly.')
+        'MaterializedPredictionsExtractor directly.'
+    )
     _, ptransform = (
         materialized_predictions_extractor.MaterializedPredictionsExtractor(
             eval_config, output_keypath=output_keypath
@@ -72,7 +73,8 @@ def PredictionsExtractor(
     # clients expect these code paths to have the same stage name. New clients
     # should never reference the private stage name.
     return extractor.Extractor(
-        stage_name=PREDICTIONS_EXTRACTOR_STAGE_NAME, ptransform=ptransform)
+        stage_name=PREDICTIONS_EXTRACTOR_STAGE_NAME, ptransform=ptransform
+    )
 
   return extractor.Extractor(
       stage_name=PREDICTIONS_EXTRACTOR_STAGE_NAME,
@@ -109,13 +111,16 @@ def _ModelSignaturesInferenceWrapper(
     PCollection of Extracts updated with the predictions.
   """
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_model)
+      eval_shared_model
+  )
   # This should never happen, but verify_and_update_eval_shared_models can
   # theoretically return None or empty iterables.
   if not eval_shared_models:
-    raise ValueError('No valid model(s) were provided. Please ensure that '
-                     'EvalConfig.ModelSpec is correctly configured to enable '
-                     'using the PredictionsExtractor.')
+    raise ValueError(
+        'No valid model(s) were provided. Please ensure that '
+        'EvalConfig.ModelSpec is correctly configured to enable '
+        'using the PredictionsExtractor.'
+    )
 
   name_to_eval_shared_model = {m.model_name: m for m in eval_shared_models}
   signature_names = {}

@@ -24,8 +24,10 @@ from tensorflow_model_analysis.validators import validator
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(Any)
 def Validate(  # pylint: disable=invalid-name
-    extracts: beam.pvalue.PCollection, alternatives: Dict[str, beam.PTransform],
-    validators: List[validator.Validator]) -> validator.Validation:
+    extracts: beam.pvalue.PCollection,
+    alternatives: Dict[str, beam.PTransform],
+    validators: List[validator.Validator],
+) -> validator.Validation:
   """Performs validation of alternative evaluations.
 
   Args:

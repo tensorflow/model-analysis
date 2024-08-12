@@ -75,11 +75,15 @@ def _assert_tensorflow_version():
     raise RuntimeError(
         'Tensorflow version >= 1.15, < 3 is required. Found (%s). Please '
         'install the latest 1.x or 2.x version from '
-        'https://github.com/tensorflow/tensorflow. ' % tf.version.VERSION)
+        'https://github.com/tensorflow/tensorflow. '
+        % tf.version.VERSION
+    )
   if int(major) == 2:
     logging.warning(
         'Tensorflow version (%s) found. Note that TFMA support for TF 2.0 '
-        'is currently in beta', tf.version.VERSION)
+        'is currently in beta',
+        tf.version.VERSION,
+    )
 
 
 def _is_legacy_eval(
@@ -117,11 +121,13 @@ def _is_legacy_eval(
   )
 
 
-def _default_eval_config(eval_shared_models: List[types.EvalSharedModel],
-                         slice_spec: Optional[List[slicer.SingleSliceSpec]],
-                         write_config: Optional[bool],
-                         compute_confidence_intervals: Optional[bool],
-                         min_slice_size: int):
+def _default_eval_config(
+    eval_shared_models: List[types.EvalSharedModel],
+    slice_spec: Optional[List[slicer.SingleSliceSpec]],
+    write_config: Optional[bool],
+    compute_confidence_intervals: Optional[bool],
+    min_slice_size: int,
+):
   """Creates default EvalConfig (for use in legacy evaluations)."""
   model_specs = []
   for shared_model in eval_shared_models:
@@ -134,7 +140,9 @@ def _default_eval_config(eval_shared_models: List[types.EvalSharedModel],
         config_pb2.ModelSpec(
             name=shared_model.model_name,
             example_weight_key=example_weight_key,
-            example_weight_keys=example_weight_keys))
+            example_weight_keys=example_weight_keys,
+        )
+    )
   slicing_specs = None
   if slice_spec:
     slicing_specs = [s.to_proto() for s in slice_spec]
@@ -144,7 +152,8 @@ def _default_eval_config(eval_shared_models: List[types.EvalSharedModel],
   if not write_config:
     options.disabled_outputs.values.append(eval_config_writer.EVAL_CONFIG_FILE)
   return config_pb2.EvalConfig(
-      model_specs=model_specs, slicing_specs=slicing_specs, options=options)
+      model_specs=model_specs, slicing_specs=slicing_specs, options=options
+  )
 
 
 def _model_types(
@@ -159,16 +168,18 @@ def _model_types(
 
 def _update_eval_config_with_defaults(
     eval_config: config_pb2.EvalConfig,
-    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels]
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels],
 ) -> config_pb2.EvalConfig:
   """Returns updated eval config with default values."""
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_model)
+      eval_shared_model
+  )
   has_baseline = eval_shared_models and len(eval_shared_models) > 1
   return config_util.update_eval_config_with_defaults(
       eval_config=eval_config,
       has_baseline=has_baseline,
-      rubber_stamp=model_util.has_rubber_stamp(eval_shared_models))
+      rubber_stamp=model_util.has_rubber_stamp(eval_shared_models),
+  )
 
 
 def _get_extract_num_bytes(extract: types.Extracts) -> int:
@@ -184,44 +195,51 @@ def _get_extract_num_bytes(extract: types.Extracts) -> int:
 
 def _increment_counter(counter_name: str, value: int) -> int:
   """Increments the specified counter by the value."""
-  counter = beam.metrics.Metrics.counter(constants.METRICS_NAMESPACE,
-                                         counter_name)
+  counter = beam.metrics.Metrics.counter(
+      constants.METRICS_NAMESPACE, counter_name
+  )
   counter.inc(value)
   return value
 
 
 @beam.ptransform_fn
 def _TrackBytesProcessed(  # pylint: disable=invalid-name
-    dataset: beam.PCollection[types.Extracts]) -> beam.pvalue.PCollection[int]:
+    dataset: beam.PCollection[types.Extracts],
+) -> beam.pvalue.PCollection[int]:
   """Gathers telemetry on input Extracts."""
 
-  return (dataset
-          | 'GetExtractSize' >> beam.Map(_get_extract_num_bytes)
-          | 'SumTotalBytes' >> beam.CombineGlobally(sum)
-          | 'IncrementCounter' >>
-          beam.Map(lambda x: _increment_counter('extract_input_bytes', x)))
+  return (
+      dataset
+      | 'GetExtractSize' >> beam.Map(_get_extract_num_bytes)
+      | 'SumTotalBytes' >> beam.CombineGlobally(sum)
+      | 'IncrementCounter'
+      >> beam.Map(lambda x: _increment_counter('extract_input_bytes', x))
+  )
 
 
 MetricsForSlice = metrics_for_slice_pb2.MetricsForSlice
 
 
 def load_metrics(
-    output_path: str,
-    output_file_format: str = 'tfrecord') -> Iterator[MetricsForSlice]:
+    output_path: str, output_file_format: str = 'tfrecord'
+) -> Iterator[MetricsForSlice]:
   """Read and deserialize the MetricsForSlice records."""
   for m in metrics_plots_and_validations_writer.load_and_deserialize_metrics(
-      output_path, output_file_format):
+      output_path, output_file_format
+  ):
     yield m
 
 
 PlotsForSlice = metrics_for_slice_pb2.PlotsForSlice
 
 
-def load_plots(output_path: str,
-               output_file_format: str = 'tfrecord') -> Iterator[PlotsForSlice]:
+def load_plots(
+    output_path: str, output_file_format: str = 'tfrecord'
+) -> Iterator[PlotsForSlice]:
   """Read and deserialize the PlotsForSlice records."""
   for p in metrics_plots_and_validations_writer.load_and_deserialize_plots(
-      output_path, output_file_format):
+      output_path, output_file_format
+  ):
     yield p
 
 
@@ -229,12 +247,14 @@ AttributionsForSlice = metrics_for_slice_pb2.AttributionsForSlice
 
 
 def load_attributions(
-    output_path: str,
-    output_file_format: str = 'tfrecord') -> Iterator[AttributionsForSlice]:
+    output_path: str, output_file_format: str = 'tfrecord'
+) -> Iterator[AttributionsForSlice]:
   """Read and deserialize the AttributionsForSlice records."""
-  for a in (
-      metrics_plots_and_validations_writer.load_and_deserialize_attributions(
-          output_path, output_file_format)):
+  for (
+      a
+  ) in metrics_plots_and_validations_writer.load_and_deserialize_attributions(
+      output_path, output_file_format
+  ):
     yield a
 
 
@@ -242,15 +262,18 @@ def load_attributions(
 ValidationResult = validation_result_pb2.ValidationResult
 
 
-def load_validation_result(output_path: str,
-                           output_file_format: str = '') -> ValidationResult:
+def load_validation_result(
+    output_path: str, output_file_format: str = ''
+) -> ValidationResult:
   """Read and deserialize the ValidationResult."""
   return metrics_plots_and_validations_writer.load_and_deserialize_validation_result(
-      output_path, output_file_format)
+      output_path, output_file_format
+  )
 
 
-def make_eval_results(results: List[view_types.EvalResult],
-                      mode: str) -> view_types.EvalResults:
+def make_eval_results(
+    results: List[view_types.EvalResult], mode: str
+) -> view_types.EvalResults:
   """Run model analysis for a single model on multiple data sets.
 
   Args:
@@ -269,7 +292,8 @@ def load_eval_results(
     output_paths: Union[str, List[str]],
     output_file_format: Optional[str] = 'tfrecord',
     mode: str = constants.MODEL_CENTRIC_MODE,
-    model_name: Optional[str] = None) -> view_types.EvalResults:
+    model_name: Optional[str] = None,
+) -> view_types.EvalResults:
   """Loads results for multiple models or multiple data sets.
 
   Args:
@@ -296,13 +320,17 @@ def load_eval_results(
     for model_name in model_names:
       results.append(
           load_eval_result(
-              output_path, output_file_format, model_name=model_name))
+              output_path, output_file_format, model_name=model_name
+          )
+      )
   return make_eval_results(results, mode)
 
 
-def load_eval_result(output_path: str,
-                     output_file_format: Optional[str] = 'tfrecord',
-                     model_name: Optional[str] = None) -> view_types.EvalResult:
+def load_eval_result(
+    output_path: str,
+    output_file_format: Optional[str] = 'tfrecord',
+    model_name: Optional[str] = None,
+) -> view_types.EvalResult:
   """Loads EvalResult object for use with the visualization functions.
 
   Args:
@@ -358,7 +386,8 @@ def load_eval_result(output_path: str,
       config=eval_config,
       data_location=data_location,
       file_format=file_format,
-      model_location=model_location)
+      model_location=model_location,
+  )
 
 
 def default_eval_shared_model(
@@ -425,11 +454,14 @@ def default_eval_shared_model(
   else:
     model_spec = model_util.get_model_spec(eval_config, model_name)
     if not model_spec:
-      raise ValueError('ModelSpec for model name {} not found in EvalConfig: '
-                       'config={}'.format(model_name, eval_config))
+      raise ValueError(
+          'ModelSpec for model name {} not found in EvalConfig: '
+          'config={}'.format(model_name, eval_config)
+      )
     is_baseline = model_spec.is_baseline
-    model_type = model_util.get_model_type(model_spec, eval_saved_model_path,
-                                           tags)
+    model_type = model_util.get_model_type(
+        model_spec, eval_saved_model_path, tags
+    )
     if tags is None:
       # Default to serving unless tfma_eval is used.
       if model_type == constants.TFMA_EVAL:
@@ -438,10 +470,12 @@ def default_eval_shared_model(
         tags = [tf.saved_model.SERVING]
     if model_spec.example_weight_key or model_spec.example_weight_keys:
       example_weight_key = (
-          model_spec.example_weight_key or model_spec.example_weight_keys)
+          model_spec.example_weight_key or model_spec.example_weight_keys
+      )
     if eval_config.options.HasField('include_default_metrics'):
       include_default_metrics = (
-          eval_config.options.include_default_metrics.value)
+          eval_config.options.include_default_metrics.value
+      )
 
   # Backwards compatibility for legacy add_metrics_callbacks implementation.
   if model_type == constants.TFMA_EVAL and eval_constants.EVAL_TAG in tags:
@@ -460,11 +494,13 @@ def default_eval_shared_model(
         if isinstance(example_weight_key, dict):
           for output_name, key in example_weight_key.items():
             example_weight_callback = post_export_metrics.example_weight(
-                key, metric_tag=output_name)
+                key, metric_tag=output_name
+            )
             add_metrics_callbacks.append(example_weight_callback)
         else:
           example_weight_callback = post_export_metrics.example_weight(
-              example_weight_key)
+              example_weight_key
+          )
           add_metrics_callbacks.append(example_weight_callback)
     # pytype: enable=module-attr
 
@@ -478,8 +514,10 @@ def default_eval_shared_model(
             additional_fetches=additional_fetches,
             blacklist_feature_fetches=blacklist_feature_fetches,
             model_type=model_type,
-            tags=tags),
-        tags=tags)
+            tags=tags,
+        ),
+        tags=tags,
+    )
 
   return types.EvalSharedModel(
       model_name=model_name,
@@ -512,7 +550,8 @@ def default_extractors(  # pylint: disable=invalid-name
     materialize: Optional[bool] = None,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
     custom_predict_extractor: Optional[extractor.Extractor] = None,
-    config_version: Optional[int] = None) -> List[extractor.Extractor]:
+    config_version: Optional[int] = None,
+) -> List[extractor.Extractor]:
   """Returns the default extractors for use in ExtractAndEvaluate.
 
   Args:
@@ -543,8 +582,9 @@ def default_extractors(  # pylint: disable=invalid-name
     raise ValueError('slice_spec is deprecated, only use eval_config')
 
   if eval_config is not None:
-    eval_config = _update_eval_config_with_defaults(eval_config,
-                                                    eval_shared_model)
+    eval_config = _update_eval_config_with_defaults(
+        eval_config, eval_shared_model
+    )
   tensor_representations = None
   if tensor_adapter_config:
     tensor_representations = tensor_adapter_config.tensor_representations
@@ -556,21 +596,27 @@ def default_extractors(  # pylint: disable=invalid-name
     # Backwards compatibility for previous add_metrics_callbacks implementation.
     if not eval_config and slice_spec:
       eval_config = config_pb2.EvalConfig(
-          slicing_specs=[s.to_proto() for s in slice_spec])
+          slicing_specs=[s.to_proto() for s in slice_spec]
+      )
     return [
-        custom_predict_extractor or legacy_predict_extractor.PredictExtractor(
-            eval_shared_model, materialize=materialize),
+        custom_predict_extractor
+        or legacy_predict_extractor.PredictExtractor(
+            eval_shared_model, materialize=materialize
+        ),
         slice_key_extractor.SliceKeyExtractor(
-            eval_config=eval_config, materialize=materialize)
+            eval_config=eval_config, materialize=materialize
+        ),
     ]
   slicing_extractors = []
   if _has_sql_slices(eval_config):
     slicing_extractors.append(
-        sql_slice_key_extractor.SqlSliceKeyExtractor(eval_config))
+        sql_slice_key_extractor.SqlSliceKeyExtractor(eval_config)
+    )
   slicing_extractors.extend([
       unbatch_extractor.UnbatchExtractor(),
       slice_key_extractor.SliceKeyExtractor(
-          eval_config=eval_config, materialize=materialize)
+          eval_config=eval_config, materialize=materialize
+      ),
   ])
 
   extract_features = features_extractor.FeaturesExtractor(
@@ -589,12 +635,16 @@ def default_extractors(  # pylint: disable=invalid-name
     model_types = _model_types(eval_shared_models)
     logging.info('eval_shared_models have model_types: %s', model_types)
     assert model_types is not None
-    if (not model_types.issubset(constants.VALID_TF_MODEL_TYPES) and
-        not custom_predict_extractor):
+    if (
+        not model_types.issubset(constants.VALID_TF_MODEL_TYPES)
+        and not custom_predict_extractor
+    ):
       raise NotImplementedError(
           'either a custom_predict_extractor must be used or model type must '
           'be one of: {}. evalconfig={}'.format(
-              str(constants.VALID_TF_MODEL_TYPES), eval_config))
+              str(constants.VALID_TF_MODEL_TYPES), eval_config
+          )
+      )
     if model_types == {constants.MATERIALIZED_PREDICTION}:
       return [
           extract_features,
@@ -622,7 +672,8 @@ def default_extractors(  # pylint: disable=invalid-name
     elif constants.TF_LITE in model_types:
       raise NotImplementedError(
           'support for mixing tf_lite and non-tf_lite models is not '
-          'implemented: eval_config={}'.format(eval_config))
+          'implemented: eval_config={}'.format(eval_config)
+      )
 
     if model_types == {constants.TF_JS}:
       return [
@@ -639,7 +690,8 @@ def default_extractors(  # pylint: disable=invalid-name
     elif constants.TF_JS in model_types:
       raise NotImplementedError(
           'support for mixing tf_js and non-tf_js models is not '
-          'implemented: eval_config={}'.format(eval_config))
+          'implemented: eval_config={}'.format(eval_config)
+      )
     elif (
         eval_config
         and model_types == {constants.TFMA_EVAL}
@@ -649,10 +701,12 @@ def default_extractors(  # pylint: disable=invalid-name
         )
     ):
       return [
-          custom_predict_extractor or legacy_predict_extractor.PredictExtractor(
+          custom_predict_extractor
+          or legacy_predict_extractor.PredictExtractor(
               eval_shared_model,
               materialize=materialize,
-              eval_config=eval_config)
+              eval_config=eval_config,
+          )
       ] + slicing_extractors
     elif (
         eval_config
@@ -671,7 +725,9 @@ def default_extractors(  # pylint: disable=invalid-name
       if not custom_predict_extractor:
         extractors.append(
             transformed_features_extractor.TransformedFeaturesExtractor(
-                eval_config=eval_config, eval_shared_model=eval_shared_model))
+                eval_config=eval_config, eval_shared_model=eval_shared_model
+            )
+        )
       extractors.extend([
           extract_labels,
           extract_example_weights,
@@ -701,7 +757,8 @@ def default_evaluators(  # pylint: disable=invalid-name
     min_slice_size: int = 1,
     serialize: bool = False,
     random_seed_for_testing: Optional[int] = None,
-    config_version: Optional[int] = None) -> List[evaluator.Evaluator]:
+    config_version: Optional[int] = None,
+) -> List[evaluator.Evaluator]:
   """Returns the default evaluators for use in ExtractAndEvaluate.
 
   Args:
@@ -724,8 +781,9 @@ def default_evaluators(  # pylint: disable=invalid-name
       eval_shared_model
   )
   if eval_config:
-    eval_config = _update_eval_config_with_defaults(eval_config,
-                                                    eval_shared_model)
+    eval_config = _update_eval_config_with_defaults(
+        eval_config, eval_shared_model
+    )
     disabled_outputs = eval_config.options.disabled_outputs.values
     if _model_types(eval_shared_models) == {constants.TF_LITE} or _model_types(
         eval_shared_models
@@ -736,16 +794,19 @@ def default_evaluators(  # pylint: disable=invalid-name
             v._replace(include_default_metrics=False)
             for v in eval_shared_models
         ]
-  if (constants.METRICS_KEY in disabled_outputs and
-      constants.PLOTS_KEY in disabled_outputs and
-      constants.ATTRIBUTIONS_KEY in disabled_outputs):
+  if (
+      constants.METRICS_KEY in disabled_outputs
+      and constants.PLOTS_KEY in disabled_outputs
+      and constants.ATTRIBUTIONS_KEY in disabled_outputs
+  ):
     return []
   if _is_legacy_eval(config_version, eval_shared_models, eval_config):
     # Backwards compatibility for previous add_metrics_callbacks implementation.
     if eval_config is not None:
       if eval_config.options.HasField('compute_confidence_intervals'):
         compute_confidence_intervals = (
-            eval_config.options.compute_confidence_intervals.value)
+            eval_config.options.compute_confidence_intervals.value
+        )
       if eval_config.options.HasField('min_slice_size'):
         min_slice_size = eval_config.options.min_slice_size.value
     return [
@@ -754,16 +815,17 @@ def default_evaluators(  # pylint: disable=invalid-name
             compute_confidence_intervals=compute_confidence_intervals,
             min_slice_size=min_slice_size,
             serialize=serialize,
-            random_seed_for_testing=random_seed_for_testing)
+            random_seed_for_testing=random_seed_for_testing,
+        )
     ]
   else:
     return [
-        metrics_plots_and_validations_evaluator
-        .MetricsPlotsAndValidationsEvaluator(
+        metrics_plots_and_validations_evaluator.MetricsPlotsAndValidationsEvaluator(
             eval_config=eval_config,
             eval_shared_model=eval_shared_model,
             schema=schema,
-            random_seed_for_testing=random_seed_for_testing)
+            random_seed_for_testing=random_seed_for_testing,
+        )
     ]
 
 
@@ -774,7 +836,7 @@ def default_writers(
     display_only_data_location: Optional[str] = None,
     display_only_data_file_format: Optional[str] = None,
     output_file_format: str = 'tfrecord',
-    add_metric_callbacks: Optional[List[types.AddMetricsCallbackType]] = None
+    add_metric_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
 ) -> List[writer.Writer]:  # pylint: disable=invalid-name
   """Returns the default writers for use in WriteResults.
 
@@ -810,36 +872,43 @@ def default_writers(
   # The V2 MetricsAndPlotsEvaluator output requires no additional processing.
   # Since the V1 code only supports a single EvalSharedModel, we only set the
   # add_metrics_callbacks if a dict is not passed.
-  if (eval_shared_model and not isinstance(eval_shared_model, dict) and
-      not isinstance(eval_shared_model, list)):
+  if (
+      eval_shared_model
+      and not isinstance(eval_shared_model, dict)
+      and not isinstance(eval_shared_model, list)
+  ):
     add_metric_callbacks = eval_shared_model.add_metrics_callbacks
 
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_model)
+      eval_shared_model
+  )
 
   if eval_config:
     model_locations = {}
-    for v in (eval_shared_models or [None]):
+    for v in eval_shared_models or [None]:
       k = '' if v is None else v.model_name
-      model_locations[k] = ('<unknown>' if v is None or v.model_path is None
-                            else v.model_path)
+      model_locations[k] = (
+          '<unknown>' if v is None or v.model_path is None else v.model_path
+      )
     writers.append(
         eval_config_writer.EvalConfigWriter(
             output_path,
             eval_config=eval_config,
             data_location=display_only_data_location,
             data_file_format=display_only_data_file_format,
-            model_locations=model_locations))
+            model_locations=model_locations,
+        )
+    )
 
   output_paths = {
-      constants.METRICS_KEY:
-          os.path.join(output_path, constants.METRICS_KEY),
-      constants.PLOTS_KEY:
-          os.path.join(output_path, constants.PLOTS_KEY),
-      constants.ATTRIBUTIONS_KEY:
-          os.path.join(output_path, constants.ATTRIBUTIONS_KEY),
-      constants.VALIDATIONS_KEY:
-          os.path.join(output_path, constants.VALIDATIONS_KEY)
+      constants.METRICS_KEY: os.path.join(output_path, constants.METRICS_KEY),
+      constants.PLOTS_KEY: os.path.join(output_path, constants.PLOTS_KEY),
+      constants.ATTRIBUTIONS_KEY: os.path.join(
+          output_path, constants.ATTRIBUTIONS_KEY
+      ),
+      constants.VALIDATIONS_KEY: os.path.join(
+          output_path, constants.VALIDATIONS_KEY
+      ),
   }
   writers.append(
       metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
@@ -848,7 +917,9 @@ def default_writers(
           eval_config=eval_config or config_pb2.EvalConfig(),
           add_metrics_callbacks=add_metric_callbacks,
           output_file_format=output_file_format,
-          rubber_stamp=model_util.has_rubber_stamp(eval_shared_models)))
+          rubber_stamp=model_util.has_rubber_stamp(eval_shared_models),
+      )
+  )
   return writers
 
 
@@ -858,7 +929,8 @@ def default_writers(
 @beam.typehints.with_input_types(Union[bytes, str, types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
 def InputsToExtracts(  # pylint: disable=invalid-name
-    inputs: beam.pvalue.PCollection) -> beam.pvalue.PCollection:
+    inputs: beam.pvalue.PCollection,
+) -> beam.pvalue.PCollection:
   """Converts serialized inputs (e.g. examples) to Extracts if not already."""
 
   def to_extracts(x: Union[bytes, str, types.Extracts]) -> types.Extracts:
@@ -876,11 +948,13 @@ def InputsToExtracts(  # pylint: disable=invalid-name
 @beam.typehints.with_input_types(Union[bytes, pa.RecordBatch, types.Extracts])
 @beam.typehints.with_output_types(types.Extracts)
 def BatchedInputsToExtracts(  # pylint: disable=invalid-name
-    batched_inputs: beam.pvalue.PCollection) -> beam.pvalue.PCollection:
+    batched_inputs: beam.pvalue.PCollection,
+) -> beam.pvalue.PCollection:
   """Converts Arrow RecordBatch inputs to Extracts."""
 
   def to_extracts(
-      x: Union[bytes, types.Extracts, pa.RecordBatch]) -> types.Extracts:
+      x: Union[bytes, types.Extracts, pa.RecordBatch],
+  ) -> types.Extracts:
     result = {}
     if isinstance(x, dict):
       result.update(x)
@@ -895,8 +969,10 @@ def BatchedInputsToExtracts(  # pylint: disable=invalid-name
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(Any)
 def ExtractAndEvaluate(  # pylint: disable=invalid-name
-    extracts: beam.pvalue.PCollection, extractors: List[extractor.Extractor],
-    evaluators: List[evaluator.Evaluator]) -> evaluator.Evaluation:
+    extracts: beam.pvalue.PCollection,
+    extractors: List[extractor.Extractor],
+    evaluators: List[evaluator.Evaluator],
+) -> evaluator.Evaluation:
   """Performs Extractions and Evaluations in provided order."""
   # evaluation[k] = list of values for k
   evaluation = {}
@@ -915,7 +991,7 @@ def ExtractAndEvaluate(  # pylint: disable=invalid-name
     if not v.run_after:
       update(evaluation, extracts | v.stage_name >> v.ptransform)
   for x in extractors:
-    extracts = (extracts | x.stage_name >> x.ptransform)
+    extracts = extracts | x.stage_name >> x.ptransform
     for v in evaluators:
       if v.run_after == x.stage_name:
         update(evaluation, extracts | v.stage_name >> v.ptransform)
@@ -936,8 +1012,9 @@ def ExtractAndEvaluate(  # pylint: disable=invalid-name
     result[k] = (
         v
         | 'FlattenEvaluationOutput(%s)' % k >> beam.Flatten()
-        | 'CombineEvaluationOutput(%s)' % k >> beam.CombinePerKey(
-            _CombineEvaluationDictionariesFn()))
+        | 'CombineEvaluationOutput(%s)' % k
+        >> beam.CombinePerKey(_CombineEvaluationDictionariesFn())
+    )
 
   return result
 
@@ -948,28 +1025,33 @@ class _CombineEvaluationDictionariesFn(beam.CombineFn):
   def create_accumulator(self) -> Dict[str, Any]:
     return {}
 
-  def _merge(self, accumulator: Dict[str, Any], output_dict: Dict[str,
-                                                                  Any]) -> None:
+  def _merge(
+      self, accumulator: Dict[str, Any], output_dict: Dict[str, Any]
+  ) -> None:
     intersection = set(accumulator) & set(output_dict)
     if intersection:
       raise ValueError(
           'Dictionaries generated by different evaluators should have '
           'different keys, but keys %s appeared in the output of multiple '
-          'evaluators' % intersection)
+          'evaluators' % intersection
+      )
     accumulator.update(output_dict)
 
-  def add_input(self, accumulator: Dict[str, Any],
-                output_dict: Dict[str, Any]) -> Dict[str, Any]:
+  def add_input(
+      self, accumulator: Dict[str, Any], output_dict: Dict[str, Any]
+  ) -> Dict[str, Any]:
     if not isinstance(output_dict, dict):
       raise TypeError(
           'for outputs written to by multiple evaluators, the outputs must all '
-          'be dictionaries, but got output of type %s, value %s' %
-          (type(output_dict), str(output_dict)))
+          'be dictionaries, but got output of type %s, value %s'
+          % (type(output_dict), str(output_dict))
+      )
     self._merge(accumulator, output_dict)
     return accumulator
 
   def merge_accumulators(
-      self, accumulators: Iterable[Dict[str, Any]]) -> Dict[str, Any]:
+      self, accumulators: Iterable[Dict[str, Any]]
+  ) -> Dict[str, Any]:
     accumulators = iter(accumulators)
     result = next(accumulators)
     for acc in accumulators:
@@ -984,7 +1066,8 @@ class _CombineEvaluationDictionariesFn(beam.CombineFn):
 # TODO(b/157600974): Add input typehint.
 def WriteResults(  # pylint: disable=invalid-name
     evaluation_or_validation: Union[evaluator.Evaluation, validator.Validation],
-    writers: List[writer.Writer]) -> Dict[str, beam.PCollection]:
+    writers: List[writer.Writer],
+) -> Dict[str, beam.PCollection]:
   """Writes Evaluation or Validation results using given writers.
 
   Args:
@@ -1002,12 +1085,13 @@ def WriteResults(  # pylint: disable=invalid-name
   result = {}
   for w in writers:
     result[w.stage_name] = (
-        evaluation_or_validation | w.stage_name >> w.ptransform)
+        evaluation_or_validation | w.stage_name >> w.ptransform
+    )
   return result
 
 
 def is_legacy_estimator(
-    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
 ) -> bool:
   """Returns true if there is a legacy estimator.
 
@@ -1020,7 +1104,8 @@ def is_legacy_estimator(
     A boolean indicating if legacy predict extractor will be used.
   """
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_model)
+      eval_shared_model
+  )
   model_types = _model_types(eval_shared_models)
   return (
       model_types is not None
@@ -1032,10 +1117,11 @@ def is_legacy_estimator(
   )
 
 
-def is_batched_input(eval_shared_model: Optional[
-    types.MaybeMultipleEvalSharedModels] = None,
-                     eval_config: Optional[config_pb2.EvalConfig] = None,
-                     config_version: Optional[int] = None) -> bool:
+def is_batched_input(
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
+    eval_config: Optional[config_pb2.EvalConfig] = None,
+    config_version: Optional[int] = None,
+) -> bool:
   """Returns true if batched input should be used.
 
    We will keep supporting the legacy unbatched V1 PredictExtractor as it parses
@@ -1080,7 +1166,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     random_seed_for_testing: Optional[int] = None,
     tensor_adapter_config: Optional[tensor_adapter.TensorAdapterConfig] = None,
     schema: Optional[schema_pb2.Schema] = None,
-    config_version: Optional[int] = None) -> Dict[str, beam.PCollection]:
+    config_version: Optional[int] = None,
+) -> Dict[str, beam.PCollection]:
   """PTransform for performing extraction, evaluation, and writing results.
 
   Users who want to construct their own Beam pipelines instead of using the
@@ -1166,18 +1253,23 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
     A dict of writer results keyed by the writer stage name.
   """
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_model)
+      eval_shared_model
+  )
 
   if eval_config is None:
     config_version = 1 if config_version is None else config_version
-    eval_config = _default_eval_config(eval_shared_models, slice_spec,
-                                       write_config,
-                                       compute_confidence_intervals,
-                                       min_slice_size)
+    eval_config = _default_eval_config(
+        eval_shared_models,
+        slice_spec,
+        write_config,
+        compute_confidence_intervals,
+        min_slice_size,
+    )
   else:
     config_version = 2 if config_version is None else config_version
-    eval_config = _update_eval_config_with_defaults(eval_config,
-                                                    eval_shared_model)
+    eval_config = _update_eval_config_with_defaults(
+        eval_config, eval_shared_model
+    )
   config_util.verify_eval_config(eval_config)
 
   if not extractors:
@@ -1185,7 +1277,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         tensor_adapter_config=tensor_adapter_config,
-        config_version=config_version)
+        config_version=config_version,
+    )
 
   if not evaluators:
     evaluators = default_evaluators(
@@ -1193,7 +1286,8 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
         eval_shared_model=eval_shared_model,
         random_seed_for_testing=random_seed_for_testing,
         schema=schema,
-        config_version=config_version)
+        config_version=config_version,
+    )
 
   for v in evaluators:
     evaluator.verify_evaluator(v, extractors)
@@ -1204,20 +1298,21 @@ def ExtractEvaluateAndWriteResults(  # pylint: disable=invalid-name
         eval_shared_model=eval_shared_model,
         eval_config=eval_config,
         display_only_data_location=display_only_data_location,
-        display_only_data_file_format=display_only_file_format)
+        display_only_data_file_format=display_only_file_format,
+    )
 
   # pylint: disable=no-value-for-parameter
   if is_batched_input(eval_shared_model, eval_config, config_version):
-    extracts = (
-        examples
-        | 'BatchedInputsToExtracts' >> BatchedInputsToExtracts())
+    extracts = examples | 'BatchedInputsToExtracts' >> BatchedInputsToExtracts()
   else:
-    extracts = (examples | 'InputsToExtracts' >> InputsToExtracts())
+    extracts = examples | 'InputsToExtracts' >> InputsToExtracts()
 
-  return (extracts
-          | 'ExtractAndEvaluate' >> ExtractAndEvaluate(
-              extractors=extractors, evaluators=evaluators)
-          | 'WriteResults' >> WriteResults(writers=writers))
+  return (
+      extracts
+      | 'ExtractAndEvaluate'
+      >> ExtractAndEvaluate(extractors=extractors, evaluators=evaluators)
+      | 'WriteResults' >> WriteResults(writers=writers)
+  )
 
 
 def run_model_analysis(
@@ -1291,15 +1386,20 @@ def run_model_analysis(
   if eval_config is None:
     config_version = 1
     eval_shared_models = model_util.verify_and_update_eval_shared_models(
-        eval_shared_model)
-    eval_config = _default_eval_config(eval_shared_models, slice_spec,
-                                       write_config,
-                                       compute_confidence_intervals,
-                                       min_slice_size)
+        eval_shared_model
+    )
+    eval_config = _default_eval_config(
+        eval_shared_models,
+        slice_spec,
+        write_config,
+        compute_confidence_intervals,
+        min_slice_size,
+    )
   else:
     config_version = 2
-    eval_config = _update_eval_config_with_defaults(eval_config,
-                                                    eval_shared_model)
+    eval_config = _update_eval_config_with_defaults(
+        eval_config, eval_shared_model
+    )
 
   tensor_adapter_config = None
   with beam.Pipeline(options=pipeline_options) as p:
@@ -1309,39 +1409,48 @@ def run_model_analysis(
           tfxio = raw_tf_record.RawTfRecordTFXIO(
               file_pattern=data_location,
               raw_record_column_name=constants.ARROW_INPUT_COLUMN,
-              telemetry_descriptors=['StandaloneTFMA'])
+              telemetry_descriptors=['StandaloneTFMA'],
+          )
         else:
           tfxio = tf_example_record.TFExampleRecord(
               file_pattern=data_location,
               schema=schema,
               raw_record_column_name=constants.ARROW_INPUT_COLUMN,
-              telemetry_descriptors=['StandaloneTFMA'])
+              telemetry_descriptors=['StandaloneTFMA'],
+          )
           if schema is not None:
             tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
                 arrow_schema=tfxio.ArrowSchema(),
-                tensor_representations=tfxio.TensorRepresentations())
+                tensor_representations=tfxio.TensorRepresentations(),
+            )
         data = p | 'ReadFromTFRecordToArrow' >> tfxio.BeamSource()
       else:
         data = p | 'ReadFromTFRecord' >> beam.io.ReadFromTFRecord(
             file_pattern=data_location,
-            compression_type=beam.io.filesystem.CompressionTypes.AUTO)
+            compression_type=beam.io.filesystem.CompressionTypes.AUTO,
+        )
     elif file_format == 'text':
       tfxio = raw_tf_record.RawBeamRecordTFXIO(
           physical_format='csv',
           raw_record_column_name=constants.ARROW_INPUT_COLUMN,
-          telemetry_descriptors=['StandaloneTFMA'])
+          telemetry_descriptors=['StandaloneTFMA'],
+      )
       data = (
           p
-          | 'ReadFromText' >> beam.io.textio.ReadFromText(
-              data_location, coder=beam.coders.BytesCoder())
-          | 'ConvertToArrow' >> tfxio.BeamSource())
+          | 'ReadFromText'
+          >> beam.io.textio.ReadFromText(
+              data_location, coder=beam.coders.BytesCoder()
+          )
+          | 'ConvertToArrow' >> tfxio.BeamSource()
+      )
     else:
       raise ValueError('unknown file_format: {}'.format(file_format))
 
     # pylint: disable=no-value-for-parameter
     _ = (
         data
-        | 'ExtractEvaluateAndWriteResults' >> ExtractEvaluateAndWriteResults(
+        | 'ExtractEvaluateAndWriteResults'
+        >> ExtractEvaluateAndWriteResults(
             eval_config=eval_config,
             eval_shared_model=eval_shared_model,
             display_only_data_location=data_location,
@@ -1353,7 +1462,9 @@ def run_model_analysis(
             random_seed_for_testing=random_seed_for_testing,
             tensor_adapter_config=tensor_adapter_config,
             schema=schema,
-            config_version=config_version))
+            config_version=config_version,
+        )
+    )
     # pylint: enable=no-value-for-parameter
 
   if len(eval_config.model_specs) <= 1:
@@ -1370,7 +1481,7 @@ def single_model_analysis(
     data_location: str,
     output_path: Optional[str] = None,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    slice_spec: Optional[List[slicer.SingleSliceSpec]] = None
+    slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
 ) -> view_types.EvalResult:
   """Run model analysis for a single model on a single data set.
 
@@ -1399,18 +1510,22 @@ def single_model_analysis(
     raise ValueError('slice_spec is deprecated, only use eval_config')
   if slice_spec:
     eval_config = config_pb2.EvalConfig(
-        slicing_specs=[s.to_proto() for s in slice_spec])
+        slicing_specs=[s.to_proto() for s in slice_spec]
+    )
 
   return run_model_analysis(
       eval_config=eval_config,
       eval_shared_model=default_eval_shared_model(
-          eval_saved_model_path=model_location),
+          eval_saved_model_path=model_location
+      ),
       data_location=data_location,
-      output_path=output_path)  # pytype: disable=bad-return-type
+      output_path=output_path,
+  )  # pytype: disable=bad-return-type
 
 
-def multiple_model_analysis(model_locations: List[str], data_location: str,
-                            **kwargs) -> view_types.EvalResults:
+def multiple_model_analysis(
+    model_locations: List[str], data_location: str, **kwargs
+) -> view_types.EvalResults:
   """Run model analysis for multiple models on the same data set.
 
   Args:
@@ -1429,8 +1544,9 @@ def multiple_model_analysis(model_locations: List[str], data_location: str,
   return view_types.EvalResults(results, constants.MODEL_CENTRIC_MODE)
 
 
-def multiple_data_analysis(model_location: str, data_locations: List[str],
-                           **kwargs) -> view_types.EvalResults:
+def multiple_data_analysis(
+    model_location: str, data_locations: List[str], **kwargs
+) -> view_types.EvalResults:
   """Run model analysis for a single model on multiple data sets.
 
   Args:
@@ -1456,7 +1572,7 @@ def analyze_raw_data(
     extractors: Optional[List[extractor.Extractor]] = None,
     evaluators: Optional[List[evaluator.Evaluator]] = None,
     writers: Optional[List[writer.Writer]] = None,
-    add_metric_callbacks: Optional[List[types.AddMetricsCallbackType]] = None
+    add_metric_callbacks: Optional[List[types.AddMetricsCallbackType]] = None,
 ) -> view_types.EvalResult:
   """Runs TensorFlow model analysis on a pandas.DataFrame.
 
@@ -1552,11 +1668,13 @@ def analyze_raw_data(
     if model_spec.prediction_key not in data.columns:
       raise KeyError(
           'The prediction_key column was not found. Looked for %s but found: %s'
-          % (model_spec.prediction_key, list(data.columns)))
+          % (model_spec.prediction_key, list(data.columns))
+      )
     if model_spec.label_key not in data.columns:
       raise KeyError(
-          'The label_key column was not found. Looked for %s but found: %s' %
-          (model_spec.label_key, list(data.columns)))
+          'The label_key column was not found. Looked for %s but found: %s'
+          % (model_spec.label_key, list(data.columns))
+      )
 
   # TODO(b/153570803): Validity check / assertions for dataframe structure
   if eval_config.slicing_specs is None:  # pytype: disable=attribute-error
@@ -1565,24 +1683,29 @@ def analyze_raw_data(
     output_path = tempfile.mkdtemp()
 
   arrow_data = table_util.CanonicalizeRecordBatch(
-      pa.RecordBatch.from_pandas(data))
+      pa.RecordBatch.from_pandas(data)
+  )
   beam_data = beam.Create([arrow_data])
 
   if not writers:
     writers = default_writers(
         output_path,
         eval_config=eval_config,
-        add_metric_callbacks=add_metric_callbacks)
+        add_metric_callbacks=add_metric_callbacks,
+    )
 
   with beam.Pipeline() as p:
     _ = (
         p
         | beam_data
-        | 'ExtractEvaluateAndWriteResults' >> ExtractEvaluateAndWriteResults(  # pylint: disable=no-value-for-parameter
+        | 'ExtractEvaluateAndWriteResults'
+        >> ExtractEvaluateAndWriteResults(  # pylint: disable=no-value-for-parameter
             extractors=extractors,
             evaluators=evaluators,
             writers=writers,
             eval_config=eval_config,
-            output_path=output_path))
+            output_path=output_path,
+        )
+    )
 
   return load_eval_result(output_path)

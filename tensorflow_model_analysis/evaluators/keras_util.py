@@ -35,7 +35,8 @@ def metric_computations_using_keras_saved_model(
     model_name: str,
     model_loader: types.ModelLoader,
     eval_config: Optional[config_pb2.EvalConfig],
-    batch_size: Optional[int] = None) -> metric_types.MetricComputations:
+    batch_size: Optional[int] = None,
+) -> metric_types.MetricComputations:
   """Returns computations for computing metrics natively using keras.
 
   Args:
@@ -52,24 +53,31 @@ def metric_computations_using_keras_saved_model(
   # need to call model.evaluate.
   if not model.metrics:
     return []
-  elif (hasattr(model, 'compiled_metrics') and model.compiled_metrics and
-        hasattr(model, 'compiled_loss') and model.compiled_loss and
-        len(model.compiled_metrics.metrics) + len(model.compiled_loss.metrics)
-        == len(model.metrics)):
+  elif (
+      hasattr(model, 'compiled_metrics')
+      and model.compiled_metrics
+      and hasattr(model, 'compiled_loss')
+      and model.compiled_loss
+      and len(model.compiled_metrics.metrics) + len(model.compiled_loss.metrics)
+      == len(model.metrics)
+  ):
     if hasattr(model, 'output_names') and model.output_names:
       output_names = model.output_names
     else:
       output_names = []
     keys = _metric_keys(
         chain(model.compiled_metrics.metrics, model.compiled_loss.metrics),
-        model_name, output_names)
+        model_name,
+        output_names,
+    )
     return [
         metric_types.MetricComputation(
             keys=keys,
             preprocessors=None,
-            combiner=_KerasCompiledMetricsCombiner(keys, model_name,
-                                                   model_loader, eval_config,
-                                                   batch_size))
+            combiner=_KerasCompiledMetricsCombiner(
+                keys, model_name, model_loader, eval_config, batch_size
+            ),
+        )
     ]
   else:
     if hasattr(model, 'output_names') and model.output_names:
@@ -85,13 +93,17 @@ def metric_computations_using_keras_saved_model(
             preprocessors=[
                 metric_types.StandardMetricInputsPreprocessorList([
                     metric_types.FeaturePreprocessor(
-                        feature_keys=feature_keys, model_names=[model_name]),
+                        feature_keys=feature_keys, model_names=[model_name]
+                    ),
                     metric_types.TransformedFeaturePreprocessor(
-                        feature_keys=feature_keys, model_names=[model_name])
+                        feature_keys=feature_keys, model_names=[model_name]
+                    ),
                 ])
             ],
-            combiner=_KerasEvaluateCombiner(keys, model_name, model_loader,
-                                            eval_config, batch_size))
+            combiner=_KerasEvaluateCombiner(
+                keys, model_name, model_loader, eval_config, batch_size
+            ),
+        )
     ]
 
 
@@ -119,14 +131,16 @@ def _metric_keys(
         # no longer supported.
         name = metric.name
         while name.startswith(output_name + '_'):
-          name = name[len(output_name) + 1:]
+          name = name[len(output_name) + 1 :]
         result.append(
             metric_types.MetricKey(
                 name=name,
                 model_name=model_name,
                 output_name=output_name,
                 sub_key=sub_key,
-                example_weighted=None))
+                example_weighted=None,
+            )
+        )
         break
     else:
       result.append(
@@ -145,13 +159,15 @@ def _metric_keys(
 class _KerasCombiner(model_util.CombineFnWithModels):
   """Base combiner for aggregating metrics for keras based models."""
 
-  def __init__(self,
-               keys: List[metric_types.MetricKey],
-               model_name: str,
-               model_loader: types.ModelLoader,
-               eval_config: Optional[config_pb2.EvalConfig],
-               desired_batch_size: Optional[int] = None,
-               beam_metrics_prefix: str = ''):
+  def __init__(
+      self,
+      keys: List[metric_types.MetricKey],
+      model_name: str,
+      model_loader: types.ModelLoader,
+      eval_config: Optional[config_pb2.EvalConfig],
+      desired_batch_size: Optional[int] = None,
+      beam_metrics_prefix: str = '',
+  ):
     super().__init__({model_name: model_loader})
     self._keys = keys
     self._model_name = model_name
@@ -177,13 +193,17 @@ class _KerasCombiner(model_util.CombineFnWithModels):
     self._output_counts = [counts[name] for name in self._output_names]
     self._batch_size_beam_metric_dist = beam.metrics.Metrics.distribution(
         constants.METRICS_NAMESPACE,
-        '{}_combine_batch_size'.format(beam_metrics_prefix))
+        '{}_combine_batch_size'.format(beam_metrics_prefix),
+    )
     self._total_input_byte_size_beam_metric_dist = (
         beam.metrics.Metrics.distribution(
             constants.METRICS_NAMESPACE,
-            '{}_combine_batch_bytes_size'.format(beam_metrics_prefix)))
+            '{}_combine_batch_bytes_size'.format(beam_metrics_prefix),
+        )
+    )
     self._num_compacts = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_compacts')
+        constants.METRICS_NAMESPACE, 'num_compacts'
+    )
 
   def setup(self):
     if self._model is None:
@@ -192,8 +212,8 @@ class _KerasCombiner(model_util.CombineFnWithModels):
       # very inefficient, we should just clone the model but
       # tf_keras.models.clone_model removes compiled_metrics.
       self._model = self._model_loaders[  # pylint: disable=protected-access
-          self._model_name]._construct_fn_with_load_time(
-              self._set_model_load_seconds)()
+          self._model_name
+      ]._construct_fn_with_load_time(self._set_model_load_seconds)()
 
   def _metrics(self) -> Iterable[tf_keras.metrics.Metric]:
     """Returns metrics used by combiner."""
@@ -204,24 +224,28 @@ class _KerasCombiner(model_util.CombineFnWithModels):
     raise NotImplementedError('Subclasses are expected to override this.')
 
   def _add_input(
-      self, accumulator: tf_metric_accumulators.TFMetricsAccumulator,
-      element: metric_types.StandardMetricInputs
+      self,
+      accumulator: tf_metric_accumulators.TFMetricsAccumulator,
+      element: metric_types.StandardMetricInputs,
   ) -> tf_metric_accumulators.TFMetricsAccumulator:
     """Add input to the accumulator."""
     raise NotImplementedError('Subclasses are expected to override this.')
 
-  def _update_state(self,
-                    accumulator: tf_metric_accumulators.TFMetricsAccumulator):
+  def _update_state(
+      self, accumulator: tf_metric_accumulators.TFMetricsAccumulator
+  ):
     """Updates state for metrics associated with model."""
     raise NotImplementedError('Subclasses are expected to override this.')
 
-  def _process_batch(self,
-                     accumulator: tf_metric_accumulators.TFMetricsAccumulator):
+  def _process_batch(
+      self, accumulator: tf_metric_accumulators.TFMetricsAccumulator
+  ):
     if accumulator.len_inputs() == 0:
       return
     self._batch_size_beam_metric_dist.update(accumulator.len_inputs())
     self._total_input_byte_size_beam_metric_dist.update(
-        accumulator.get_size_estimate())
+        accumulator.get_size_estimate()
+    )
     for metric_index, metric in enumerate(self._metrics()):
       metric.reset_states()
     self._update_state(accumulator)
@@ -236,8 +260,9 @@ class _KerasCombiner(model_util.CombineFnWithModels):
     return self._create_accumulator()
 
   def add_input(
-      self, accumulator: tf_metric_accumulators.TFMetricsAccumulator,
-      element: metric_types.StandardMetricInputs
+      self,
+      accumulator: tf_metric_accumulators.TFMetricsAccumulator,
+      element: metric_types.StandardMetricInputs,
   ) -> tf_metric_accumulators.TFMetricsAccumulator:
     accumulator = self._add_input(accumulator, element)
     if accumulator.should_flush():
@@ -294,35 +319,48 @@ class _KerasCombiner(model_util.CombineFnWithModels):
 class _KerasCompiledMetricsCombiner(_KerasCombiner):
   """Aggregates metrics using keras compiled_metrics and compiled_loss."""
 
-  def __init__(self,
-               keys: List[metric_types.MetricKey],
-               model_name: str,
-               model_loader: types.ModelLoader,
-               eval_config: Optional[config_pb2.EvalConfig],
-               desired_batch_size: Optional[int] = None):
-    super().__init__(keys, model_name, model_loader, eval_config,
-                     desired_batch_size, 'keras_compiled_metrics_combine')
+  def __init__(
+      self,
+      keys: List[metric_types.MetricKey],
+      model_name: str,
+      model_loader: types.ModelLoader,
+      eval_config: Optional[config_pb2.EvalConfig],
+      desired_batch_size: Optional[int] = None,
+  ):
+    super().__init__(
+        keys,
+        model_name,
+        model_loader,
+        eval_config,
+        desired_batch_size,
+        'keras_compiled_metrics_combine',
+    )
 
   def _metrics(self) -> Iterable[tf_keras.metrics.Metric]:
-    return chain(self._model.compiled_metrics.metrics,
-                 self._model.compiled_loss.metrics)
+    return chain(
+        self._model.compiled_metrics.metrics, self._model.compiled_loss.metrics
+    )
 
   def _create_accumulator(
-      self) -> tf_metric_accumulators.TFCompilableMetricsAccumulator:
+      self,
+  ) -> tf_metric_accumulators.TFCompilableMetricsAccumulator:
     padding_options = None
     if self._eval_config is not None:
-      model_spec = model_util.get_model_spec(self._eval_config,
-                                             self._model_name)
+      model_spec = model_util.get_model_spec(
+          self._eval_config, self._model_name
+      )
       if model_spec is not None and model_spec.HasField('padding_options'):
         padding_options = model_spec.padding_options
     return tf_metric_accumulators.TFCompilableMetricsAccumulator(
         padding_options,
         self._output_counts,
-        desired_batch_size=self._desired_batch_size)
+        desired_batch_size=self._desired_batch_size,
+    )
 
   def _add_input(
-      self, accumulator: tf_metric_accumulators.TFCompilableMetricsAccumulator,
-      element: metric_types.StandardMetricInputs
+      self,
+      accumulator: tf_metric_accumulators.TFCompilableMetricsAccumulator,
+      element: metric_types.StandardMetricInputs,
   ) -> tf_metric_accumulators.TFCompilableMetricsAccumulator:
     for i, output_name in enumerate(self._output_names):
       if not output_name and len(self._output_names) > 1:
@@ -337,12 +375,15 @@ class _KerasCompiledMetricsCombiner(_KerasCombiner):
                 self._model_name,
                 output_name,
                 flatten=False,
-                example_weighted=True))
+                example_weighted=True,
+            )
+        )
       accumulator.add_input(i, labels, predictions, example_weights)
     return accumulator
 
   def _update_state(
-      self, accumulator: tf_metric_accumulators.TFCompilableMetricsAccumulator):
+      self, accumulator: tf_metric_accumulators.TFCompilableMetricsAccumulator
+  ):
     if len(self._output_names) == 1:
       # Single-output models don't use dicts.
       l, p, w = accumulator.get_inputs(0)
@@ -362,9 +403,11 @@ class _KerasCompiledMetricsCombiner(_KerasCombiner):
         predictions[output_name] = tf.convert_to_tensor(p)
         example_weights[output_name] = tf.convert_to_tensor(w)
     self._model.compiled_metrics.update_state(
-        labels, predictions, sample_weight=example_weights)
+        labels, predictions, sample_weight=example_weights
+    )
     self._model.compiled_loss(
-        labels, predictions, sample_weight=example_weights)
+        labels, predictions, sample_weight=example_weights
+    )
 
 
 @beam.typehints.with_input_types(metric_types.StandardMetricInputs)
@@ -372,14 +415,22 @@ class _KerasCompiledMetricsCombiner(_KerasCombiner):
 class _KerasEvaluateCombiner(_KerasCombiner):
   """Aggregates metrics using keras model.evaluate method."""
 
-  def __init__(self,
-               keys: List[metric_types.MetricKey],
-               model_name: str,
-               model_loader: types.ModelLoader,
-               eval_config: Optional[config_pb2.EvalConfig],
-               desired_batch_size: Optional[int] = None):
-    super().__init__(keys, model_name, model_loader, eval_config,
-                     desired_batch_size, 'keras_evaluate_combine')
+  def __init__(
+      self,
+      keys: List[metric_types.MetricKey],
+      model_name: str,
+      model_loader: types.ModelLoader,
+      eval_config: Optional[config_pb2.EvalConfig],
+      desired_batch_size: Optional[int] = None,
+  ):
+    super().__init__(
+        keys,
+        model_name,
+        model_loader,
+        eval_config,
+        desired_batch_size,
+        'keras_evaluate_combine',
+    )
 
   def _metrics(self) -> Iterable[tf_keras.metrics.Metric]:
     return self._model.metrics
@@ -392,11 +443,13 @@ class _KerasEvaluateCombiner(_KerasCombiner):
         input_counts=[3] * len(self._output_counts),
         metric_counts=self._output_counts,
         size_estimator_fn=len,
-        desired_batch_size=self._desired_batch_size)
+        desired_batch_size=self._desired_batch_size,
+    )
 
   def _add_input(
-      self, accumulator: tf_metric_accumulators.TFMetricsAccumulator,
-      element: metric_types.StandardMetricInputs
+      self,
+      accumulator: tf_metric_accumulators.TFMetricsAccumulator,
+      element: metric_types.StandardMetricInputs,
   ) -> tf_metric_accumulators.TFMetricsAccumulator:
     for i, output_name in enumerate(self._output_names):
       if not output_name and len(self._output_names) > 1:
@@ -412,7 +465,9 @@ class _KerasEvaluateCombiner(_KerasCombiner):
                 self._model_name,
                 output_name,
                 flatten=False,
-                example_weighted=True))
+                example_weighted=True,
+            )
+        )
 
       if i == 0:
         if element.transformed_features:
@@ -427,8 +482,9 @@ class _KerasEvaluateCombiner(_KerasCombiner):
 
     return accumulator
 
-  def _update_state(self,
-                    accumulator: tf_metric_accumulators.TFMetricsAccumulator):
+  def _update_state(
+      self, accumulator: tf_metric_accumulators.TFMetricsAccumulator
+  ):
     features = {}
     labels = {}
     example_weights = {}
@@ -452,11 +508,14 @@ class _KerasEvaluateCombiner(_KerasCombiner):
     input_specs = model_util.get_input_specs(self._model, signature_name=None)
     inputs = model_util.get_inputs(features, input_specs)
     if inputs is None:
-      raise ValueError('unable to prepare inputs for evaluation: '
-                       f'input_specs={input_specs}, features={features}')
+      raise ValueError(
+          'unable to prepare inputs for evaluation: '
+          f'input_specs={input_specs}, features={features}'
+      )
     self._model.evaluate(
         x=inputs,
         y=labels,
         batch_size=util.batch_size(features),
         verbose=0,
-        sample_weight=example_weights)
+        sample_weight=example_weights,
+    )

@@ -13,7 +13,7 @@
 # limitations under the License.
 """View API for Fairness Indicators."""
 
-from typing import Optional, Dict, Callable, Any, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 import tensorflow as tf
 from tensorflow_model_analysis.addons.fairness.notebook import visualization
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
@@ -61,15 +61,17 @@ def stringify_slice_key_value(slice_key: slicer.SliceKeyType) -> str:
   # We use u'{}' instead of '{}' here to avoid encoding a unicode character with
   # ascii codec.
   values = [
-      u'{}'.format(tf.compat.as_text(tf.compat.as_str_any(value)))
+      '{}'.format(tf.compat.as_text(tf.compat.as_str_any(value)))
       for _, value in slice_key
   ]
   return '_X_'.join(values)
 
 
-def _add_cross_slice_key_data(slice_key: slicer.CrossSliceKeyType,
-                              metrics: view_types.MetricsByTextKey,
-                              data: List[Any]):
+def _add_cross_slice_key_data(
+    slice_key: slicer.CrossSliceKeyType,
+    metrics: view_types.MetricsByTextKey,
+    data: List[Any],
+):
   """Adds data for cross slice key.
 
   Baseline and comparison slice keys are joined by '__XX__'.
@@ -80,24 +82,34 @@ def _add_cross_slice_key_data(slice_key: slicer.CrossSliceKeyType,
   """
   baseline_key = slice_key[0]
   comparison_key = slice_key[1]
-  stringify_slice_value = stringify_slice_key_value(
-      baseline_key) + '__XX__' + stringify_slice_key_value(comparison_key)
-  stringify_slice = slicer.stringify_slice_key(
-      baseline_key) + '__XX__' + slicer.stringify_slice_key(comparison_key)
+  stringify_slice_value = (
+      stringify_slice_key_value(baseline_key)
+      + '__XX__'
+      + stringify_slice_key_value(comparison_key)
+  )
+  stringify_slice = (
+      slicer.stringify_slice_key(baseline_key)
+      + '__XX__'
+      + slicer.stringify_slice_key(comparison_key)
+  )
   data.append({
       'sliceValue': stringify_slice_value,
       'slice': stringify_slice,
-      'metrics': metrics
+      'metrics': metrics,
   })
 
 
 def convert_slicing_metrics_to_ui_input(
-    slicing_metrics: List[Tuple[slicer.SliceKeyOrCrossSliceKeyType,
-                                view_types.MetricsByOutputName]],
+    slicing_metrics: List[
+        Tuple[
+            slicer.SliceKeyOrCrossSliceKeyType, view_types.MetricsByOutputName
+        ]
+    ],
     slicing_column: Optional[str] = None,
     slicing_spec: Optional[slicer.SingleSliceSpec] = None,
     output_name: str = '',
-    multi_class_key: str = '') -> Optional[List[Dict[str, Any]]]:
+    multi_class_key: str = '',
+) -> Optional[List[Dict[str, Any]]]:
   """Renders the Fairness Indicator view.
 
   Args:
@@ -122,31 +134,39 @@ def convert_slicing_metrics_to_ui_input(
   if slicing_column and slicing_spec:
     raise ValueError(
         'Only one of the "slicing_column" and "slicing_spec" parameters '
-        'can be set.')
+        'can be set.'
+    )
   if slicing_column:
     slicing_spec = slicer.SingleSliceSpec(columns=[slicing_column])
 
   data = []
-  for (slice_key, metric_value) in slicing_metrics:
-    if (metric_value is not None and output_name in metric_value and
-        multi_class_key in metric_value[output_name]):
+  for slice_key, metric_value in slicing_metrics:
+    if (
+        metric_value is not None
+        and output_name in metric_value
+        and multi_class_key in metric_value[output_name]
+    ):
       metrics = metric_value[output_name][multi_class_key]
       # To add evaluation data for cross slice comparison.
       if slicer.is_cross_slice_key(slice_key):
         _add_cross_slice_key_data(slice_key, metrics, data)
       # To add evaluation data for regular slices.
-      elif (slicing_spec is None or not slice_key or
-            slicing_spec.is_slice_applicable(slice_key)):
+      elif (
+          slicing_spec is None
+          or not slice_key
+          or slicing_spec.is_slice_applicable(slice_key)
+      ):
         data.append({
             'sliceValue': stringify_slice_key_value(slice_key),
             'slice': slicer.stringify_slice_key(slice_key),
-            'metrics': metrics
+            'metrics': metrics,
         })
   if not data:
     raise ValueError(
         'No eval result found for output_name:"%s" and '
-        'multi_class_key:"%s" and slicing_column:"%s" and slicing_spec:"%s".' %
-        (output_name, multi_class_key, slicing_column, slicing_spec))
+        'multi_class_key:"%s" and slicing_column:"%s" and slicing_spec:"%s".'
+        % (output_name, multi_class_key, slicing_column, slicing_spec)
+    )
   return data
 
 
@@ -181,27 +201,39 @@ def render_fairness_indicator(
   Returns:
     A FairnessIndicatorViewer object if in Jupyter notebook; None if in Colab.
   """
-  if ((eval_result and multi_eval_results) or
-      (not eval_result and not multi_eval_results)):
+  if (eval_result and multi_eval_results) or (
+      not eval_result and not multi_eval_results
+  ):
     raise ValueError(
         'Exactly one of the "eval_result" and "multi_eval_results" '
-        'parameters must be set.')
+        'parameters must be set.'
+    )
 
-  if (multi_eval_results and len(multi_eval_results) != 2):
+  if multi_eval_results and len(multi_eval_results) != 2:
     raise ValueError(
-        '"multi_eval_results" parameter only accepts 2 eval results.')
+        '"multi_eval_results" parameter only accepts 2 eval results.'
+    )
 
   data = None
   multi_data = None
   if eval_result:
-    data = convert_slicing_metrics_to_ui_input(eval_result.slicing_metrics,
-                                               slicing_column, slicing_spec,
-                                               output_name, multi_class_key)
+    data = convert_slicing_metrics_to_ui_input(
+        eval_result.slicing_metrics,
+        slicing_column,
+        slicing_spec,
+        output_name,
+        multi_class_key,
+    )
   else:
     multi_data = {}
     for eval_name in multi_eval_results:
       multi_data[eval_name] = convert_slicing_metrics_to_ui_input(
-          multi_eval_results[eval_name].slicing_metrics, slicing_column,
-          slicing_spec, output_name, multi_class_key)
-  return visualization.render_fairness_indicator(data, multi_data,
-                                                 event_handlers)
+          multi_eval_results[eval_name].slicing_metrics,
+          slicing_column,
+          slicing_spec,
+          output_name,
+          multi_class_key,
+      )
+  return visualization.render_fairness_indicator(
+      data, multi_data, event_handlers
+  )

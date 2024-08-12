@@ -41,9 +41,11 @@ KeyAndOutputMap = Tuple[_K, MapModelNameToOutput]
 class TfxBslInferenceWrapper(beam.PTransform):
   """Wrapper for TFX-BSL bulk inference implementation."""
 
-  def __init__(self,
-               model_specs: List[config_pb2.ModelSpec],
-               name_to_eval_shared_model: Dict[str, types.EvalSharedModel]):
+  def __init__(
+      self,
+      model_specs: List[config_pb2.ModelSpec],
+      name_to_eval_shared_model: Dict[str, types.EvalSharedModel],
+  ):
     """Converts TFMA config into library-specific configuration.
 
     Args:
@@ -56,7 +58,8 @@ class TfxBslInferenceWrapper(beam.PTransform):
     inference_specs = []
     for model_spec in model_specs:
       eval_shared_model = model_util.get_eval_shared_model(
-          model_spec.name, name_to_eval_shared_model)
+          model_spec.name, name_to_eval_shared_model
+      )
       inference_spec_type = model_spec_pb2.InferenceSpecType(
           saved_model_spec=model_spec_pb2.SavedModelSpec(
               model_path=eval_shared_model.model_path,
@@ -80,11 +83,18 @@ class TfxBslInferenceWrapper(beam.PTransform):
     # twice.
     return (
         pcoll
-        | 'TfxBslBulkInference' >> run_inference.RunInferencePerModel(
-            inference_spec_types=self._aligned_inference_specs)
-        | 'CreateModelNameToPredictionLog' >>
-        beam.MapTuple(lambda extracts, logs:  # pylint: disable=g-long-lambda
-                      (extracts, dict(zip(self._aligned_model_names, logs)))))
+        | 'TfxBslBulkInference'
+        >> run_inference.RunInferencePerModel(
+            inference_spec_types=self._aligned_inference_specs
+        )
+        | 'CreateModelNameToPredictionLog'
+        >> beam.MapTuple(
+            lambda extracts, logs: (  # pylint: disable=g-long-lambda
+                extracts,
+                dict(zip(self._aligned_model_names, logs)),
+            )
+        )
+    )
 
 
 def TfxBslPredictionsExtractor(
@@ -119,25 +129,32 @@ def TfxBslPredictionsExtractor(
     Extractor for extracting predictions.
   """
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_model)
+      eval_shared_model
+  )
   # This should never happen, but verify_and_update_eval_shared_models can
   # theoretically return None or empty iterables.
   if not eval_shared_models:
-    raise ValueError('No valid model(s) were provided. Please ensure that '
-                     'EvalConfig.ModelSpec is correctly configured to enable '
-                     'using the PredictionsExtractor.')
+    raise ValueError(
+        'No valid model(s) were provided. Please ensure that '
+        'EvalConfig.ModelSpec is correctly configured to enable '
+        'using the PredictionsExtractor.'
+    )
 
   name_to_eval_shared_model = {m.model_name: m for m in eval_shared_models}
   model_specs = []
   for model_spec in eval_config.model_specs:
     if not model_spec.signature_name:
       eval_shared_model = model_util.get_eval_shared_model(
-          model_spec.name, name_to_eval_shared_model)
+          model_spec.name, name_to_eval_shared_model
+      )
       model_spec = copy.copy(model_spec)
       # Select a default signature. Note that this may differ from the
       # 'serving_default' signature.
-      model_spec.signature_name = model_util.get_default_signature_name_from_model_path(
-          eval_shared_model.model_path)
+      model_spec.signature_name = (
+          model_util.get_default_signature_name_from_model_path(
+              eval_shared_model.model_path
+          )
+      )
     model_specs.append(model_spec)
 
   tfx_bsl_inference_ptransform = inference_base.RunInference(
@@ -150,4 +167,5 @@ def TfxBslPredictionsExtractor(
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=predictions_extractor.PREDICTIONS_EXTRACTOR_STAGE_NAME,
-      ptransform=tfx_bsl_inference_ptransform)
+      ptransform=tfx_bsl_inference_ptransform,
+  )

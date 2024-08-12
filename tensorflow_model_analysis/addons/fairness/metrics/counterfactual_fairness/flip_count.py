@@ -14,8 +14,7 @@
 """Flip count metric."""
 
 import collections
-
-from typing import Any, Dict, List, Optional, Iterator, Sequence, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Sequence, Tuple
 
 import numpy as np
 from tensorflow_model_analysis.metrics import binary_confusion_matrices
@@ -58,12 +57,14 @@ class FlipCount(metric_types.Metric):
   those flips are happening.
   """
 
-  def __init__(self,
-               counterfactual_prediction_key: Optional[str] = None,
-               example_id_key: Optional[str] = None,
-               example_ids_count: int = DEFAULT_NUM_EXAMPLE_IDS,
-               name: str = FLIP_COUNT_NAME,
-               thresholds: Sequence[float] = DEFAULT_THRESHOLDS):
+  def __init__(
+      self,
+      counterfactual_prediction_key: Optional[str] = None,
+      example_id_key: Optional[str] = None,
+      example_ids_count: int = DEFAULT_NUM_EXAMPLE_IDS,
+      name: str = FLIP_COUNT_NAME,
+      thresholds: Sequence[float] = DEFAULT_THRESHOLDS,
+  ):
     """Initializes flip count.
 
     Args:
@@ -83,7 +84,8 @@ class FlipCount(metric_types.Metric):
         thresholds=thresholds,
         counterfactual_prediction_key=counterfactual_prediction_key,
         example_id_key=example_id_key,
-        example_ids_count=example_ids_count)
+        example_ids_count=example_ids_count,
+    )
 
   @property
   def compute_confidence_interval(self) -> bool:
@@ -106,10 +108,15 @@ def _calculate_digits(thresholds):
 
 
 def create_metric_keys(
-    thresholds: Sequence[float], metrics: List[str], metric_name: str,
-    model_name: str, output_name: str, example_weighted: bool
-) -> Tuple[List[metric_types.MetricKey], Dict[float, Dict[
-    str, metric_types.MetricKey]]]:
+    thresholds: Sequence[float],
+    metrics: List[str],
+    metric_name: str,
+    model_name: str,
+    output_name: str,
+    example_weighted: bool,
+) -> Tuple[
+    List[metric_types.MetricKey], Dict[float, Dict[str, metric_types.MetricKey]]
+]:
   """Creates metric keys map keyed at threshold and metric name."""
   keys = []
   metric_key_by_name_by_threshold = collections.defaultdict(dict)
@@ -120,7 +127,8 @@ def create_metric_keys(
           name='%s/%s@%.*f' % (metric_name, metric, num_digits, threshold),
           model_name=model_name,
           output_name=output_name,
-          example_weighted=example_weighted)
+          example_weighted=example_weighted,
+      )
       keys.append(key)
       metric_key_by_name_by_threshold[threshold][metric] = key
   return keys, metric_key_by_name_by_threshold
@@ -135,10 +143,12 @@ def flip_count(
     model_name: str = '',
     output_name: str = '',
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    example_weighted: bool = False) -> metric_types.MetricComputations:
+    example_weighted: bool = False,
+) -> metric_types.MetricComputations:
   """Returns metric computations for computing flip counts."""
   keys, metric_key_by_name_by_threshold = create_metric_keys(
-      thresholds, METRICS_LIST, name, model_name, output_name, example_weighted)
+      thresholds, METRICS_LIST, name, model_name, output_name, example_weighted
+  )
 
   feature_keys = [counterfactual_prediction_key]
   if example_id_key:
@@ -196,17 +206,25 @@ def flip_count(
         the features or predictions.
       ValueError: If predictions is None or empty.
     """
-    del (sub_key, aggregation_type, class_weights, fractional_labels, flatten
-        )  # unused
+    del (
+        sub_key,
+        aggregation_type,
+        class_weights,
+        fractional_labels,
+        flatten,
+    )  # unused
 
     # TODO(sokeefe): Look into removing the options to pass counterfactual
     # predictions in a feature and instead as a baseline model.
-    if (counterfactual_prediction_key is not None and
-        counterfactual_prediction_key in inputs.features):
+    if (
+        counterfactual_prediction_key is not None
+        and counterfactual_prediction_key in inputs.features
+    ):
       counterfactual_prediction = inputs.features[counterfactual_prediction_key]
     elif eval_config is not None:
       counterfactual_model_spec = model_util.get_baseline_model_spec(
-          eval_config)
+          eval_config
+      )
       if counterfactual_model_spec is not None:
         _, counterfactual_prediction, _ = next(
             metric_util.to_label_prediction_example_weight(
@@ -218,22 +236,28 @@ def flip_count(
                 fractional_labels=False,  # Labels are ignored for flip counts.
                 flatten=False,  # Flattened below
                 allow_none=True,  # Allow None labels
-                require_single_example_weight=True))
+                require_single_example_weight=True,
+            )
+        )
       else:
-        raise ValueError('The Counterfactual model must be listed with '
-                         f'`is_baseline` equal to `True`. Found: {eval_config}')
+        raise ValueError(
+            'The Counterfactual model must be listed with '
+            f'`is_baseline` equal to `True`. Found: {eval_config}'
+        )
     else:
       raise ValueError(
           '`counterfactual_prediction` was not found within the provided '
           'inputs. It must be included as either a feature key or within the '
           'predictions. Found:\n'
           f'`counterfactual_prediction_key`: {counterfactual_prediction_key}\n'
-          f'`inputs.prediction`:{inputs.prediction}')
+          f'`inputs.prediction`:{inputs.prediction}'
+      )
 
     if counterfactual_prediction is None:
       raise ValueError(
-          '%s feature key is None (required for FlipCount metric)' %
-          counterfactual_prediction_key)
+          '%s feature key is None (required for FlipCount metric)'
+          % counterfactual_prediction_key
+      )
 
     def get_by_keys(value: Any, keys: List[str]) -> Any:
       if isinstance(value, dict):
@@ -243,11 +267,13 @@ def flip_count(
       return value
 
     if model_name:
-      counterfactual_prediction = get_by_keys(counterfactual_prediction,
-                                              [model_name])
+      counterfactual_prediction = get_by_keys(
+          counterfactual_prediction, [model_name]
+      )
     if output_name:
-      counterfactual_prediction = get_by_keys(counterfactual_prediction,
-                                              [output_name])
+      counterfactual_prediction = get_by_keys(
+          counterfactual_prediction, [output_name]
+      )
 
     _, prediction, example_weight = next(
         metric_util.to_label_prediction_example_weight(
@@ -259,22 +285,28 @@ def flip_count(
             fractional_labels=False,  # Labels are ignored for flip counts.
             flatten=False,  # Flattened below
             allow_none=True,  # Allow None labels
-            require_single_example_weight=True))
+            require_single_example_weight=True,
+        )
+    )
 
     if prediction.size != counterfactual_prediction.size:
       raise ValueError(
           'prediction and counterfactual_prediction size should be same for '
-          'FlipCount metric, %f != %f' %
-          (prediction.size, counterfactual_prediction.size))
+          'FlipCount metric, %f != %f'
+          % (prediction.size, counterfactual_prediction.size)
+      )
 
     if prediction.size == 0:
       raise ValueError('prediction is empty (required for FlipCount metric)')
     else:  # Always flatten
       example_weight = np.array(
-          [float(example_weight) for i in range(prediction.shape[-1])])
-      for p, cfp, w in zip(prediction.flatten(),
-                           counterfactual_prediction.flatten(),
-                           example_weight.flatten()):
+          [float(example_weight) for i in range(prediction.shape[-1])]
+      )
+      for p, cfp, w in zip(
+          prediction.flatten(),
+          counterfactual_prediction.flatten(),
+          example_weight.flatten(),
+      ):
         yield np.array([p]), np.array([cfp]), np.array([w])
 
   # Setting fractional label to false, since prediction is being used as label
@@ -291,11 +323,12 @@ def flip_count(
       ],
       example_id_key=example_id_key,
       example_ids_count=example_ids_count,
-      fractional_labels=False)
+      fractional_labels=False,
+  )
   examples_metric_key, matrices_metric_key = computations[-1].keys
 
   def result(
-      metrics: Dict[metric_types.MetricKey, Any]
+      metrics: Dict[metric_types.MetricKey, Any],
   ) -> Dict[metric_types.MetricKey, Any]:
     """Returns flip count metrics values."""
     matrix = metrics[matrices_metric_key]
@@ -303,25 +336,34 @@ def flip_count(
 
     output = {}
     for i, threshold in enumerate(matrix.thresholds):
-      output[metric_key_by_name_by_threshold[threshold]
-             ['positive_to_negative']] = matrix.fn[i]
-      output[metric_key_by_name_by_threshold[threshold]
-             ['negative_to_positive']] = matrix.fp[i]
-      output[metric_key_by_name_by_threshold[threshold]
-             ['positive_to_negative_examples_ids']] = np.array(
-                 examples.fn_examples[i])
-      output[metric_key_by_name_by_threshold[threshold]
-             ['negative_to_positive_examples_ids']] = np.array(
-                 examples.fp_examples[i])
-      output[metric_key_by_name_by_threshold[threshold]
-             ['positive_examples_count']] = matrix.fn[i] + matrix.tp[i]
-      output[metric_key_by_name_by_threshold[threshold]
-             ['negative_examples_count']] = matrix.fp[i] + matrix.tn[i]
+      output[
+          metric_key_by_name_by_threshold[threshold]['positive_to_negative']
+      ] = matrix.fn[i]
+      output[
+          metric_key_by_name_by_threshold[threshold]['negative_to_positive']
+      ] = matrix.fp[i]
+      output[
+          metric_key_by_name_by_threshold[threshold][
+              'positive_to_negative_examples_ids'
+          ]
+      ] = np.array(examples.fn_examples[i])
+      output[
+          metric_key_by_name_by_threshold[threshold][
+              'negative_to_positive_examples_ids'
+          ]
+      ] = np.array(examples.fp_examples[i])
+      output[
+          metric_key_by_name_by_threshold[threshold]['positive_examples_count']
+      ] = (matrix.fn[i] + matrix.tp[i])
+      output[
+          metric_key_by_name_by_threshold[threshold]['negative_examples_count']
+      ] = (matrix.fp[i] + matrix.tn[i])
 
     return output
 
   derived_computation = metric_types.DerivedMetricComputation(
-      keys=keys, result=result)
+      keys=keys, result=result
+  )
 
   computations.append(derived_computation)
   return computations

@@ -42,9 +42,13 @@ from tensorflow_model_analysis.utils import util as general_util
 # Config for defining the input tensor feed into the EvalMetricsGraph. This
 # is needed for model agnostic use cases where a graph must be constructed.
 FPLFeedConfig = NamedTuple(  # pylint: disable=invalid-name
-    'FPLFeedConfig', [('features', Dict[str, Any]),
-                      ('predictions', Dict[str, Any]),
-                      ('labels', Dict[str, Any])])
+    'FPLFeedConfig',
+    [
+        ('features', Dict[str, Any]),
+        ('predictions', Dict[str, Any]),
+        ('labels', Dict[str, Any]),
+    ],
+)
 
 
 class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
@@ -118,17 +122,21 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
     # key to tensor value.
     self._input_map = None
 
-    self._batch_size = (
-        beam.metrics.Metrics.distribution(constants.METRICS_NAMESPACE,
-                                          'batch_size'))
-    self._batch_size_failed = (
-        beam.metrics.Metrics.distribution(constants.METRICS_NAMESPACE,
-                                          'batch_size_failed'))
+    self._batch_size = beam.metrics.Metrics.distribution(
+        constants.METRICS_NAMESPACE, 'batch_size'
+    )
+    self._batch_size_failed = beam.metrics.Metrics.distribution(
+        constants.METRICS_NAMESPACE, 'batch_size_failed'
+    )
 
     try:
       self._construct_graph()
-    except (RuntimeError, TypeError, ValueError,
-            tf.errors.OpError) as exception:
+    except (
+        RuntimeError,
+        TypeError,
+        ValueError,
+        tf.errors.OpError,
+    ) as exception:
       general_util.reraise_augmented(exception, 'Failed to create graph.')
 
   @abc.abstractmethod
@@ -142,7 +150,8 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
     raise NotImplementedError
 
   def register_add_metric_callbacks(
-      self, add_metrics_callbacks: List[types.AddMetricsCallbackType]) -> None:
+      self, add_metrics_callbacks: List[types.AddMetricsCallbackType]
+  ) -> None:
     """Register additional metric callbacks.
 
     Runs the given list of callbacks for adding additional metrics to the graph.
@@ -158,26 +167,31 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
       ValueError: There was a metric name conflict: a callback tried to add a
         metric whose name conflicted with a metric that was added by an earlier
         callback.
-
     """
     with self._graph.as_default():
       features_dict, predictions_dict, labels_dict = (
-          self.get_features_predictions_labels_dicts())
+          self.get_features_predictions_labels_dicts()
+      )
       features_dict = util.wrap_tensor_or_dict_of_tensors_in_identity(
-          features_dict)
+          features_dict
+      )
       predictions_dict = util.wrap_tensor_or_dict_of_tensors_in_identity(
-          predictions_dict)
+          predictions_dict
+      )
       labels_dict = util.wrap_tensor_or_dict_of_tensors_in_identity(labels_dict)
 
       metric_ops = {}
       for add_metrics_callback in add_metrics_callbacks:
-        new_metric_ops = add_metrics_callback(features_dict, predictions_dict,
-                                              labels_dict)
+        new_metric_ops = add_metrics_callback(
+            features_dict, predictions_dict, labels_dict
+        )
         overlap = set(new_metric_ops) & set(metric_ops)
         if overlap:
-          raise ValueError('metric keys should not conflict, but an '
-                           'earlier callback already added the metrics '
-                           'named %s' % overlap)
+          raise ValueError(
+              'metric keys should not conflict, but an '
+              'earlier callback already added the metrics '
+              'named %s' % overlap
+          )
         metric_ops.update(new_metric_ops)
       self.register_additional_metric_ops(metric_ops)
 
@@ -188,7 +202,8 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
     self._graph.finalize()
 
   def register_additional_metric_ops(
-      self, metric_ops: Dict[str, Tuple[tf.Tensor, tf.Tensor]]) -> None:
+      self, metric_ops: Dict[str, Tuple[tf.Tensor, tf.Tensor]]
+  ) -> None:
     """Register additional metric ops that were added.
 
     Args:
@@ -199,8 +214,10 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
     """
     for metric_name, (value_op, update_op) in metric_ops.items():
       if metric_name in self._metric_names:
-        raise ValueError('tried to register new metric with name %s, but a '
-                         'metric with that name already exists.' % metric_name)
+        raise ValueError(
+            'tried to register new metric with name %s, but a '
+            'metric with that name already exists.' % metric_name
+        )
       self._metric_names.append(metric_name)
       self._metric_value_ops.append(value_op)
       self._metric_update_ops.append(update_op)
@@ -208,8 +225,9 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
     # Update metric variables incrementally with only the new elements in the
     # metric_variables collection.
     collection = self._graph.get_collection(
-        tf.compat.v1.GraphKeys.METRIC_VARIABLES)
-    collection = collection[len(self._metric_variable_nodes):]
+        tf.compat.v1.GraphKeys.METRIC_VARIABLES
+    )
+    collection = collection[len(self._metric_variable_nodes) :]
 
     # Note that this is a node_list - it's not something that TFMA
     # configures, but something that TF.Learn configures.
@@ -220,25 +238,31 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
       self._metric_variable_nodes.append(node)
       with self._graph.as_default():
         placeholder = tf.compat.v1.placeholder(
-            dtype=node.dtype, shape=node.get_shape())
+            dtype=node.dtype, shape=node.get_shape()
+        )
         self._metric_variable_placeholders.append(placeholder)
         self._metric_variable_assign_ops.append(
-            tf.compat.v1.assign(node, placeholder))
+            tf.compat.v1.assign(node, placeholder)
+        )
 
     with self._graph.as_default():
       self._all_metric_variable_assign_ops = tf.group(
-          *self._metric_variable_assign_ops)
+          *self._metric_variable_assign_ops
+      )
       self._all_metric_update_ops = tf.group(*self._metric_update_ops)
       self._reset_variables_op = tf.compat.v1.local_variables_initializer()
       self._session.run(self._reset_variables_op)
 
     self._perform_metrics_update_fn = self._session.make_callable(
         fetches=self._all_metric_update_ops,
-        feed_list=self._perform_metrics_update_fn_feed_list)
+        feed_list=self._perform_metrics_update_fn_feed_list,
+    )
 
   def _log_debug_message_for_tracing_feed_errors(
-      self, fetches: List[types.TensorOrOperationType],
-      feed_list: List[types.TensorOrOperationType]) -> None:
+      self,
+      fetches: List[types.TensorOrOperationType],
+      feed_list: List[types.TensorOrOperationType],
+  ) -> None:
     """Logs debug message for tracing feed errors."""
 
     def create_tuple_list(tensor: types.TensorOrOperationType):
@@ -264,21 +288,28 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
     def log_list(name: str, target: List[Any]) -> None:
       tf.compat.v1.logging.info('%s = [', name)
       for elem_type, elem_name in flatten(
-          [create_tuple_list(x) for x in target]):
-        tf.compat.v1.logging.info('(\'%s\', \'%s\'),', elem_type, elem_name)
+          [create_tuple_list(x) for x in target]
+      ):
+        tf.compat.v1.logging.info("('%s', '%s'),", elem_type, elem_name)
       tf.compat.v1.logging.info(']')
 
     tf.compat.v1.logging.info(
-        '-------------------- fetches and feeds information')
+        '-------------------- fetches and feeds information'
+    )
     log_list('fetches', fetches)
     tf.compat.v1.logging.info('')
     log_list('feed_list', feed_list)
     tf.compat.v1.logging.info(
-        '-------------------- end fetches and feeds information')
+        '-------------------- end fetches and feeds information'
+    )
 
   def get_features_predictions_labels_dicts(
-      self) -> Tuple[types.TensorTypeMaybeDict, types.TensorTypeMaybeDict, types
-                     .TensorTypeMaybeDict]:
+      self,
+  ) -> Tuple[
+      types.TensorTypeMaybeDict,
+      types.TensorTypeMaybeDict,
+      types.TensorTypeMaybeDict,
+  ]:
     """Returns features, predictions, labels dictionaries (or values).
 
     The dictionaries contain references to the nodes, so they can be used
@@ -297,7 +328,8 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
       predictions[key] = value
     # Unnest if it wasn't a dictionary to begin with.
     default_predictions_key = util.default_dict_key(
-        eval_constants.PREDICTIONS_NAME)
+        eval_constants.PREDICTIONS_NAME
+    )
     if list(predictions) == [default_predictions_key]:
       predictions = predictions[default_predictions_key]
 
@@ -318,10 +350,15 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
         raise ValueError('_perform_metrics_update_fn is None.')
       self._perform_metrics_update_fn(*[examples_list])
 
-    except (RuntimeError, TypeError, ValueError,
-            tf.errors.OpError) as exception:
-      general_util.reraise_augmented(exception,
-                                     'raw_input = %s' % examples_list)
+    except (
+        RuntimeError,
+        TypeError,
+        ValueError,
+        tf.errors.OpError,
+    ) as exception:
+      general_util.reraise_augmented(
+          exception, 'raw_input = %s' % examples_list
+      )
 
   def metrics_reset_update_get(
       self, features_predictions_labels: types.FeaturesPredictionsLabels
@@ -329,8 +366,9 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
     """Run the metrics reset, update, get operations on a single FPL."""
     return self.metrics_reset_update_get_list([features_predictions_labels])
 
-  def metrics_reset_update_get_list(self,
-                                    examples_list: List[Any]) -> List[Any]:
+  def metrics_reset_update_get_list(
+      self, examples_list: List[Any]
+  ) -> List[Any]:
     """Run the metrics reset, update, get operations on a list of FPLs."""
     with self._lock:
       # Note that due to tf op reordering issues on some hardware, DO NOT merge
@@ -343,13 +381,19 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
         self._reset_metric_variables()
         self._perform_metrics_update_list(examples_list)
         self._batch_size.update(batch_size)
-      except (ValueError, tf.errors.InvalidArgumentError,
-              tf.errors.ResourceExhaustedError) as e:
+      except (
+          ValueError,
+          tf.errors.InvalidArgumentError,
+          tf.errors.ResourceExhaustedError,
+      ) as e:
         self._reset_metric_variables()
         self._batch_size_failed.update(batch_size)
         tf.compat.v1.logging.warning(
             'Large batch_size %s failed with error %s. '
-            'Attempting to run batch through serially.', batch_size, e)
+            'Attempting to run batch through serially.',
+            batch_size,
+            e,
+        )
         for example in examples_list:
           self._perform_metrics_update_list([example])
           self._batch_size.update(1)
@@ -364,8 +408,9 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
     with self._lock:
       return self._get_metric_variables()
 
-  def _create_feed_for_metric_variables(self, metric_variable_values: List[Any]
-                                       ) -> Dict[types.TensorType, Any]:
+  def _create_feed_for_metric_variables(
+      self, metric_variable_values: List[Any]
+  ) -> Dict[types.TensorType, Any]:
     """Returns a feed dict for feeding metric variables values to set them.
 
     Args:
@@ -377,8 +422,9 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
       constructed for setting the metric variable values to the fed values.
     """
     result = {}
-    for node, value in zip(self._metric_variable_placeholders,
-                           metric_variable_values):
+    for node, value in zip(
+        self._metric_variable_placeholders, metric_variable_values
+    ):
       result[node] = value
     return result
 
@@ -387,7 +433,9 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
     return self._session.run(
         fetches=self._all_metric_variable_assign_ops,
         feed_dict=self._create_feed_for_metric_variables(
-            metric_variable_values))
+            metric_variable_values
+        ),
+    )
 
   def set_metric_variables(self, metric_variable_values: List[Any]) -> None:
     """Set metric variable values to the given values."""
@@ -414,7 +462,8 @@ class EvalMetricsGraph:  # pytype: disable=ignored-metaclass
       return self._get_metric_values()
 
   def metrics_set_variables_and_get_values(
-      self, metric_variable_values: List[Any]) -> Dict[str, Any]:
+      self, metric_variable_values: List[Any]
+  ) -> Dict[str, Any]:
     with self._lock:
       self._set_metric_variables(metric_variable_values)
       return self._get_metric_values()

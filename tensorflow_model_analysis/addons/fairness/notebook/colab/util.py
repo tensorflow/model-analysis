@@ -13,7 +13,7 @@
 # limitations under the License.
 """Utility for Colab Fairness Indicators renderer API."""
 
-from typing import Optional, Dict, Any
+from typing import Any, Dict, Optional
 
 from IPython import display
 from tensorflow_model_analysis.notebook.colab.util import make_trusted_event_handler_js
@@ -56,12 +56,14 @@ def render_fairness_indicators_html(
   html = template.format(
       base64_encoded_json_payload=to_base64_encoded_json(ui_payload),
       trusted_html_for_vulcanized_tfma_js=trusted_html_for_vulcanized_tfma_js,
-      trusted_event_handler_js=make_trusted_event_handler_js(event_handlers))
+      trusted_event_handler_js=make_trusted_event_handler_js(event_handlers),
+  )
   display.display(display.HTML(html))
 
 
-def make_fi_ui_payload(slicing_metrics=None,
-                       multi_slicing_metrics=None) -> Dict[str, Any]:
+def make_fi_ui_payload(
+    slicing_metrics=None, multi_slicing_metrics=None
+) -> Dict[str, Any]:
   """Creates a Python Dict that can be passed into the Fairness Indicators JS UI.
 
   Args:
@@ -72,11 +74,13 @@ def make_fi_ui_payload(slicing_metrics=None,
   Returns:
     Python Dict that can be passed to JS UI
   """
-  if ((slicing_metrics and multi_slicing_metrics) or
-      (not slicing_metrics and not multi_slicing_metrics)):
+  if (slicing_metrics and multi_slicing_metrics) or (
+      not slicing_metrics and not multi_slicing_metrics
+  ):
     raise ValueError(
         'Exactly one of the "slicing_metrics" and "multi_slicing_metrics" '
-        'parameters must be set.')
+        'parameters must be set.'
+    )
 
   if slicing_metrics:
     return {'slicingMetrics': slicing_metrics}
@@ -88,5 +92,5 @@ def make_fi_ui_payload(slicing_metrics=None,
       'slicingMetrics': slicing_metrics,
       'slicingMetricsCompare': slicing_metrics_compare,
       'evalName': eval_name,
-      'evalNameCompare': eval_name_compare
+      'evalNameCompare': eval_name_compare,
   }

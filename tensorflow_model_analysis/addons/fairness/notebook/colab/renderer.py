@@ -17,9 +17,9 @@ from tensorflow_model_analysis.addons.fairness.notebook.colab import util
 from tensorflow_model_analysis.notebook.colab.renderer import get_trusted_html_for_vulcanized_js
 
 
-def render_fairness_indicator(slicing_metrics=None,
-                              multi_slicing_metrics=None,
-                              event_handlers=None) -> None:
+def render_fairness_indicator(
+    slicing_metrics=None, multi_slicing_metrics=None, event_handlers=None
+) -> None:
   """Renders the fairness indicators view in Colab.
 
   Colab requires custom visualization to be rendered in a sandbox so we cannot
@@ -35,4 +35,5 @@ def render_fairness_indicator(slicing_metrics=None,
   util.render_fairness_indicators_html(
       ui_payload=ui_payload,
       trusted_html_for_vulcanized_tfma_js=get_trusted_html_for_vulcanized_js(),
-      event_handlers=event_handlers)
+      event_handlers=event_handlers,
+  )

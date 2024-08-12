@@ -14,10 +14,8 @@
 """Metrics validator."""
 
 import math
-
 from typing import Any, Dict, Iterable, List, Tuple, Union
 import numpy as np
-
 from tensorflow_model_analysis.metrics import metric_specs
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.proto import config_pb2
@@ -25,8 +23,9 @@ from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.utils import model_util
 
-_ThresholdType = Union[config_pb2.GenericValueThreshold,
-                       config_pb2.GenericChangeThreshold]
+_ThresholdType = Union[
+    config_pb2.GenericValueThreshold, config_pb2.GenericChangeThreshold
+]
 
 
 # TODO(b/142683826): Beam type check error in
@@ -34,9 +33,11 @@ _ThresholdType = Union[config_pb2.GenericValueThreshold,
 # _EvaluateMetricsAndPlots is passing str instead of MetricKey, remove quotes
 # around metric_types.MetricKey below when fixed.
 def validate_metrics(
-    sliced_metrics: Tuple[Union[slicer.SliceKeyType, slicer.CrossSliceKeyType],
-                          Dict['metric_types.MetricKey',
-                               Any]], eval_config: config_pb2.EvalConfig
+    sliced_metrics: Tuple[
+        Union[slicer.SliceKeyType, slicer.CrossSliceKeyType],
+        Dict['metric_types.MetricKey', Any],
+    ],
+    eval_config: config_pb2.EvalConfig,
 ) -> validation_result_pb2.ValidationResult:
   """Check the metrics and check whether they should be validated."""
   # Find out which model is baseline.
@@ -45,11 +46,13 @@ def validate_metrics(
 
   sliced_key, metrics = sliced_metrics
   thresholds = metric_specs.metric_thresholds_from_metrics_specs(
-      eval_config.metrics_specs, eval_config=eval_config)
+      eval_config.metrics_specs, eval_config=eval_config
+  )
   is_cross_slice = slicer.is_cross_slice_key(sliced_key)
 
-  def _check_threshold(key: metric_types.MetricKey, threshold: _ThresholdType,
-                       metric: Any) -> bool:
+  def _check_threshold(
+      key: metric_types.MetricKey, threshold: _ThresholdType, metric: Any
+  ) -> bool:
     """Verify a metric given its metric key and metric value."""
     metric = float(metric)
     if isinstance(threshold, config_pb2.GenericValueThreshold):
@@ -135,13 +138,19 @@ def validate_metrics(
     existing_failures = set()
     for slice_spec, threshold in thresholds[metric_key]:
       if slice_spec is not None:
-        if (isinstance(slice_spec, config_pb2.SlicingSpec) and
-            (is_cross_slice or not slicer.SingleSliceSpec(
-                spec=slice_spec).is_slice_applicable(sliced_key))):
+        if isinstance(slice_spec, config_pb2.SlicingSpec) and (
+            is_cross_slice
+            or not slicer.SingleSliceSpec(spec=slice_spec).is_slice_applicable(
+                sliced_key
+            )
+        ):
           continue
-        if (isinstance(slice_spec, config_pb2.CrossSlicingSpec) and
-            (not is_cross_slice or not slicer.is_cross_slice_applicable(
-                cross_slice_key=sliced_key, cross_slicing_spec=slice_spec))):
+        if isinstance(slice_spec, config_pb2.CrossSlicingSpec) and (
+            not is_cross_slice
+            or not slicer.is_cross_slice_applicable(
+                cross_slice_key=sliced_key, cross_slicing_spec=slice_spec
+            )
+        ):
           continue
       elif is_cross_slice:
         continue
@@ -185,11 +194,13 @@ def validate_metrics(
     existing_failures = set()
     for slice_spec, threshold in thresholds:
       if slice_spec is not None:
-        if is_cross_slice != isinstance(slice_spec,
-                                        config_pb2.CrossSlicingSpec):
+        if is_cross_slice != isinstance(
+            slice_spec, config_pb2.CrossSlicingSpec
+        ):
           continue
-        if (is_cross_slice and not slicer.is_cross_slice_applicable(
-            cross_slice_key=sliced_key, cross_slicing_spec=slice_spec)):
+        if is_cross_slice and not slicer.is_cross_slice_applicable(
+            cross_slice_key=sliced_key, cross_slicing_spec=slice_spec
+        ):
           continue
       elif is_cross_slice:
         continue
@@ -208,19 +219,23 @@ def validate_metrics(
   if validation_for_slice.failures:
     if not is_cross_slice:
       validation_for_slice.slice_key.CopyFrom(
-          slicer.serialize_slice_key(sliced_key))
+          slicer.serialize_slice_key(sliced_key)
+      )
     else:
       validation_for_slice.cross_slice_key.CopyFrom(
-          slicer.serialize_cross_slice_key(sliced_key))
+          slicer.serialize_cross_slice_key(sliced_key)
+      )
     result.validation_ok = False
     result.metric_validations_per_slice.append(validation_for_slice)
   return result
 
 
 def _hashed_slicing_details(
-    slicing_details: Iterable[validation_result_pb2.SlicingDetails]
-) -> Dict[Union[slicer.SingleSliceSpec, slicer.CrossSliceSpec],
-          validation_result_pb2.SlicingDetails]:
+    slicing_details: Iterable[validation_result_pb2.SlicingDetails],
+) -> Dict[
+    Union[slicer.SingleSliceSpec, slicer.CrossSliceSpec],
+    validation_result_pb2.SlicingDetails,
+]:
   """Returns hash table of slicing details keyed by serialized slice spec."""
   hashed_details = {}
   for details in slicing_details:
@@ -230,8 +245,10 @@ def _hashed_slicing_details(
   return hashed_details
 
 
-def merge_details(a: validation_result_pb2.ValidationResult,
-                  b: validation_result_pb2.ValidationResult):
+def merge_details(
+    a: validation_result_pb2.ValidationResult,
+    b: validation_result_pb2.ValidationResult,
+):
   """Merges validation details in ValidationtResult b into ValidationResult a."""
   hashed_details = _hashed_slicing_details(b.validation_details.slicing_details)
   # Combine a with matching values from b
@@ -239,8 +256,9 @@ def merge_details(a: validation_result_pb2.ValidationResult,
     hashable_slice_spec = slicer.deserialize_slice_spec(details.slicing_spec)
     if hashable_slice_spec in hashed_details:
       details.num_matching_slices = (
-          details.num_matching_slices +
-          hashed_details[hashable_slice_spec].num_matching_slices)
+          details.num_matching_slices
+          + hashed_details[hashable_slice_spec].num_matching_slices
+      )
       del hashed_details[hashable_slice_spec]
   # Add any values from b not matched in a
   for details in hashed_details.values():
@@ -249,7 +267,7 @@ def merge_details(a: validation_result_pb2.ValidationResult,
 
 def get_missing_slices(
     slicing_details: Iterable[validation_result_pb2.SlicingDetails],
-    eval_config: config_pb2.EvalConfig
+    eval_config: config_pb2.EvalConfig,
 ) -> List[Union[config_pb2.SlicingSpec, config_pb2.CrossSlicingSpec]]:
   """Returns specs that are defined in the EvalConfig but not found in details.
 
@@ -262,7 +280,8 @@ def get_missing_slices(
   """
   hashed_details = _hashed_slicing_details(slicing_details)
   thresholds = metric_specs.metric_thresholds_from_metrics_specs(
-      eval_config.metrics_specs, eval_config=eval_config)
+      eval_config.metrics_specs, eval_config=eval_config
+  )
   baseline_spec = model_util.get_baseline_model_spec(eval_config)
   baseline_model_name = baseline_spec.name if baseline_spec else None
   missing_slices = []
@@ -277,6 +296,7 @@ def get_missing_slices(
       if hashable_slice_spec not in hashed_details:
         missing_slices.append(slice_spec)
         # Same slice may be used by other metrics/thresholds, only add once
-        hashed_details[
-            hashable_slice_spec] = validation_result_pb2.SlicingDetails()
+        hashed_details[hashable_slice_spec] = (
+            validation_result_pb2.SlicingDetails()
+        )
   return missing_slices

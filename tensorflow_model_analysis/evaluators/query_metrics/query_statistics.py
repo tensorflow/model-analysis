@@ -24,6 +24,7 @@ from tensorflow_model_analysis.post_export_metrics import metric_keys
 @dataclasses.dataclass
 class _State:
   """QueryStatisticsCombineFn accumulator type."""
+
   total_queries: int
   total_documents: int
   min_documents: int
@@ -52,10 +53,12 @@ class QueryStatisticsCombineFn(beam.CombineFn):
         total_queries=0,
         total_documents=0,
         min_documents=self.LARGE_INT,
-        max_documents=0)
+        max_documents=0,
+    )
 
-  def add_input(self, accumulator: _State,
-                query_fpl: query_types.QueryFPL) -> _State:
+  def add_input(
+      self, accumulator: _State, query_fpl: query_types.QueryFPL
+  ) -> _State:
     accumulator.add(query_fpl)
     return accumulator
 
@@ -71,5 +74,5 @@ class QueryStatisticsCombineFn(beam.CombineFn):
         metric_keys.base_key('total_queries'): accumulator.total_queries,
         metric_keys.base_key('total_documents'): accumulator.total_documents,
         metric_keys.base_key('min_documents'): accumulator.min_documents,
-        metric_keys.base_key('max_documents'): accumulator.max_documents
+        metric_keys.base_key('max_documents'): accumulator.max_documents,
     }

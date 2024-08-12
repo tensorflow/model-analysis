@@ -37,36 +37,44 @@ from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
-class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
-                                     parameterized.TestCase):
+class TfxBslPredictionsExtractorTest(
+    testutil.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
   def _getExportDir(self):
     return os.path.join(self._getTempDir(), 'export_dir')
 
-  def _create_tfxio_and_feature_extractor(self,
-                                          eval_config: config_pb2.EvalConfig,
-                                          schema: schema_pb2.Schema):
+  def _create_tfxio_and_feature_extractor(
+      self, eval_config: config_pb2.EvalConfig, schema: schema_pb2.Schema
+  ):
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN
+    )
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
+        tensor_representations=tfx_io.TensorRepresentations(),
+    )
     feature_extractor = features_extractor.FeaturesExtractor(
         eval_config=eval_config,
-        tensor_representations=tensor_adapter_config.tensor_representations)
+        tensor_representations=tensor_adapter_config.tensor_representations,
+    )
     return tfx_io, feature_extractor
 
-  @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
-                                  ('TFXBSLBulkInference', True))
+  @parameterized.named_parameters(
+      ('ModelSignaturesDoFnInference', False), ('TFXBSLBulkInference', True)
+  )
   def testRegressionModel(self, experimental_bulk_inference):
     temp_export_dir = self._getExportDir()
     export_dir, _ = (
-        fixed_prediction_estimator_extra_fields
-        .simple_fixed_prediction_estimator_extra_fields(temp_export_dir, None))
+        fixed_prediction_estimator_extra_fields.simple_fixed_prediction_estimator_extra_fields(
+            temp_export_dir, None
+        )
+    )
 
     eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING]
+    )
     tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
         eval_config,
         text_format.Parse(
@@ -91,7 +99,10 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "fixed_string"
           type: BYTES
         }
-        """, schema_pb2.Schema()))
+        """,
+            schema_pb2.Schema(),
+        ),
+    )
 
     examples = [
         self._makeExample(
@@ -99,41 +110,51 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
             label=1.0,
             fixed_int=1,
             fixed_float=1.0,
-            fixed_string='fixed_string1'),
+            fixed_string='fixed_string1',
+        ),
         self._makeExample(
             prediction=0.8,
             label=0.0,
             fixed_int=1,
             fixed_float=1.0,
-            fixed_string='fixed_string2'),
+            fixed_string='fixed_string2',
+        ),
         self._makeExample(
             prediction=0.5,
             label=0.0,
             fixed_int=2,
             fixed_float=1.0,
-            fixed_string='fixed_string3')
+            fixed_string='fixed_string3',
+        ),
     ]
     num_examples = len(examples)
 
     if experimental_bulk_inference:
-      prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
-          eval_config=eval_config,
-          eval_shared_model=eval_shared_model,
-          output_batch_size=num_examples)
+      prediction_extractor = (
+          tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
+              eval_config=eval_config,
+              eval_shared_model=eval_shared_model,
+              output_batch_size=num_examples,
+          )
+      )
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
-          eval_config=eval_config, eval_shared_model=eval_shared_model)
+          eval_config=eval_config, eval_shared_model=eval_shared_model
+      )
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
+          | 'Create'
+          >> beam.Create(
+              [e.SerializeToString() for e in examples], reshuffle=False
+          )
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
-          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform
+      )
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
@@ -141,8 +162,8 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           self.assertLen(got, 1)
           self.assertIn(constants.PREDICTIONS_KEY, got[0])
           self.assertAllClose(
-              np.array([[0.2], [0.8], [0.5]]),
-              got[0][constants.PREDICTIONS_KEY])
+              np.array([[0.2], [0.8], [0.5]]), got[0][constants.PREDICTIONS_KEY]
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -263,12 +284,15 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     """Simple test to cover batch_size=None code path."""
     temp_export_dir = self._getExportDir()
     export_dir, _ = (
-        fixed_prediction_estimator_extra_fields
-        .simple_fixed_prediction_estimator_extra_fields(temp_export_dir, None))
+        fixed_prediction_estimator_extra_fields.simple_fixed_prediction_estimator_extra_fields(
+            temp_export_dir, None
+        )
+    )
 
     eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING]
+    )
     tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
         eval_config,
         text_format.Parse(
@@ -293,7 +317,10 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "fixed_string"
           type: BYTES
         }
-        """, schema_pb2.Schema()))
+        """,
+            schema_pb2.Schema(),
+        ),
+    )
 
     examples = [
         self._makeExample(
@@ -301,66 +328,87 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
             label=1.0,
             fixed_int=1,
             fixed_float=1.0,
-            fixed_string='fixed_string1'),
+            fixed_string='fixed_string1',
+        ),
         self._makeExample(
             prediction=0.8,
             label=0.0,
             fixed_int=1,
             fixed_float=1.0,
-            fixed_string='fixed_string2'),
+            fixed_string='fixed_string2',
+        ),
         self._makeExample(
             prediction=0.5,
             label=0.0,
             fixed_int=2,
             fixed_float=1.0,
-            fixed_string='fixed_string3')
+            fixed_string='fixed_string3',
+        ),
     ]
 
-    prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
-        eval_config=eval_config,
-        eval_shared_model=eval_shared_model)
+    prediction_extractor = (
+        tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
+            eval_config=eval_config, eval_shared_model=eval_shared_model
+        )
+    )
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
+          | 'Create'
+          >> beam.Create(
+              [e.SerializeToString() for e in examples], reshuffle=False
+          )
           | 'BatchExamples' >> tfx_io.BeamSource()
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
           | prediction_extractor.stage_name >> prediction_extractor.ptransform
-          | beam.FlatMap(lambda extracts: extracts[constants.PREDICTIONS_KEY]))
+          | beam.FlatMap(lambda extracts: extracts[constants.PREDICTIONS_KEY])
+      )
       # pylint: enable=no-value-for-parameter
 
       util.assert_that(
           result,
           util.equal_to(
-              [np.array([.2]), np.array([.8]),
-               np.array([.5])],
-              equals_fn=np.isclose))
+              [np.array([0.2]), np.array([0.8]), np.array([0.5])],
+              equals_fn=np.isclose,
+          ),
+      )
 
   @parameterized.named_parameters(
       ('ModelSignaturesDoFnInferenceUnspecifiedSignature', False, ''),
       ('ModelSignaturesDoFnInferencePredictSignature', False, 'predict'),
-      ('ModelSignaturesDoFnInferenceServingDefaultSignature', False,
-       'serving_default'),
-      ('ModelSignaturesDoFnInferenceClassificationSignature', False,
-       'classification'), ('TFXBSLBulkInferenceUnspecifiedSignature', True, ''),
+      (
+          'ModelSignaturesDoFnInferenceServingDefaultSignature',
+          False,
+          'serving_default',
+      ),
+      (
+          'ModelSignaturesDoFnInferenceClassificationSignature',
+          False,
+          'classification',
+      ),
+      ('TFXBSLBulkInferenceUnspecifiedSignature', True, ''),
       ('TFXBSLBulkInferencePredictSignature', True, 'predict'),
       ('TFXBSLBulkInferenceServingDefaultSignature', True, 'serving_default'),
-      ('TFXBSLBulkInferenceClassificationSignature', True, 'classification'))
+      ('TFXBSLBulkInferenceClassificationSignature', True, 'classification'),
+  )
   def testBinaryClassificationModel(
-      self, experimental_bulk_inference, signature_name):
+      self, experimental_bulk_inference, signature_name
+  ):
     temp_export_dir = self._getExportDir()
     num_classes = 2
     export_dir, _ = dnn_classifier.simple_dnn_classifier(
-        temp_export_dir, None, n_classes=num_classes)
+        temp_export_dir, None, n_classes=num_classes
+    )
 
     eval_config = config_pb2.EvalConfig(
-        model_specs=[config_pb2.ModelSpec(signature_name=signature_name)])
+        model_specs=[config_pb2.ModelSpec(signature_name=signature_name)]
+    )
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING]
+    )
     tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
         eval_config,
         text_format.Parse(
@@ -377,7 +425,10 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "label"
           type: INT
         }
-        """, schema_pb2.Schema()))
+        """,
+            schema_pb2.Schema(),
+        ),
+    )
 
     examples = [
         self._makeExample(age=1.0, language='english', label=0),
@@ -387,24 +438,31 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     num_examples = len(examples)
 
     if experimental_bulk_inference:
-      prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
-          eval_config=eval_config,
-          eval_shared_model=eval_shared_model,
-          output_batch_size=num_examples)
+      prediction_extractor = (
+          tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
+              eval_config=eval_config,
+              eval_shared_model=eval_shared_model,
+              output_batch_size=num_examples,
+          )
+      )
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
-          eval_config=eval_config, eval_shared_model=eval_shared_model)
+          eval_config=eval_config, eval_shared_model=eval_shared_model
+      )
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
+          | 'Create'
+          >> beam.Create(
+              [e.SerializeToString() for e in examples], reshuffle=False
+          )
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
-          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform
+      )
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
@@ -418,16 +476,21 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
               self.assertIn(pred_key, got[0][constants.PREDICTIONS_KEY])
             self.assertEqual(
                 (num_examples, num_classes),
-                got[0][constants.PREDICTIONS_KEY]['probabilities'].shape)
+                got[0][constants.PREDICTIONS_KEY]['probabilities'].shape,
+            )
           # Classification API cases. The classification signature is also the
           # 'serving_default' signature for this model.
           if signature_name in ('serving_default', 'classification'):
             for pred_key in ('classes', 'scores'):
               self.assertIn(pred_key, got[0][constants.PREDICTIONS_KEY])
-            self.assertEqual((num_examples, num_classes),
-                             got[0][constants.PREDICTIONS_KEY]['classes'].shape)
-            self.assertEqual((num_examples, num_classes),
-                             got[0][constants.PREDICTIONS_KEY]['scores'].shape)
+            self.assertEqual(
+                (num_examples, num_classes),
+                got[0][constants.PREDICTIONS_KEY]['classes'].shape,
+            )
+            self.assertEqual(
+                (num_examples, num_classes),
+                got[0][constants.PREDICTIONS_KEY]['scores'].shape,
+            )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -437,23 +500,34 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
   @parameterized.named_parameters(
       ('ModelSignaturesDoFnInferenceUnspecifiedSignature', False, ''),
       ('ModelSignaturesDoFnInferencePredictSignature', False, 'predict'),
-      ('ModelSignaturesDoFnInferenceServingDefaultSignature', False,
-       'serving_default'),
-      ('ModelSignaturesDoFnInferenceClassificationSignature', False,
-       'classification'), ('TFXBSLBulkInferenceUnspecifiedSignature', True, ''),
+      (
+          'ModelSignaturesDoFnInferenceServingDefaultSignature',
+          False,
+          'serving_default',
+      ),
+      (
+          'ModelSignaturesDoFnInferenceClassificationSignature',
+          False,
+          'classification',
+      ),
+      ('TFXBSLBulkInferenceUnspecifiedSignature', True, ''),
       ('TFXBSLBulkInferencePredictSignature', True, 'predict'),
       ('TFXBSLBulkInferenceServingDefaultSignature', True, 'serving_default'),
-      ('TFXBSLBulkInferenceClassificationSignature', True, 'classification'))
+      ('TFXBSLBulkInferenceClassificationSignature', True, 'classification'),
+  )
   def testMultiClassModel(self, experimental_bulk_inference, signature_name):
     temp_export_dir = self._getExportDir()
     num_classes = 3
     export_dir, _ = dnn_classifier.simple_dnn_classifier(
-        temp_export_dir, None, n_classes=num_classes)
+        temp_export_dir, None, n_classes=num_classes
+    )
 
     eval_config = config_pb2.EvalConfig(
-        model_specs=[config_pb2.ModelSpec(signature_name=signature_name)])
+        model_specs=[config_pb2.ModelSpec(signature_name=signature_name)]
+    )
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING]
+    )
     tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
         eval_config,
         text_format.Parse(
@@ -470,7 +544,10 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "label"
           type: INT
         }
-        """, schema_pb2.Schema()))
+        """,
+            schema_pb2.Schema(),
+        ),
+    )
 
     examples = [
         self._makeExample(age=1.0, language='english', label=0),
@@ -481,24 +558,31 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
     num_examples = len(examples)
 
     if experimental_bulk_inference:
-      prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
-          eval_config=eval_config,
-          eval_shared_model=eval_shared_model,
-          output_batch_size=num_examples)
+      prediction_extractor = (
+          tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
+              eval_config=eval_config,
+              eval_shared_model=eval_shared_model,
+              output_batch_size=num_examples,
+          )
+      )
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
-          eval_config=eval_config, eval_shared_model=eval_shared_model)
+          eval_config=eval_config, eval_shared_model=eval_shared_model
+      )
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
+          | 'Create'
+          >> beam.Create(
+              [e.SerializeToString() for e in examples], reshuffle=False
+          )
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
-          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform
+      )
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
@@ -512,31 +596,38 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
               self.assertIn(pred_key, got[0][constants.PREDICTIONS_KEY])
             self.assertEqual(
                 (num_examples, num_classes),
-                got[0][constants.PREDICTIONS_KEY]['probabilities'].shape)
+                got[0][constants.PREDICTIONS_KEY]['probabilities'].shape,
+            )
           # Classification API cases. The classification signature is also the
           # 'serving_default' signature for this model.
           if signature_name in ('serving_default', 'classification'):
             for pred_key in ('classes', 'scores'):
               self.assertIn(pred_key, got[0][constants.PREDICTIONS_KEY])
-            self.assertEqual((num_examples, num_classes),
-                             got[0][constants.PREDICTIONS_KEY]['classes'].shape)
-            self.assertEqual((num_examples, num_classes),
-                             got[0][constants.PREDICTIONS_KEY]['scores'].shape)
+            self.assertEqual(
+                (num_examples, num_classes),
+                got[0][constants.PREDICTIONS_KEY]['classes'].shape,
+            )
+            self.assertEqual(
+                (num_examples, num_classes),
+                got[0][constants.PREDICTIONS_KEY]['scores'].shape,
+            )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result)
 
-  @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
-                                  ('TFXBSLBulkInference', True))
+  @parameterized.named_parameters(
+      ('ModelSignaturesDoFnInference', False), ('TFXBSLBulkInference', True)
+  )
   def testMultiOutputModel(self, experimental_bulk_inference):
     temp_export_dir = self._getExportDir()
     export_dir, _ = multi_head.simple_multi_head(temp_export_dir, None)
 
     eval_config = config_pb2.EvalConfig(model_specs=[config_pb2.ModelSpec()])
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING])
+        eval_saved_model_path=export_dir, tags=[tf.saved_model.SERVING]
+    )
     tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
         eval_config,
         text_format.Parse(
@@ -561,7 +652,10 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "other_label"
           type: FLOAT
         }
-        """, schema_pb2.Schema()))
+        """,
+            schema_pb2.Schema(),
+        ),
+    )
 
     examples = [
         self._makeExample(
@@ -569,47 +663,58 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
             language='english',
             english_label=1.0,
             chinese_label=0.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=1.0,
             language='chinese',
             english_label=0.0,
             chinese_label=1.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=2.0,
             language='english',
             english_label=1.0,
             chinese_label=0.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=2.0,
             language='other',
             english_label=0.0,
             chinese_label=1.0,
-            other_label=1.0)
+            other_label=1.0,
+        ),
     ]
     num_examples = len(examples)
 
     if experimental_bulk_inference:
-      prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
-          eval_config=eval_config,
-          eval_shared_model=eval_shared_model,
-          output_batch_size=num_examples)
+      prediction_extractor = (
+          tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
+              eval_config=eval_config,
+              eval_shared_model=eval_shared_model,
+              output_batch_size=num_examples,
+          )
+      )
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
-          eval_config=eval_config, eval_shared_model=eval_shared_model)
+          eval_config=eval_config, eval_shared_model=eval_shared_model
+      )
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
+          | 'Create'
+          >> beam.Create(
+              [e.SerializeToString() for e in examples], reshuffle=False
+          )
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
-          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform
+      )
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
@@ -619,29 +724,36 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           self.assertIn(constants.PREDICTIONS_KEY, got[0])
           for output_name in ('chinese_head', 'english_head', 'other_head'):
             for pred_key in ('logistic', 'probabilities', 'all_classes'):
-              self.assertIn(output_name + '/' + pred_key,
-                            got[0][constants.PREDICTIONS_KEY])
+              self.assertIn(
+                  output_name + '/' + pred_key,
+                  got[0][constants.PREDICTIONS_KEY],
+              )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result)
 
-  @parameterized.named_parameters(('ModelSignaturesDoFnInference', False),
-                                  ('TFXBSLBulkInference', True))
+  @parameterized.named_parameters(
+      ('ModelSignaturesDoFnInference', False), ('TFXBSLBulkInference', True)
+  )
   def testMultiModels(self, experimental_bulk_inference):
     temp_export_dir = self._getExportDir()
     export_dir1, _ = multi_head.simple_multi_head(temp_export_dir, None)
     export_dir2, _ = multi_head.simple_multi_head(temp_export_dir, None)
 
-    eval_config = config_pb2.EvalConfig(model_specs=[
-        config_pb2.ModelSpec(name='model1'),
-        config_pb2.ModelSpec(name='model2')
-    ])
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(name='model1'),
+            config_pb2.ModelSpec(name='model2'),
+        ]
+    )
     eval_shared_model1 = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir1, tags=[tf.saved_model.SERVING])
+        eval_saved_model_path=export_dir1, tags=[tf.saved_model.SERVING]
+    )
     eval_shared_model2 = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir2, tags=[tf.saved_model.SERVING])
+        eval_saved_model_path=export_dir2, tags=[tf.saved_model.SERVING]
+    )
     tfx_io, feature_extractor = self._create_tfxio_and_feature_extractor(
         eval_config,
         text_format.Parse(
@@ -666,7 +778,10 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "other_label"
           type: FLOAT
         }
-        """, schema_pb2.Schema()))
+        """,
+            schema_pb2.Schema(),
+        ),
+    )
 
     examples = [
         self._makeExample(
@@ -674,54 +789,65 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
             language='english',
             english_label=1.0,
             chinese_label=0.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=1.0,
             language='chinese',
             english_label=0.0,
             chinese_label=1.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=2.0,
             language='english',
             english_label=1.0,
             chinese_label=0.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=2.0,
             language='other',
             english_label=0.0,
             chinese_label=1.0,
-            other_label=1.0)
+            other_label=1.0,
+        ),
     ]
     num_examples = len(examples)
 
     if experimental_bulk_inference:
-      prediction_extractor = tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
-          eval_config=eval_config,
-          eval_shared_model={
-              'model1': eval_shared_model1,
-              'model2': eval_shared_model2
-          },
-          output_batch_size=num_examples)
+      prediction_extractor = (
+          tfx_bsl_predictions_extractor.TfxBslPredictionsExtractor(
+              eval_config=eval_config,
+              eval_shared_model={
+                  'model1': eval_shared_model1,
+                  'model2': eval_shared_model2,
+              },
+              output_batch_size=num_examples,
+          )
+      )
     else:
       prediction_extractor = predictions_extractor.PredictionsExtractor(
           eval_config=eval_config,
           eval_shared_model={
               'model1': eval_shared_model1,
-              'model2': eval_shared_model2
-          })
+              'model2': eval_shared_model2,
+          },
+      )
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
+          | 'Create'
+          >> beam.Create(
+              [e.SerializeToString() for e in examples], reshuffle=False
+          )
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=num_examples)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
-          | prediction_extractor.stage_name >> prediction_extractor.ptransform)
+          | prediction_extractor.stage_name >> prediction_extractor.ptransform
+      )
       # pylint: enable=no-value-for-parameter
 
       def check_result(got):
@@ -733,8 +859,10 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest,
             self.assertIn(model_name, got[0][constants.PREDICTIONS_KEY])
             for output_name in ('chinese_head', 'english_head', 'other_head'):
               for pred_key in ('logistic', 'probabilities', 'all_classes'):
-                self.assertIn(output_name + '/' + pred_key,
-                              got[0][constants.PREDICTIONS_KEY][model_name])
+                self.assertIn(
+                    output_name + '/' + pred_key,
+                    got[0][constants.PREDICTIONS_KEY][model_name],
+                )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

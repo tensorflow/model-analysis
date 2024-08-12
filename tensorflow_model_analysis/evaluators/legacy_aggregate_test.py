@@ -42,10 +42,12 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
 
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = linear_classifier.simple_linear_classifier(
-        None, temp_eval_export_dir)
+        None, temp_eval_export_dir
+    )
 
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=eval_export_dir)
+        eval_saved_model_path=eval_export_dir
+    )
 
     with beam.Pipeline() as pipeline:
       example1 = self._makeExample(age=3.0, language='english', label=1.0)
@@ -53,41 +55,48 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
       example3 = self._makeExample(age=4.0, language='english', label=1.0)
       example4 = self._makeExample(age=5.0, language='chinese', label=0.0)
 
-      predict_result = ([
+      predict_result = [
           example1.SerializeToString(),
           example2.SerializeToString(),
           example3.SerializeToString(),
-          example4.SerializeToString()
-      ])
+          example4.SerializeToString(),
+      ]
 
       metrics = (
           pipeline
-          | 'CreateTestInput' >> beam.Create(
-              create_test_input(predict_result, [()]))
-          | 'ComputePerSliceMetrics' >> aggregate.ComputePerSliceMetrics(
-              eval_shared_model=eval_shared_model, desired_batch_size=3))
+          | 'CreateTestInput'
+          >> beam.Create(create_test_input(predict_result, [()]))
+          | 'ComputePerSliceMetrics'
+          >> aggregate.ComputePerSliceMetrics(
+              eval_shared_model=eval_shared_model, desired_batch_size=3
+          )
+      )
 
       def check_result(got):
         self.assertEqual(1, len(got), 'got: %s' % got)
         slice_key, metrics = got[0]
         self.assertEqual(slice_key, ())
         self.assertDictElementsAlmostEqual(
-            metrics, {
+            metrics,
+            {
                 'accuracy': 1.0,
                 'label/mean': 0.5,
                 'my_mean_age': 3.75,
                 'my_mean_age_times_label': 1.75,
-            })
+            },
+        )
 
       util.assert_that(metrics, check_result)
 
   def testAggregateMultipleSlices(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = linear_classifier.simple_linear_classifier(
-        None, temp_eval_export_dir)
+        None, temp_eval_export_dir
+    )
 
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=eval_export_dir)
+        eval_saved_model_path=eval_export_dir
+    )
 
     with beam.Pipeline() as pipeline:
       example1 = self._makeExample(age=3.0, language='english', label=1.0)
@@ -95,31 +104,38 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
       example3 = self._makeExample(age=4.0, language='english', label=1.0)
       example4 = self._makeExample(age=5.0, language='chinese', label=0.0)
 
-      predict_result_english_slice = ([
+      predict_result_english_slice = [
           example1.SerializeToString(),
-          example3.SerializeToString()
-      ])
+          example3.SerializeToString(),
+      ]
 
-      predict_result_chinese_slice = ([
+      predict_result_chinese_slice = [
           example2.SerializeToString(),
-          example4.SerializeToString()
-      ])
+          example4.SerializeToString(),
+      ]
 
       test_input = (
-          create_test_input(predict_result_english_slice, [(
-              ('language', 'english'))]) +
-          create_test_input(predict_result_chinese_slice, [(
-              ('language', 'chinese'))]) +
+          create_test_input(
+              predict_result_english_slice, [(('language', 'english'))]
+          )
+          + create_test_input(
+              predict_result_chinese_slice, [(('language', 'chinese'))]
+          )
+          +
           # Overall slice
           create_test_input(
-              predict_result_english_slice + predict_result_chinese_slice,
-              [()]))
+              predict_result_english_slice + predict_result_chinese_slice, [()]
+          )
+      )
 
       metrics = (
           pipeline
           | 'CreateTestInput' >> beam.Create(test_input)
-          | 'ComputePerSliceMetrics' >> aggregate.ComputePerSliceMetrics(
-              eval_shared_model=eval_shared_model, desired_batch_size=3))
+          | 'ComputePerSliceMetrics'
+          >> aggregate.ComputePerSliceMetrics(
+              eval_shared_model=eval_shared_model, desired_batch_size=3
+          )
+      )
 
       def check_result(got):
         self.assertEqual(3, len(got), 'got: %s' % got)
@@ -127,42 +143,50 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
         for slice_key, metrics in got:
           slices[slice_key] = metrics
         overall_slice = ()
-        english_slice = (('language', 'english'))
-        chinese_slice = (('language', 'chinese'))
+        english_slice = ('language', 'english')
+        chinese_slice = ('language', 'chinese')
         self.assertCountEqual(
             list(slices), [overall_slice, english_slice, chinese_slice]
         )
         self.assertDictElementsAlmostEqual(
-            slices[overall_slice], {
+            slices[overall_slice],
+            {
                 'accuracy': 1.0,
                 'label/mean': 0.5,
                 'my_mean_age': 3.75,
                 'my_mean_age_times_label': 1.75,
-            })
+            },
+        )
         self.assertDictElementsAlmostEqual(
-            slices[english_slice], {
+            slices[english_slice],
+            {
                 'accuracy': 1.0,
                 'label/mean': 1.0,
                 'my_mean_age': 3.5,
                 'my_mean_age_times_label': 3.5,
-            })
+            },
+        )
         self.assertDictElementsAlmostEqual(
-            slices[chinese_slice], {
+            slices[chinese_slice],
+            {
                 'accuracy': 1.0,
                 'label/mean': 0.0,
                 'my_mean_age': 4.0,
                 'my_mean_age_times_label': 0.0,
-            })
+            },
+        )
 
       util.assert_that(metrics, check_result)
 
   def testAggregateMultipleSlicesWithSampling(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = linear_classifier.simple_linear_classifier(
-        None, temp_eval_export_dir)
+        None, temp_eval_export_dir
+    )
 
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=eval_export_dir)
+        eval_saved_model_path=eval_export_dir
+    )
 
     with beam.Pipeline() as pipeline:
       example1 = self._makeExample(age=3.0, language='english', label=1.0)
@@ -170,34 +194,40 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
       example3 = self._makeExample(age=4.0, language='english', label=1.0)
       example4 = self._makeExample(age=5.0, language='chinese', label=0.0)
 
-      predict_result_english_slice = ([
+      predict_result_english_slice = [
           example1.SerializeToString(),
-          example3.SerializeToString()
-      ])
+          example3.SerializeToString(),
+      ]
 
-      predict_result_chinese_slice = ([
+      predict_result_chinese_slice = [
           example2.SerializeToString(),
-          example4.SerializeToString()
-      ])
+          example4.SerializeToString(),
+      ]
 
       test_input = (
-          create_test_input(predict_result_english_slice, [(
-              ('language', 'english'))]) +
-          create_test_input(predict_result_chinese_slice, [(
-              ('language', 'chinese'))]) +
+          create_test_input(
+              predict_result_english_slice, [(('language', 'english'))]
+          )
+          + create_test_input(
+              predict_result_chinese_slice, [(('language', 'chinese'))]
+          )
+          +
           # Overall slice
           create_test_input(
-              predict_result_english_slice + predict_result_chinese_slice,
-              [()]))
+              predict_result_english_slice + predict_result_chinese_slice, [()]
+          )
+      )
       metrics = (
           pipeline
           | 'CreateTestInput' >> beam.Create(test_input)
-          | 'ComputePerSliceMetrics' >>
-          poisson_bootstrap.ComputeWithConfidenceIntervals(
+          | 'ComputePerSliceMetrics'
+          >> poisson_bootstrap.ComputeWithConfidenceIntervals(
               aggregate.ComputePerSliceMetrics,
               num_bootstrap_samples=10,
               eval_shared_model=eval_shared_model,
-              desired_batch_size=3))
+              desired_batch_size=3,
+          )
+      )
 
       def assert_almost_equal_to_value_with_t_distribution(
           target,
@@ -205,50 +235,65 @@ class AggregateTest(testutil.TensorflowModelAnalysisTest):
           sample_mean,
           sample_standard_deviation,
           sample_degrees_of_freedom,
-          delta=2):
+          delta=2,
+      ):
         self.assertEqual(target.unsampled_value, unsampled_value)
         self.assertAlmostEqual(target.sample_mean, sample_mean, delta=delta)
         self.assertAlmostEqual(
             target.sample_standard_deviation,
             sample_standard_deviation,
-            delta=delta)
+            delta=delta,
+        )
         # The possion resampling could return [0, 0, ... ], which will reduce
         # the number of samples.
-        self.assertLessEqual(target.sample_degrees_of_freedom,
-                             sample_degrees_of_freedom)
+        self.assertLessEqual(
+            target.sample_degrees_of_freedom, sample_degrees_of_freedom
+        )
 
       def check_overall_slice(slices):
         my_dict = slices[()]
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['my_mean_age'], 3.75, 3.64, 0.34, 19)
+            my_dict['my_mean_age'], 3.75, 3.64, 0.34, 19
+        )
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['accuracy'], 1.0, 1.0, 0, 19)
+            my_dict['accuracy'], 1.0, 1.0, 0, 19
+        )
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['label/mean'], 0.5, 0.59, 0.29, 19)
+            my_dict['label/mean'], 0.5, 0.59, 0.29, 19
+        )
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['my_mean_age_times_label'], 1.75, 2.15, 1.06, 19)
+            my_dict['my_mean_age_times_label'], 1.75, 2.15, 1.06, 19
+        )
 
       def check_english_slice(slices):
         my_dict = slices[(('language', 'english'))]
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['my_mean_age'], 3.5, 3.18, 0.28, 19)
+            my_dict['my_mean_age'], 3.5, 3.18, 0.28, 19
+        )
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['accuracy'], 1.0, 1.0, 0, 19)
+            my_dict['accuracy'], 1.0, 1.0, 0, 19
+        )
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['label/mean'], 1.0, 1.0, 0, 19)
+            my_dict['label/mean'], 1.0, 1.0, 0, 19
+        )
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['my_mean_age_times_label'], 3.5, 3.18, 0.28, 19)
+            my_dict['my_mean_age_times_label'], 3.5, 3.18, 0.28, 19
+        )
 
       def check_chinese_slice(slices):
         my_dict = slices[(('language', 'chinese'))]
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['my_mean_age'], 4.0, 4.12, 0.83, 19)
+            my_dict['my_mean_age'], 4.0, 4.12, 0.83, 19
+        )
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['accuracy'], 1.0, 1.0, 0, 19)
+            my_dict['accuracy'], 1.0, 1.0, 0, 19
+        )
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['label/mean'], 0, 0, 0, 19)
+            my_dict['label/mean'], 0, 0, 0, 19
+        )
         assert_almost_equal_to_value_with_t_distribution(
-            my_dict['my_mean_age_times_label'], 0, 0, 0, 19)
+            my_dict['my_mean_age_times_label'], 0, 0, 0, 19
+        )
 
       def check_result(got):
         self.assertEqual(3, len(got), 'got: %s' % got)

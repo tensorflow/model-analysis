@@ -34,8 +34,9 @@ def QueryBasedMetricsEvaluator(  # pylint: disable=invalid-name
     prediction_key: str,
     combine_fns: List[beam.CombineFn],
     metrics_key: str = constants.METRICS_KEY,
-    run_after: Optional[str] = slice_key_extractor
-    .SLICE_KEY_EXTRACTOR_STAGE_NAME,
+    run_after: Optional[
+        str
+    ] = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
 ) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
 
@@ -60,7 +61,9 @@ def QueryBasedMetricsEvaluator(  # pylint: disable=invalid-name
           query_id=query_id,
           prediction_key=prediction_key,
           combine_fns=combine_fns,
-          metrics_key=metrics_key))
+          metrics_key=metrics_key,
+      ),
+  )
   # pylint: enable=no-value-for-parameter
 
 
@@ -77,29 +80,32 @@ class CreateQueryExamples(beam.CombineFn):
       # that their Estimator returns a predictions Tensor rather than a
       # dictionary. Set the key to the magic key we use in that case.
       self._prediction_key = eval_saved_model_util.default_dict_key(
-          eval_saved_model_constants.PREDICTIONS_NAME)
+          eval_saved_model_constants.PREDICTIONS_NAME
+      )
     else:
       self._prediction_key = prediction_key
 
   def create_accumulator(self):
     return []
 
-  def add_input(self, accumulator: List[types.Extracts],
-                extract: types.Extracts) -> List[types.Extracts]:
+  def add_input(
+      self, accumulator: List[types.Extracts], extract: types.Extracts
+  ) -> List[types.Extracts]:
     accumulator.append(extract)
     return accumulator
 
   def merge_accumulators(
-      self,
-      accumulators: Iterable[List[types.Extracts]]) -> List[types.Extracts]:
+      self, accumulators: Iterable[List[types.Extracts]]
+  ) -> List[types.Extracts]:
     accumulators = iter(accumulators)
     result = next(accumulators)
     for acc in accumulators:
       result.extend(acc)
     return result
 
-  def extract_output(self,
-                     accumulator: List[types.Extracts]) -> query_types.QueryFPL:
+  def extract_output(
+      self, accumulator: List[types.Extracts]
+  ) -> query_types.QueryFPL:
 
     def fpl_from_extracts(extract: types.Extracts) -> query_types.FPL:  # pylint: disable=invalid-name
       """Make an FPL from an extract."""
@@ -124,7 +130,8 @@ class CreateQueryExamples(beam.CombineFn):
 
     # Sort result in descending order of prediction
     sort_keys = np.array(
-        [x['predictions'][self._prediction_key][0][0] for x in unsorted_fpls])
+        [x['predictions'][self._prediction_key][0][0] for x in unsorted_fpls]
+    )
     sort_indices = np.argsort(sort_keys)[::-1]
 
     sorted_fpls = []
@@ -162,10 +169,12 @@ def ComputeQueryBasedMetrics(  # pylint: disable=invalid-name
   """
 
   missing_query_id_counter = beam.metrics.Metrics.counter(
-      constants.METRICS_NAMESPACE, 'missing_query_id')
+      constants.METRICS_NAMESPACE, 'missing_query_id'
+  )
 
-  def key_by_query_id(extract: types.Extracts,
-                      query_id: str) -> Iterator[Tuple[str, types.Extracts]]:
+  def key_by_query_id(
+      extract: types.Extracts, query_id: str
+  ) -> Iterator[Tuple[str, types.Extracts]]:
     """Extract the query ID from the extract and key by that."""
     features = extract[constants.FEATURES_PREDICTIONS_LABELS_KEY].features
     if query_id not in features:
@@ -175,35 +184,44 @@ def ComputeQueryBasedMetrics(  # pylint: disable=invalid-name
     if isinstance(feature_value, tf.compat.v1.SparseTensorValue):
       feature_value = feature_value.values
     if feature_value.size != 1:
-      raise ValueError('Query ID feature "%s" should have exactly 1 value, but '
-                       'found %d instead. Values were: %s' %
-                       (query_id, feature_value.size(), feature_value))
+      raise ValueError(
+          'Query ID feature "%s" should have exactly 1 value, but '
+          'found %d instead. Values were: %s'
+          % (query_id, feature_value.size(), feature_value)
+      )
     yield ('{}'.format(feature_value.item()), extract)
 
   def merge_dictionaries(
-      dictionaries: Tuple[Dict[str, Any], ...]) -> Dict[str, Any]:
+      dictionaries: Tuple[Dict[str, Any], ...],
+  ) -> Dict[str, Any]:
     """Merge dictionaries in a tuple into a single dictionary."""
     result = dict()
     for d in dictionaries:
       intersection = set(d) & set(result)
       if intersection:
-        raise ValueError('Overlapping keys found when merging dictionaries. '
-                         'Intersection was: %s. Keys up to this point: %s '
-                         'keys from next dictionary: %s' %
-                         (intersection, result.keys(), d.keys()))
+        raise ValueError(
+            'Overlapping keys found when merging dictionaries. '
+            'Intersection was: %s. Keys up to this point: %s '
+            'keys from next dictionary: %s'
+            % (intersection, result.keys(), d.keys())
+        )
       result.update(d)
     return result
 
   # pylint: disable=no-value-for-parameter
-  return (extracts
-          | 'KeyByQueryId' >> beam.FlatMap(key_by_query_id, query_id)
-          | 'CreateQueryExamples' >> beam.CombinePerKey(
-              CreateQueryExamples(prediction_key=prediction_key))
-          | 'DropQueryId' >> beam.Map(lambda kv: kv[1]._replace(query_id=kv[0]))
-          | 'CombineGlobally' >> beam.CombineGlobally(
-              beam.combiners.SingleInputTupleCombineFn(*combine_fns))
-          | 'MergeDictionaries' >> beam.Map(merge_dictionaries)
-          | 'AddOverallSliceKey' >> beam.Map(lambda v: ((), v)))
+  return (
+      extracts
+      | 'KeyByQueryId' >> beam.FlatMap(key_by_query_id, query_id)
+      | 'CreateQueryExamples'
+      >> beam.CombinePerKey(CreateQueryExamples(prediction_key=prediction_key))
+      | 'DropQueryId' >> beam.Map(lambda kv: kv[1]._replace(query_id=kv[0]))
+      | 'CombineGlobally'
+      >> beam.CombineGlobally(
+          beam.combiners.SingleInputTupleCombineFn(*combine_fns)
+      )
+      | 'MergeDictionaries' >> beam.Map(merge_dictionaries)
+      | 'AddOverallSliceKey' >> beam.Map(lambda v: ((), v))
+  )
   # pylint: enable=no-value-for-parameter
 
 
@@ -239,14 +257,20 @@ def EvaluateQueryBasedMetrics(  # pylint: disable=invalid-name
   # pylint: disable=no-value-for-parameter
   metrics = (
       extracts
-      | 'Filter' >> extractor.Filter(include=[
-          constants.FEATURES_PREDICTIONS_LABELS_KEY,
-          constants.SLICE_KEY_TYPES_KEY
-      ])
-      | 'ComputeQueryBasedMetrics' >> ComputeQueryBasedMetrics(
+      | 'Filter'
+      >> extractor.Filter(
+          include=[
+              constants.FEATURES_PREDICTIONS_LABELS_KEY,
+              constants.SLICE_KEY_TYPES_KEY,
+          ]
+      )
+      | 'ComputeQueryBasedMetrics'
+      >> ComputeQueryBasedMetrics(
           query_id=query_id,
           combine_fns=combine_fns,
-          prediction_key=prediction_key))
+          prediction_key=prediction_key,
+      )
+  )
   # pylint: enable=no-value-for-parameter
 
   return {metrics_key: metrics}

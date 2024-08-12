@@ -18,4 +18,5 @@
 # pytype in tensorflow_model_analysis/addons/fairness/view/widget_view.py.
 class FairnessIndicatorViewer:
   """Empty viewer class for fairness indicator."""
+
   pass

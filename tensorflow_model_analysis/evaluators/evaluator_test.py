@@ -29,14 +29,20 @@ class EvaluatorTest(test_util.TensorflowModelAnalysisTest):
         evaluator.Evaluator(
             stage_name='EvaluatorWithoutError',
             run_after='ExtractorThatExists',
-            ptransform=None), extractors)
+            ptransform=None,
+        ),
+        extractors,
+    )
 
     with self.assertRaises(ValueError):
       evaluator.verify_evaluator(
           evaluator.Evaluator(
               stage_name='EvaluatorWithError',
               run_after='ExtractorThatDoesNotExist',
-              ptransform=None), extractors)
+              ptransform=None,
+          ),
+          extractors,
+      )
 
 
 if __name__ == '__main__':

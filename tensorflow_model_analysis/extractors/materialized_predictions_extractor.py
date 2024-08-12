@@ -23,7 +23,9 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
 from tensorflow_model_analysis.utils import util
 
-_MATERIALIZED_PREDICTIONS_EXTRACTOR_STAGE_NAME = 'ExtractMaterializedPredictions'
+_MATERIALIZED_PREDICTIONS_EXTRACTOR_STAGE_NAME = (
+    'ExtractMaterializedPredictions'
+)
 
 
 def MaterializedPredictionsExtractor(
@@ -77,7 +79,8 @@ def _ExtractMaterializedPredictions(  # pylint: disable=invalid-name
   """
 
   def rekey_predictions(  # pylint: disable=invalid-name
-      batched_extracts: types.Extracts) -> types.Extracts:
+      batched_extracts: types.Extracts,
+  ) -> types.Extracts:
     """Extract predictions from extracts containing features."""
     predictions = model_util.get_feature_values_for_model_spec_field(
         list(eval_config.model_specs),

@@ -40,14 +40,17 @@ class FeaturesExtractorTest(
     tfx_io = tf_example_record.TFExampleBeamRecord(
         raw_record_column_name=constants.ARROW_INPUT_COLUMN,
         physical_format='inmem',
-        telemetry_descriptors=['testing'])
+        telemetry_descriptors=['testing'],
+    )
 
     with beam.Pipeline() as pipeline:
       result = (
-          pipeline | 'Create' >> beam.Create([b''] * 3)
+          pipeline
+          | 'Create' >> beam.Create([b''] * 3)
           | 'DecodeToRecordBatch' >> tfx_io.BeamSource(batch_size=3)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | feature_extractor.stage_name >> feature_extractor.ptransform)
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+      )
 
       def check_result(got):
         self.assertLen(got, 1)
@@ -81,43 +84,38 @@ class FeaturesExtractorTest(
           name: "fixed_string"
           type: BYTES
         }
-        """, schema_pb2.Schema())
+        """,
+        schema_pb2.Schema(),
+    )
     tfx_io = tf_example_record.TFExampleBeamRecord(
         schema=schema,
         raw_record_column_name=constants.ARROW_INPUT_COLUMN,
         physical_format='inmem',
-        telemetry_descriptors=['testing'])
+        telemetry_descriptors=['testing'],
+    )
 
     example_kwargs = [
-        {
-            'fixed_int': 1,
-            'fixed_float': 1.0,
-            'fixed_string': 'fixed_string1'
-        },
-        {
-            'fixed_int': 1,
-            'fixed_float': 1.0,
-            'fixed_string': 'fixed_string2'
-        },
-        {
-            'fixed_int': 2,
-            'fixed_float': 0.0,
-            'fixed_string': 'fixed_string3'
-        },
+        {'fixed_int': 1, 'fixed_float': 1.0, 'fixed_string': 'fixed_string1'},
+        {'fixed_int': 1, 'fixed_float': 1.0, 'fixed_string': 'fixed_string2'},
+        {'fixed_int': 2, 'fixed_float': 0.0, 'fixed_string': 'fixed_string3'},
     ]
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([
-              self._makeExample(**kwargs).SerializeToString()
-              for kwargs in example_kwargs
-          ],
-                                    reshuffle=False)
+          | 'Create'
+          >> beam.Create(
+              [
+                  self._makeExample(**kwargs).SerializeToString()
+                  for kwargs in example_kwargs
+              ],
+              reshuffle=False,
+          )
           | 'DecodeToRecordBatch' >> tfx_io.BeamSource(batch_size=3)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | feature_extractor.stage_name >> feature_extractor.ptransform)
+          | feature_extractor.stage_name >> feature_extractor.ptransform
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -130,18 +128,24 @@ class FeaturesExtractorTest(
           # Arrays of type np.object won't compare with assertAllClose
           self.assertEqual(
               got[0][constants.FEATURES_KEY]['example_weight'].tolist(),
-              [None, None, None])
+              [None, None, None],
+          )
           self.assertIn('fixed_int', got[0][constants.FEATURES_KEY])
-          self.assertAllClose(got[0][constants.FEATURES_KEY]['fixed_int'],
-                              np.array([[1], [1], [2]]))
+          self.assertAllClose(
+              got[0][constants.FEATURES_KEY]['fixed_int'],
+              np.array([[1], [1], [2]]),
+          )
           self.assertIn('fixed_float', got[0][constants.FEATURES_KEY])
-          self.assertAllClose(got[0][constants.FEATURES_KEY]['fixed_float'],
-                              np.array([[1.0], [1.0], [0.0]]))
+          self.assertAllClose(
+              got[0][constants.FEATURES_KEY]['fixed_float'],
+              np.array([[1.0], [1.0], [0.0]]),
+          )
           self.assertIn('fixed_string', got[0][constants.FEATURES_KEY])
           # Arrays of type np.object won't compare with assertAllClose
           self.assertEqual(
               got[0][constants.FEATURES_KEY]['fixed_string'].tolist(),
-              [[b'fixed_string1'], [b'fixed_string2'], [b'fixed_string3']])
+              [[b'fixed_string1'], [b'fixed_string2'], [b'fixed_string3']],
+          )
           self.assertIn(constants.INPUT_KEY, got[0])
           self.assertLen(got[0][constants.INPUT_KEY], 3)  # 3 examples
 

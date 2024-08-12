@@ -14,7 +14,6 @@
 """Input extractor for extracting features, labels, weights."""
 
 import copy
-
 from typing import Any, Dict, List, Optional, Tuple, Union
 
 import apache_beam as beam
@@ -61,14 +60,15 @@ def InputExtractor(eval_config: config_pb2.EvalConfig) -> extractor.Extractor:
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=_INPUT_EXTRACTOR_STAGE_NAME,
-      ptransform=_ExtractInputs(eval_config=eval_config))
+      ptransform=_ExtractInputs(eval_config=eval_config),
+  )
 
 
 def _keys_and_values(  # pylint: disable=invalid-name
-    key_maybe_dict: Union[str, Dict[str, str]],
-    features: Dict[str,
-                   np.ndarray]) -> Tuple[Optional[List[str]], Optional[Union[
-                       np.ndarray, Dict[str, np.ndarray]]]]:
+    key_maybe_dict: Union[str, Dict[str, str]], features: Dict[str, np.ndarray]
+) -> Tuple[
+    Optional[List[str]], Optional[Union[np.ndarray, Dict[str, np.ndarray]]]
+]:
   """Returns keys and values in dict given key (or dict of keys)."""
   if isinstance(key_maybe_dict, dict):
     values = {}
@@ -101,7 +101,8 @@ def _ParseExample(extracts: types.Extracts, eval_config: config_pb2.EvalConfig):
   extracts = copy.copy(extracts)
 
   def add_to_extracts(  # pylint: disable=invalid-name
-      key: str, model_name: str, feature_values: Any):
+      key: str, model_name: str, feature_values: Any
+  ):
     """Adds features_values to extracts and feature_keys to keys_to_pop."""
     # Only key by model name if multiple models.
     if len(eval_config.model_specs) > 1:
@@ -114,15 +115,18 @@ def _ParseExample(extracts: types.Extracts, eval_config: config_pb2.EvalConfig):
   for spec in eval_config.model_specs:
     if spec.label_key or spec.label_keys:
       _, values = _keys_and_values(
-          spec.label_key or dict(spec.label_keys), features)
+          spec.label_key or dict(spec.label_keys), features
+      )
       add_to_extracts(constants.LABELS_KEY, spec.name, values)
     if spec.example_weight_key or spec.example_weight_keys:
       _, values = _keys_and_values(
-          spec.example_weight_key or dict(spec.example_weight_keys), features)
+          spec.example_weight_key or dict(spec.example_weight_keys), features
+      )
       add_to_extracts(constants.EXAMPLE_WEIGHTS_KEY, spec.name, values)
     if spec.prediction_key or spec.prediction_keys:
       _, values = _keys_and_values(
-          spec.prediction_key or dict(spec.prediction_keys), features)
+          spec.prediction_key or dict(spec.prediction_keys), features
+      )
       add_to_extracts(constants.PREDICTIONS_KEY, spec.name, values)
   extracts[constants.FEATURES_KEY] = features
   return extracts
@@ -132,8 +136,8 @@ def _ParseExample(extracts: types.Extracts, eval_config: config_pb2.EvalConfig):
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractInputs(
-    extracts: beam.pvalue.PCollection,
-    eval_config: config_pb2.EvalConfig) -> beam.pvalue.PCollection:
+    extracts: beam.pvalue.PCollection, eval_config: config_pb2.EvalConfig
+) -> beam.pvalue.PCollection:
   """Extracts inputs from serialized tf.train.Example protos.
 
   Args:

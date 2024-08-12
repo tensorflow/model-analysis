@@ -50,8 +50,8 @@ def LabelsExtractor(eval_config: config_pb2.EvalConfig) -> extractor.Extractor:
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractLabels(
-    extracts: beam.pvalue.PCollection,
-    eval_config: config_pb2.EvalConfig) -> beam.pvalue.PCollection:
+    extracts: beam.pvalue.PCollection, eval_config: config_pb2.EvalConfig
+) -> beam.pvalue.PCollection:
   """Extracts labels from features extracts.
 
   Args:
@@ -64,13 +64,19 @@ def _ExtractLabels(
   """
 
   def extract_labels(  # pylint: disable=invalid-name
-      batched_extracts: types.Extracts) -> types.Extracts:
+      batched_extracts: types.Extracts,
+  ) -> types.Extracts:
     """Extract labels from extracts containing features."""
     result = copy.copy(batched_extracts)
     result[constants.LABELS_KEY] = (
         model_util.get_feature_values_for_model_spec_field(
-            list(eval_config.model_specs), 'label_key', 'label_keys', result,
-            True))
+            list(eval_config.model_specs),
+            'label_key',
+            'label_keys',
+            result,
+            True,
+        )
+    )
     return result
 
   return extracts | 'ExtractLabels' >> beam.Map(extract_labels)

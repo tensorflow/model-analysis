@@ -29,8 +29,8 @@ from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator_extra_fields
 from tensorflow_model_analysis.eval_saved_model.example_trainers import multi_head
 from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
+from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
-import tensorflow_model_analysis.post_export_metrics.metric_keys as metric_keys
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
@@ -48,18 +48,22 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
   def _getEvalExportDir(self):
     return os.path.join(self._getTempDir(), 'eval_export_dir')
 
-  def _runTestWithCustomCheck(self,
-                              examples,
-                              eval_export_dir,
-                              metrics_callbacks,
-                              slice_spec=None,
-                              custom_metrics_check=None,
-                              custom_plots_check=None,
-                              custom_result_check=None):
+  def _runTestWithCustomCheck(
+      self,
+      examples,
+      eval_export_dir,
+      metrics_callbacks,
+      slice_spec=None,
+      custom_metrics_check=None,
+      custom_plots_check=None,
+      custom_result_check=None,
+  ):
     # make sure we are doing some checks
-    self.assertTrue(custom_metrics_check is not None or
-                    custom_plots_check is not None or
-                    custom_result_check is not None)
+    self.assertTrue(
+        custom_metrics_check is not None
+        or custom_plots_check is not None
+        or custom_result_check is not None
+    )
     serialized_examples = [ex.SerializeToString() for ex in examples]
     slicing_specs = None
     if slice_spec:
@@ -67,13 +71,16 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
     eval_config = config_pb2.EvalConfig(slicing_specs=slicing_specs)
     eval_shared_model = self.createTestEvalSharedModel(
         eval_saved_model_path=eval_export_dir,
-        add_metrics_callbacks=metrics_callbacks)
+        add_metrics_callbacks=metrics_callbacks,
+    )
     extractors = model_eval_lib.default_extractors(
-        eval_config=eval_config, eval_shared_model=eval_shared_model)
+        eval_config=eval_config, eval_shared_model=eval_shared_model
+    )
     tfx_io = raw_tf_record.RawBeamRecordTFXIO(
         physical_format='inmemory',
         raw_record_column_name=constants.ARROW_INPUT_COLUMN,
-        telemetry_descriptors=['TFMATest'])
+        telemetry_descriptors=['TFMATest'],
+    )
     with beam.Pipeline() as pipeline:
       (metrics, plots), _ = (
           pipeline
@@ -81,11 +88,13 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
           | 'BatchExamples' >> tfx_io.BeamSource()
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
-          | 'ComputeMetricsAndPlots' >>
-          legacy_metrics_and_plots_evaluator._ComputeMetricsAndPlots(  # pylint: disable=protected-access
+          | 'ComputeMetricsAndPlots'
+          >> legacy_metrics_and_plots_evaluator._ComputeMetricsAndPlots(  # pylint: disable=protected-access
               eval_shared_model=eval_shared_model,
               compute_confidence_intervals=self.compute_confidence_intervals,
-              random_seed_for_testing=self.deterministic_test_seed))
+              random_seed_for_testing=self.deterministic_test_seed,
+          )
+      )
       if custom_metrics_check is not None:
         util.assert_that(metrics, custom_metrics_check, label='metrics')
       if custom_plots_check is not None:
@@ -108,7 +117,8 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
         raise util.BeamAssertException(err)
 
     self._runTestWithCustomCheck(
-        examples, eval_export_dir, metrics, custom_metrics_check=check_result)
+        examples, eval_export_dir, metrics, custom_metrics_check=check_result
+    )
 
   def makeConfusionMatrixExamples(self):
     """Helper to create a set of examples used by multiple tests."""
@@ -125,31 +135,36 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
             label=0.0000,
             fixed_float=1.0,
             fixed_string='',
-            fixed_int=0),
+            fixed_int=0,
+        ),
         self._makeExample(
             prediction=0.0000,
             label=1.0000,
             fixed_float=1.0,
             fixed_string='',
-            fixed_int=0),
+            fixed_int=0,
+        ),
         self._makeExample(
             prediction=0.7000,
             label=1.0000,
             fixed_float=3.0,
             fixed_string='',
-            fixed_int=0),
+            fixed_int=0,
+        ),
         self._makeExample(
             prediction=0.8000,
             label=0.0000,
             fixed_float=2.0,
             fixed_string='',
-            fixed_int=0),
+            fixed_int=0,
+        ),
         self._makeExample(
             prediction=1.0000,
             label=1.0000,
             fixed_float=3.0,
             fixed_string='',
-            fixed_int=0),
+            fixed_int=0,
+        ),
     ]
 
   def makeConfusionMatrixExamplesAllNegative(self):
@@ -164,24 +179,28 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
             label=0.0000,
             fixed_float=1.0,
             fixed_string='',
-            fixed_int=0),
+            fixed_int=0,
+        ),
         self._makeExample(
             prediction=0.0000,
             label=0.0000,
             fixed_float=1.0,
             fixed_string='',
-            fixed_int=0),
+            fixed_int=0,
+        ),
     ]
 
   def testFairnessIndicatorsDigitsKey(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
-        fixed_prediction_estimator_extra_fields
-        .simple_fixed_prediction_estimator_extra_fields(None,
-                                                        temp_eval_export_dir))
+        fixed_prediction_estimator_extra_fields.simple_fixed_prediction_estimator_extra_fields(
+            None, temp_eval_export_dir
+        )
+    )
     examples = self.makeConfusionMatrixExamples()
     fairness_metrics = post_export_metrics.fairness_indicators(
-        example_weight_key='fixed_float', thresholds=[0.5, 0.59, 0.599, 0.5999])
+        example_weight_key='fixed_float', thresholds=[0.5, 0.59, 0.599, 0.5999]
+    )
 
     def check_result(got):  # pylint: disable=invalid-name
       try:
@@ -201,13 +220,16 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
 
     self._runTestWithCustomCheck(
         examples,
-        eval_export_dir, [fairness_metrics],
-        custom_metrics_check=check_result)
+        eval_export_dir,
+        [fairness_metrics],
+        custom_metrics_check=check_result,
+    )
 
   def testFairnessIndicatorsCounters(self):
     temp_eval_export_dir = self._getEvalExportDir()
-    _, eval_export_dir = (
-        multi_head.simple_multi_head(None, temp_eval_export_dir))
+    _, eval_export_dir = multi_head.simple_multi_head(
+        None, temp_eval_export_dir
+    )
 
     examples = [
         self._makeExample(
@@ -215,64 +237,76 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
             language='english',
             english_label=1.0,
             chinese_label=0.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=3.0,
             language='chinese',
             english_label=0.0,
             chinese_label=1.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=4.0,
             language='english',
             english_label=1.0,
             chinese_label=0.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=5.0,
             language='chinese',
             english_label=0.0,
             chinese_label=1.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=6.0,
             language='chinese',
             english_label=0.0,
             chinese_label=1.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
     ]
     fairness_english = post_export_metrics.fairness_indicators(
         target_prediction_keys=['english_head/logistic'],
-        labels_key='english_head')
+        labels_key='english_head',
+    )
     fairness_chinese = post_export_metrics.fairness_indicators(
         target_prediction_keys=['chinese_head/logistic'],
-        labels_key='chinese_head')
+        labels_key='chinese_head',
+    )
 
     def check_metric_counter(result):
       metric_filter = beam.metrics.metric.MetricsFilter().with_name(
           'metric_computed_fairness_indicators_v1_tfma_eval'
       )
-      actual_metrics_count = result.metrics().query(
-          filter=metric_filter)['counters'][0].committed
+      actual_metrics_count = (
+          result.metrics().query(filter=metric_filter)['counters'][0].committed
+      )
       self.assertEqual(actual_metrics_count, 2)
 
     self._runTestWithCustomCheck(
         examples,
-        eval_export_dir, [
+        eval_export_dir,
+        [
             fairness_english,
             fairness_chinese,
         ],
-        custom_result_check=check_metric_counter)
+        custom_result_check=check_metric_counter,
+    )
 
   def testFairnessIndicatorsAtThresholdsWeighted(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
-        fixed_prediction_estimator_extra_fields
-        .simple_fixed_prediction_estimator_extra_fields(None,
-                                                        temp_eval_export_dir))
+        fixed_prediction_estimator_extra_fields.simple_fixed_prediction_estimator_extra_fields(
+            None, temp_eval_export_dir
+        )
+    )
     examples = self.makeConfusionMatrixExamples()
     fairness_metrics = post_export_metrics.fairness_indicators(
-        example_weight_key='fixed_float', thresholds=[0.0, 0.7, 0.8, 1.0])
+        example_weight_key='fixed_float', thresholds=[0.0, 0.7, 0.8, 1.0]
+    )
 
     def check_result(got):  # pylint: disable=invalid-name
       try:
@@ -319,19 +353,23 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
 
     self._runTestWithCustomCheck(
         examples,
-        eval_export_dir, [fairness_metrics],
-        custom_metrics_check=check_result)
+        eval_export_dir,
+        [fairness_metrics],
+        custom_metrics_check=check_result,
+    )
 
   def testFairnessIndicatorsAtThresholdsWeightedWithUncertainty(self):
     self.compute_confidence_intervals = True
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
-        fixed_prediction_estimator_extra_fields
-        .simple_fixed_prediction_estimator_extra_fields(None,
-                                                        temp_eval_export_dir))
+        fixed_prediction_estimator_extra_fields.simple_fixed_prediction_estimator_extra_fields(
+            None, temp_eval_export_dir
+        )
+    )
     examples = self.makeConfusionMatrixExamples()
     fairness_metrics = post_export_metrics.fairness_indicators(
-        example_weight_key='fixed_float', thresholds=[0.0, 0.7, 0.8, 1.0])
+        example_weight_key='fixed_float', thresholds=[0.0, 0.7, 0.8, 1.0]
+    )
 
     def check_result(got):  # pylint: disable=invalid-name
       try:
@@ -373,21 +411,25 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
             metric_keys.base_key('false_omission_rate@1.00'): 7.0 / 10.0,
         }
         self.assertDictElementsWithTDistributionAlmostEqual(
-            value, expected_values_dict)
+            value, expected_values_dict
+        )
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
     self._runTestWithCustomCheck(
         examples,
-        eval_export_dir, [fairness_metrics],
-        custom_metrics_check=check_result)
+        eval_export_dir,
+        [fairness_metrics],
+        custom_metrics_check=check_result,
+    )
 
   def testFairnessIndicatorsAtDefaultThresholds(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
-        fixed_prediction_estimator_extra_fields
-        .simple_fixed_prediction_estimator_extra_fields(None,
-                                                        temp_eval_export_dir))
+        fixed_prediction_estimator_extra_fields.simple_fixed_prediction_estimator_extra_fields(
+            None, temp_eval_export_dir
+        )
+    )
     examples = self.makeConfusionMatrixExamples()
     fairness_metrics = post_export_metrics.fairness_indicators()
 
@@ -446,16 +488,19 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
 
     self._runTestWithCustomCheck(
         examples,
-        eval_export_dir, [fairness_metrics],
-        custom_metrics_check=check_result)
+        eval_export_dir,
+        [fairness_metrics],
+        custom_metrics_check=check_result,
+    )
 
   def testFairnessIndicatorsZeroes(self):
 
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
-        fixed_prediction_estimator_extra_fields
-        .simple_fixed_prediction_estimator_extra_fields(None,
-                                                        temp_eval_export_dir))
+        fixed_prediction_estimator_extra_fields.simple_fixed_prediction_estimator_extra_fields(
+            None, temp_eval_export_dir
+        )
+    )
     examples = self.makeConfusionMatrixExamples()[0:1]
     fairness_metrics = post_export_metrics.fairness_indicators()
 
@@ -473,13 +518,16 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
 
     self._runTestWithCustomCheck(
         examples,
-        eval_export_dir, [fairness_metrics],
-        custom_metrics_check=check_result)
+        eval_export_dir,
+        [fairness_metrics],
+        custom_metrics_check=check_result,
+    )
 
   def testFairnessIndicatorsMultiHead(self):
     temp_eval_export_dir = self._getEvalExportDir()
-    _, eval_export_dir = (
-        multi_head.simple_multi_head(None, temp_eval_export_dir))
+    _, eval_export_dir = multi_head.simple_multi_head(
+        None, temp_eval_export_dir
+    )
 
     examples = [
         self._makeExample(
@@ -487,38 +535,45 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
             language='english',
             english_label=1.0,
             chinese_label=0.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=3.0,
             language='chinese',
             english_label=0.0,
             chinese_label=1.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=4.0,
             language='english',
             english_label=1.0,
             chinese_label=0.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=5.0,
             language='chinese',
             english_label=0.0,
             chinese_label=1.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=6.0,
             language='chinese',
             english_label=0.0,
             chinese_label=1.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
     ]
     fairness_english = post_export_metrics.fairness_indicators(
         target_prediction_keys=['english_head/logistic'],
-        labels_key='english_head')
+        labels_key='english_head',
+    )
     fairness_chinese = post_export_metrics.fairness_indicators(
         target_prediction_keys=['chinese_head/logistic'],
-        labels_key='chinese_head')
+        labels_key='chinese_head',
+    )
 
     def check_metric_result(got):
       try:
@@ -527,11 +582,11 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual((), slice_key)
         expected_values_dict = {
             metric_keys.base_key(
-                'english_head/logistic/true_positive_rate@0.10'):
-                1.0,
+                'english_head/logistic/true_positive_rate@0.10'
+            ): 1.0,
             metric_keys.base_key(
-                'chinese_head/logistic/true_positive_rate@0.10'):
-                1.0,
+                'chinese_head/logistic/true_positive_rate@0.10'
+            ): 1.0,
         }
         self.assertDictElementsAlmostEqual(value, expected_values_dict)
       except AssertionError as err:
@@ -539,18 +594,21 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
 
     self._runTestWithCustomCheck(
         examples,
-        eval_export_dir, [
+        eval_export_dir,
+        [
             fairness_english,
             fairness_chinese,
         ],
-        custom_metrics_check=check_metric_result)
+        custom_metrics_check=check_metric_result,
+    )
 
   def testFairnessAucs(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
-        fixed_prediction_estimator_extra_fields
-        .simple_fixed_prediction_estimator_extra_fields(None,
-                                                        temp_eval_export_dir))
+        fixed_prediction_estimator_extra_fields.simple_fixed_prediction_estimator_extra_fields(
+            None, temp_eval_export_dir
+        )
+    )
     examples = [
         # Subgroup
         self._makeExample(prediction=0.0000, label=0.0000, fixed_int=1),
@@ -572,28 +630,30 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
         self.assertEqual((), slice_key)
         expected_value = {
             # Subgroup
-            'post_export_metrics/fairness/auc/subgroup_auc/fixed_int':
-                0.5,
-            'post_export_metrics/fairness/auc/subgroup_auc/fixed_int/lower_bound':
-                0.25,
-            'post_export_metrics/fairness/auc/subgroup_auc/fixed_int/upper_bound':
-                0.75,
+            'post_export_metrics/fairness/auc/subgroup_auc/fixed_int': 0.5,
+            'post_export_metrics/fairness/auc/subgroup_auc/fixed_int/lower_bound': (
+                0.25
+            ),
+            'post_export_metrics/fairness/auc/subgroup_auc/fixed_int/upper_bound': (
+                0.75
+            ),
             # BNSP
-            'post_export_metrics/fairness/auc/bnsp_auc/fixed_int':
-                0.5,
-            'post_export_metrics/fairness/auc/bnsp_auc/fixed_int/lower_bound':
-                0.25,
-            'post_export_metrics/fairness/auc/bnsp_auc/fixed_int/upper_bound':
-                0.75,
+            'post_export_metrics/fairness/auc/bnsp_auc/fixed_int': 0.5,
+            'post_export_metrics/fairness/auc/bnsp_auc/fixed_int/lower_bound': (
+                0.25
+            ),
+            'post_export_metrics/fairness/auc/bnsp_auc/fixed_int/upper_bound': (
+                0.75
+            ),
             # BPSN
-            'post_export_metrics/fairness/auc/bpsn_auc/fixed_int':
-                0.5,
-            'post_export_metrics/fairness/auc/bpsn_auc/fixed_int/lower_bound':
-                0.25,
-            'post_export_metrics/fairness/auc/bpsn_auc/fixed_int/upper_bound':
-                0.75,
-            'average_loss':
-                0.5,
+            'post_export_metrics/fairness/auc/bpsn_auc/fixed_int': 0.5,
+            'post_export_metrics/fairness/auc/bpsn_auc/fixed_int/lower_bound': (
+                0.25
+            ),
+            'post_export_metrics/fairness/auc/bpsn_auc/fixed_int/upper_bound': (
+                0.75
+            ),
+            'average_loss': 0.5,
         }
         self.assertDictElementsAlmostEqual(value, expected_value)
       except AssertionError as err:
@@ -601,50 +661,69 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
 
     self._runTestWithCustomCheck(
         examples,
-        eval_export_dir, [fairness_auc],
-        custom_metrics_check=check_result)
+        eval_export_dir,
+        [fairness_auc],
+        custom_metrics_check=check_result,
+    )
 
   def testFairnessAucsWithFeatureSlices(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
-        fixed_prediction_estimator_extra_fields
-        .simple_fixed_prediction_estimator_extra_fields(None,
-                                                        temp_eval_export_dir))
+        fixed_prediction_estimator_extra_fields.simple_fixed_prediction_estimator_extra_fields(
+            None, temp_eval_export_dir
+        )
+    )
     examples = [
         # Subgroup
         self._makeExample(
-            prediction=0.0000, label=0.0000, fixed_int=1, fixed_string='a'),
+            prediction=0.0000, label=0.0000, fixed_int=1, fixed_string='a'
+        ),
         self._makeExample(
-            prediction=0.0000, label=1.0000, fixed_int=1, fixed_string='a'),
+            prediction=0.0000, label=1.0000, fixed_int=1, fixed_string='a'
+        ),
         self._makeExample(
-            prediction=1.0000, label=0.0000, fixed_int=1, fixed_string='a'),
+            prediction=1.0000, label=0.0000, fixed_int=1, fixed_string='a'
+        ),
         self._makeExample(
-            prediction=1.0000, label=1.0000, fixed_int=1, fixed_string='a'),
+            prediction=1.0000, label=1.0000, fixed_int=1, fixed_string='a'
+        ),
         self._makeExample(
-            prediction=0.0000, label=0.0000, fixed_int=1, fixed_string='b'),
+            prediction=0.0000, label=0.0000, fixed_int=1, fixed_string='b'
+        ),
         self._makeExample(
-            prediction=0.0000, label=1.0000, fixed_int=1, fixed_string='b'),
+            prediction=0.0000, label=1.0000, fixed_int=1, fixed_string='b'
+        ),
         self._makeExample(
-            prediction=1.0000, label=0.0000, fixed_int=1, fixed_string='b'),
+            prediction=1.0000, label=0.0000, fixed_int=1, fixed_string='b'
+        ),
         self._makeExample(
-            prediction=1.0000, label=1.0000, fixed_int=1, fixed_string='b'),
+            prediction=1.0000, label=1.0000, fixed_int=1, fixed_string='b'
+        ),
         # Background
         self._makeExample(
-            prediction=0.0000, label=0.0000, fixed_int=0, fixed_string='a'),
+            prediction=0.0000, label=0.0000, fixed_int=0, fixed_string='a'
+        ),
         self._makeExample(
-            prediction=0.0000, label=1.0000, fixed_int=0, fixed_string='a'),
+            prediction=0.0000, label=1.0000, fixed_int=0, fixed_string='a'
+        ),
         self._makeExample(
-            prediction=1.0000, label=0.0000, fixed_int=0, fixed_string='a'),
+            prediction=1.0000, label=0.0000, fixed_int=0, fixed_string='a'
+        ),
         self._makeExample(
-            prediction=1.0000, label=1.0000, fixed_int=0, fixed_string='a'),
+            prediction=1.0000, label=1.0000, fixed_int=0, fixed_string='a'
+        ),
         self._makeExample(
-            prediction=0.0000, label=0.0000, fixed_int=0, fixed_string='b'),
+            prediction=0.0000, label=0.0000, fixed_int=0, fixed_string='b'
+        ),
         self._makeExample(
-            prediction=0.0000, label=1.0000, fixed_int=0, fixed_string='b'),
+            prediction=0.0000, label=1.0000, fixed_int=0, fixed_string='b'
+        ),
         self._makeExample(
-            prediction=1.0000, label=0.0000, fixed_int=0, fixed_string='b'),
+            prediction=1.0000, label=0.0000, fixed_int=0, fixed_string='b'
+        ),
         self._makeExample(
-            prediction=1.0000, label=1.0000, fixed_int=0, fixed_string='b'),
+            prediction=1.0000, label=1.0000, fixed_int=0, fixed_string='b'
+        ),
     ]
     fairness_auc = post_export_metrics.fairness_auc(subgroup_key='fixed_int')
 
@@ -654,28 +733,30 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
         for _, value in got:
           expected_value = {
               # Subgroup
-              'post_export_metrics/fairness/auc/subgroup_auc/fixed_int':
-                  0.5,
-              'post_export_metrics/fairness/auc/subgroup_auc/fixed_int/lower_bound':
-                  0.25,
-              'post_export_metrics/fairness/auc/subgroup_auc/fixed_int/upper_bound':
-                  0.75,
+              'post_export_metrics/fairness/auc/subgroup_auc/fixed_int': 0.5,
+              'post_export_metrics/fairness/auc/subgroup_auc/fixed_int/lower_bound': (
+                  0.25
+              ),
+              'post_export_metrics/fairness/auc/subgroup_auc/fixed_int/upper_bound': (
+                  0.75
+              ),
               # BNSP
-              'post_export_metrics/fairness/auc/bnsp_auc/fixed_int':
-                  0.5,
-              'post_export_metrics/fairness/auc/bnsp_auc/fixed_int/lower_bound':
-                  0.25,
-              'post_export_metrics/fairness/auc/bnsp_auc/fixed_int/upper_bound':
-                  0.75,
+              'post_export_metrics/fairness/auc/bnsp_auc/fixed_int': 0.5,
+              'post_export_metrics/fairness/auc/bnsp_auc/fixed_int/lower_bound': (
+                  0.25
+              ),
+              'post_export_metrics/fairness/auc/bnsp_auc/fixed_int/upper_bound': (
+                  0.75
+              ),
               # BPSN
-              'post_export_metrics/fairness/auc/bpsn_auc/fixed_int':
-                  0.5,
-              'post_export_metrics/fairness/auc/bpsn_auc/fixed_int/lower_bound':
-                  0.25,
-              'post_export_metrics/fairness/auc/bpsn_auc/fixed_int/upper_bound':
-                  0.75,
-              'average_loss':
-                  0.5,
+              'post_export_metrics/fairness/auc/bpsn_auc/fixed_int': 0.5,
+              'post_export_metrics/fairness/auc/bpsn_auc/fixed_int/lower_bound': (
+                  0.25
+              ),
+              'post_export_metrics/fairness/auc/bpsn_auc/fixed_int/upper_bound': (
+                  0.75
+              ),
+              'average_loss': 0.5,
           }
           self.assertDictElementsAlmostEqual(value, expected_value)
 
@@ -702,28 +783,34 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
                 }
                 methodology: RIEMANN_SUM
               }
-              """, output_metrics[key])
+              """,
+              output_metrics[key],
+          )
       except AssertionError as err:
         raise util.BeamAssertException(err)
 
     self._runTestWithCustomCheck(
         examples,
-        eval_export_dir, [fairness_auc],
+        eval_export_dir,
+        [fairness_auc],
         slice_spec=[
             slicer.SingleSliceSpec(),
-            slicer.SingleSliceSpec(columns=['fixed_string'])
+            slicer.SingleSliceSpec(columns=['fixed_string']),
         ],
-        custom_metrics_check=check_result)
+        custom_metrics_check=check_result,
+    )
 
   def testFairnessIndicatorsWithAllNegativeExamples(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
-        fixed_prediction_estimator_extra_fields
-        .simple_fixed_prediction_estimator_extra_fields(None,
-                                                        temp_eval_export_dir))
+        fixed_prediction_estimator_extra_fields.simple_fixed_prediction_estimator_extra_fields(
+            None, temp_eval_export_dir
+        )
+    )
     examples = self.makeConfusionMatrixExamplesAllNegative()
     fairness_metrics = post_export_metrics.fairness_indicators(
-        example_weight_key='fixed_float', thresholds=[0.0, 0.7, 1.0])
+        example_weight_key='fixed_float', thresholds=[0.0, 0.7, 1.0]
+    )
 
     def check_result(got):  # pylint: disable=invalid-name
       try:
@@ -756,8 +843,10 @@ class FairnessIndicatorsTest(testutil.TensorflowModelAnalysisTest):
 
     self._runTestWithCustomCheck(
         examples,
-        eval_export_dir, [fairness_metrics],
-        custom_metrics_check=check_result)
+        eval_export_dir,
+        [fairness_metrics],
+        custom_metrics_check=check_result,
+    )
 
 
 if __name__ == '__main__':

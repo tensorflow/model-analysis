@@ -41,8 +41,9 @@ from tensorflow_model_analysis.utils import util
 
 from tensorflow_metadata.proto.v0 import schema_pb2
 
-SliceKeyTypeVar = TypeVar('SliceKeyTypeVar', slicer.SliceKeyType,
-                          slicer.CrossSliceKeyType)
+SliceKeyTypeVar = TypeVar(
+    'SliceKeyTypeVar', slicer.SliceKeyType, slicer.CrossSliceKeyType
+)
 
 _COMBINER_INPUTS_KEY = '_combiner_inputs'
 _DEFAULT_COMBINER_INPUT_KEY = '_default_combiner_input'
@@ -66,7 +67,8 @@ def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
     attributions_key: str = constants.ATTRIBUTIONS_KEY,
     run_after: str = slice_key_extractor.SLICE_KEY_EXTRACTOR_STAGE_NAME,
     schema: Optional[schema_pb2.Schema] = None,
-    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluator:
+    random_seed_for_testing: Optional[int] = None,
+) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
 
   Args:
@@ -86,7 +88,8 @@ def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
     'metrics' and 'plots' keys.
   """
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_model)
+      eval_shared_model
+  )
   if eval_shared_models:
     eval_shared_models = {m.model_name: m for m in eval_shared_models}
 
@@ -101,20 +104,31 @@ def MetricsPlotsAndValidationsEvaluator(  # pylint: disable=invalid-name
           plots_key=plots_key,
           attributions_key=attributions_key,
           schema=schema,
-          random_seed_for_testing=random_seed_for_testing))
+          random_seed_for_testing=random_seed_for_testing,
+      ),
+  )
 
 
-MetricComputations = NamedTuple('MetricComputations', [
-    ('non_derived_computations', List[metric_types.MetricComputation]),
-    ('derived_computations', List[metric_types.DerivedMetricComputation]),
-    ('cross_slice_computations',
-     List[metric_types.CrossSliceMetricComputation]),
-    ('ci_derived_computations', List[metric_types.CIDerivedMetricComputation])
-])
+MetricComputations = NamedTuple(
+    'MetricComputations',
+    [
+        ('non_derived_computations', List[metric_types.MetricComputation]),
+        ('derived_computations', List[metric_types.DerivedMetricComputation]),
+        (
+            'cross_slice_computations',
+            List[metric_types.CrossSliceMetricComputation],
+        ),
+        (
+            'ci_derived_computations',
+            List[metric_types.CIDerivedMetricComputation],
+        ),
+    ],
+)
 
 
 def _filter_and_separate_computations(
-    computations: metric_types.MetricComputations) -> MetricComputations:
+    computations: metric_types.MetricComputations,
+) -> MetricComputations:
   """Filters duplicate computations and separates non-derived and derived.
 
   All metrics are based on either direct computations using combiners or are
@@ -174,7 +188,8 @@ def _filter_and_separate_computations(
       non_derived_computations=non_derived_computations,
       derived_computations=derived_computations,
       cross_slice_computations=cross_slice_computations,
-      ci_derived_computations=ci_derived_computations)
+      ci_derived_computations=ci_derived_computations,
+  )
 
 
 @beam.ptransform_fn
@@ -196,26 +211,32 @@ def _GroupByQueryKey(  # pylint: disable=invalid-name
     query key.
   """
   missing_query_key_counter = beam.metrics.Metrics.counter(
-      constants.METRICS_NAMESPACE, 'missing_query_key')
+      constants.METRICS_NAMESPACE, 'missing_query_key'
+  )
 
-  def key_by_query_key(extracts: types.Extracts,
-                       query_key: str) -> Tuple[str, types.Extracts]:
+  def key_by_query_key(
+      extracts: types.Extracts, query_key: str
+  ) -> Tuple[str, types.Extracts]:
     """Extract the query key from the extract and key by that."""
     value = metric_util.to_scalar(
         util.get_by_keys(
-            extracts, [constants.FEATURES_KEY, query_key], optional=True),
-        tensor_name=query_key)
+            extracts, [constants.FEATURES_KEY, query_key], optional=True
+        ),
+        tensor_name=query_key,
+    )
     if value is None:
       missing_query_key_counter.inc()
       return ('', extracts)
     return ('{}'.format(value), extracts)
 
   # pylint: disable=no-value-for-parameter
-  return (extracts
-          | 'KeyByQueryId' >> beam.Map(key_by_query_key, query_key)
-          | 'GroupByKey' >> beam.CombinePerKey(beam.combiners.ToListCombineFn())
-          | 'DropQueryId' >> beam.Map(lambda kv: kv[1])
-          | 'MergeExtracts' >> beam.Map(util.merge_extracts))
+  return (
+      extracts
+      | 'KeyByQueryId' >> beam.Map(key_by_query_key, query_key)
+      | 'GroupByKey' >> beam.CombinePerKey(beam.combiners.ToListCombineFn())
+      | 'DropQueryId' >> beam.Map(lambda kv: kv[1])
+      | 'MergeExtracts' >> beam.Map(util.merge_extracts)
+  )
 
 
 class _PreprocessorDoFn(beam.DoFn):
@@ -245,9 +266,11 @@ class _PreprocessorDoFn(beam.DoFn):
   def __init__(self, computations: List[metric_types.MetricComputation]):
     self._computations = computations
     self._evaluate_num_instances = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'evaluate_num_instances')
+        constants.METRICS_NAMESPACE, 'evaluate_num_instances'
+    )
     self._timer = beam.metrics.Metrics.distribution(
-        constants.METRICS_NAMESPACE, '_PreprocessorDoFn_seconds')
+        constants.METRICS_NAMESPACE, '_PreprocessorDoFn_seconds'
+    )
 
   def setup(self):
     for computation in self._computations:
@@ -295,11 +318,14 @@ class _PreprocessorDoFn(beam.DoFn):
         combiner_inputs.append(None)
         if not added_default_standard_preprocessor:
           standard_preprocessors.append(
-              metric_types.StandardMetricInputsPreprocessor())
+              metric_types.StandardMetricInputsPreprocessor()
+          )
           added_default_standard_preprocessor = True
-      elif (len(computation.preprocessors) == 1 and
-            type(computation.preprocessors[0]) ==  # pylint: disable=unidiomatic-typecheck
-            metric_types.StandardMetricInputsPreprocessor):
+      elif (
+          len(computation.preprocessors) == 1
+          and type(computation.preprocessors[0])  # pylint: disable=unidiomatic-typecheck
+          == metric_types.StandardMetricInputsPreprocessor
+      ):
         # In this case a custom filter was used, but it is still part of the
         # StandardMetricInputs. This will be merged into a single preprocessor
         # for efficiency later, but we still use None to indicate that the
@@ -319,17 +345,19 @@ class _PreprocessorDoFn(beam.DoFn):
               itertools.chain.from_iterable([
                   list(preprocessor.process(extract))
                   for extract in preprocessed_extracts
-              ]))
+              ])
+          )
         # Combiner inputs appends a list of processed extracts
         combiner_inputs.append(preprocessed_extracts)
 
     output = {
         constants.SLICE_KEY_TYPES_KEY: extracts[constants.SLICE_KEY_TYPES_KEY],
-        _COMBINER_INPUTS_KEY: combiner_inputs
+        _COMBINER_INPUTS_KEY: combiner_inputs,
     }
     if standard_preprocessors:
       preprocessor = metric_types.StandardMetricInputsPreprocessorList(
-          standard_preprocessors)
+          standard_preprocessors
+      )
       extracts = copy.copy(extracts)
       # TODO(b/229267982): Consider removing include flags.
       default_combiner_input = []
@@ -339,19 +367,27 @@ class _PreprocessorDoFn(beam.DoFn):
                 extracts,
                 include_labels=constants.LABELS_KEY
                 in preprocessor.include_filter,
-                include_predictions=(constants.PREDICTIONS_KEY
-                                     in preprocessor.include_filter),
-                include_any_feature=((constants.FEATURES_KEY
-                                      in preprocessor.include_filter) or
-                                     (constants.TRANSFORMED_FEATURES_KEY
-                                      in preprocessor.include_filter)),
-                include_attributions=(constants.ATTRIBUTIONS_KEY
-                                      in preprocessor.include_filter)))
+                include_predictions=(
+                    constants.PREDICTIONS_KEY in preprocessor.include_filter
+                ),
+                include_any_feature=(
+                    (constants.FEATURES_KEY in preprocessor.include_filter)
+                    or (
+                        constants.TRANSFORMED_FEATURES_KEY
+                        in preprocessor.include_filter
+                    )
+                ),
+                include_attributions=(
+                    constants.ATTRIBUTIONS_KEY in preprocessor.include_filter
+                ),
+            )
+        )
       output[_DEFAULT_COMBINER_INPUT_KEY] = default_combiner_input
     yield output
 
     self._timer.update(
-        int((datetime.datetime.now() - start_time).total_seconds()))
+        int((datetime.datetime.now() - start_time).total_seconds())
+    )
 
 
 @beam.typehints.with_input_types(types.Extracts)
@@ -362,13 +398,13 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
   def __init__(self, computations: List[metric_types.MetricComputation]):
     """Init.
 
-
     Args:
       computations: List of MetricComputations.
     """
     super().__init__(*[c.combiner for c in computations])
     self._num_compacts = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_compacts')
+        constants.METRICS_NAMESPACE, 'num_compacts'
+    )
 
   def add_input(self, accumulator: Any, element: types.Extracts):
 
@@ -385,7 +421,8 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
         result = c.add_inputs(a, combiner_input)
       except Exception as e:
         raise RuntimeError(
-            f'add_input failed on "{c}" with inputs:\n{combiner_input}') from e
+            f'add_input failed on "{c}" with inputs:\n{combiner_input}'
+        ) from e
       results.append(result)
     return tuple(results)
 
@@ -401,72 +438,90 @@ class _ComputationsCombineFn(beam.combiners.SingleInputTupleCombineFn):
 
 
 def _is_private_metrics(metric_key: metric_types.MetricKey):
-  return metric_key.name.startswith(
-      '_') and not metric_key.name.startswith('__')
+  return metric_key.name.startswith('_') and not metric_key.name.startswith(
+      '__'
+  )
 
 
 def _remove_private_metrics(
     slice_key: SliceKeyTypeVar, metrics: metric_types.MetricsDict
 ) -> Tuple[SliceKeyTypeVar, metric_types.MetricsDict]:
-  return (slice_key,
-          {k: v for (k, v) in metrics.items() if not _is_private_metrics(k)})
+  return (
+      slice_key,
+      {k: v for (k, v) in metrics.items() if not _is_private_metrics(k)},
+  )
 
 
 @beam.ptransform_fn
 def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
-    sliced_combiner_outputs: beam.pvalue.PCollection[Tuple[
-        slicer.SliceKeyType, metric_types.MetricsDict]],
+    sliced_combiner_outputs: beam.pvalue.PCollection[
+        Tuple[slicer.SliceKeyType, metric_types.MetricsDict]
+    ],
     cross_slice_specs: Optional[Iterable[config_pb2.CrossSlicingSpec]],
     cross_slice_computations: List[metric_types.CrossSliceMetricComputation],
-) -> beam.pvalue.PCollection[Tuple[slicer.SliceKeyOrCrossSliceKeyType,
-                                   metric_types.MetricsDict]]:
+) -> beam.pvalue.PCollection[
+    Tuple[slicer.SliceKeyOrCrossSliceKeyType, metric_types.MetricsDict]
+]:
   """Generates CrossSlice metrics from SingleSlices."""
 
   def is_slice_applicable(
-      sliced_combiner_output: Tuple[slicer.SliceKeyType,
-                                    metric_types.MetricsDict],
-      slicing_specs: Union[config_pb2.SlicingSpec,
-                           Iterable[config_pb2.SlicingSpec]]
+      sliced_combiner_output: Tuple[
+          slicer.SliceKeyType, metric_types.MetricsDict
+      ],
+      slicing_specs: Union[
+          config_pb2.SlicingSpec, Iterable[config_pb2.SlicingSpec]
+      ],
   ) -> bool:
     slice_key, _ = sliced_combiner_output
     for slicing_spec in slicing_specs:
-      if slicer.SingleSliceSpec(
-          spec=slicing_spec).is_slice_applicable(slice_key):
+      if slicer.SingleSliceSpec(spec=slicing_spec).is_slice_applicable(
+          slice_key
+      ):
         return True
     return False
 
   def is_not_slice_applicable(
-      sliced_combiner_output: Tuple[slicer.SliceKeyType,
-                                    metric_types.MetricsDict],
-      slicing_specs: Union[config_pb2.SlicingSpec,
-                           Iterable[config_pb2.SlicingSpec]]
+      sliced_combiner_output: Tuple[
+          slicer.SliceKeyType, metric_types.MetricsDict
+      ],
+      slicing_specs: Union[
+          config_pb2.SlicingSpec, Iterable[config_pb2.SlicingSpec]
+      ],
   ) -> bool:
     return not is_slice_applicable(sliced_combiner_output, slicing_specs)
 
   def compute_cross_slices(
       baseline_slice: Tuple[slicer.SliceKeyType, metric_types.MetricsDict],
-      comparison_slices: Iterable[Tuple[slicer.SliceKeyType,
-                                        Dict[metric_types.MetricKey, Any]]]
-  ) -> Iterator[Tuple[slicer.CrossSliceKeyType, Dict[metric_types.MetricKey,
-                                                     Any]]]:
+      comparison_slices: Iterable[
+          Tuple[slicer.SliceKeyType, Dict[metric_types.MetricKey, Any]]
+      ],
+  ) -> Iterator[
+      Tuple[slicer.CrossSliceKeyType, Dict[metric_types.MetricKey, Any]]
+  ]:
     baseline_slice_key, baseline_metrics = baseline_slice
-    for (comparison_slice_key, comparison_metrics) in comparison_slices:
+    for comparison_slice_key, comparison_metrics in comparison_slices:
       result = {}
-      for (comparison_metric_key,
-           comparison_metric_value) in comparison_metrics.items():
-        if (comparison_metric_key not in baseline_metrics or
-            _is_private_metrics(comparison_metric_key) or
-            not isinstance(comparison_metric_key, metric_types.MetricKey) or
-            isinstance(comparison_metric_key, metric_types.PlotKey) or
-            isinstance(comparison_metric_key, metric_types.AttributionsKey)):
+      for (
+          comparison_metric_key,
+          comparison_metric_value,
+      ) in comparison_metrics.items():
+        if (
+            comparison_metric_key not in baseline_metrics
+            or _is_private_metrics(comparison_metric_key)
+            or not isinstance(comparison_metric_key, metric_types.MetricKey)
+            or isinstance(comparison_metric_key, metric_types.PlotKey)
+            or isinstance(comparison_metric_key, metric_types.AttributionsKey)
+        ):
           continue
         result[comparison_metric_key] = (
-            baseline_metrics[comparison_metric_key] - comparison_metric_value)
+            baseline_metrics[comparison_metric_key] - comparison_metric_value
+        )
 
       # Compute cross slice comparison for CrossSliceDerivedComputations
       for c in cross_slice_computations:
         result.update(
-            c.cross_slice_comparison(baseline_metrics, comparison_metrics))
+            c.cross_slice_comparison(baseline_metrics, comparison_metrics)
+        )
 
       yield ((baseline_slice_key, comparison_slice_key), result)
 
@@ -474,35 +529,45 @@ def _AddCrossSliceMetrics(  # pylint: disable=invalid-name
   for cross_slice_ind, cross_slice_spec in enumerate(cross_slice_specs):
     baseline_slices = (
         sliced_combiner_outputs
-        | 'FilterBaselineSlices(%d)' % cross_slice_ind >> beam.Filter(
-            is_slice_applicable, [cross_slice_spec.baseline_spec]))
+        | 'FilterBaselineSlices(%d)' % cross_slice_ind
+        >> beam.Filter(is_slice_applicable, [cross_slice_spec.baseline_spec])
+    )
 
     if cross_slice_spec.slicing_specs:
       slicing_specs = list(cross_slice_spec.slicing_specs)
       comparison_slices = (
           sliced_combiner_outputs
-          | 'FilterToComparisonSlices(%d)' % cross_slice_ind >> beam.Filter(
-              is_slice_applicable, slicing_specs))
+          | 'FilterToComparisonSlices(%d)' % cross_slice_ind
+          >> beam.Filter(is_slice_applicable, slicing_specs)
+      )
     else:
       # When slicing_specs is not set, consider all available slices except the
       # baseline as candidates.
       comparison_slices = (
           sliced_combiner_outputs
-          | 'FilterOutBaselineSlices(%d)' % cross_slice_ind >> beam.Filter(
-              is_not_slice_applicable, [cross_slice_spec.baseline_spec]))
+          | 'FilterOutBaselineSlices(%d)' % cross_slice_ind
+          >> beam.Filter(
+              is_not_slice_applicable, [cross_slice_spec.baseline_spec]
+          )
+      )
 
     cross_slice_outputs.append(
         baseline_slices
-        | 'GenerateCrossSlices(%d)' % cross_slice_ind >> beam.FlatMap(
+        | 'GenerateCrossSlices(%d)' % cross_slice_ind
+        >> beam.FlatMap(
             compute_cross_slices,
-            comparison_slices=beam.pvalue.AsIter(comparison_slices)))
+            comparison_slices=beam.pvalue.AsIter(comparison_slices),
+        )
+    )
 
   if cross_slice_outputs:
     cross_slice_outputs = (
-        cross_slice_outputs
-        | 'FlattenCrossSliceResults' >> beam.Flatten())
-    return ([sliced_combiner_outputs, cross_slice_outputs]
-            | 'CombineSingleSlicesWithCrossSlice' >> beam.Flatten())
+        cross_slice_outputs | 'FlattenCrossSliceResults' >> beam.Flatten()
+    )
+    return [
+        sliced_combiner_outputs,
+        cross_slice_outputs,
+    ] | 'CombineSingleSlicesWithCrossSlice' >> beam.Flatten()
   else:
     return sliced_combiner_outputs
 
@@ -519,13 +584,16 @@ def _is_metric_diffable(metric_value: Any):
 
 @beam.ptransform_fn
 def _AddDerivedCrossSliceAndDiffMetrics(  # pylint: disable=invalid-name
-    sliced_base_metrics: beam.PCollection[Tuple[slicer.SliceKeyType,
-                                                metric_types.MetricsDict]],
+    sliced_base_metrics: beam.PCollection[
+        Tuple[slicer.SliceKeyType, metric_types.MetricsDict]
+    ],
     derived_computations: List[metric_types.DerivedMetricComputation],
     cross_slice_computations: List[metric_types.CrossSliceMetricComputation],
     cross_slice_specs: Optional[Iterable[config_pb2.CrossSlicingSpec]] = None,
-    baseline_model_name: Optional[str] = None) -> beam.PCollection[Tuple[
-        slicer.SliceKeyOrCrossSliceKeyType, metric_types.MetricsDict]]:
+    baseline_model_name: Optional[str] = None,
+) -> beam.PCollection[
+    Tuple[slicer.SliceKeyOrCrossSliceKeyType, metric_types.MetricsDict]
+]:
   """A PTransform for adding cross slice and derived metrics.
 
   This PTransform uses the input PCollection of sliced metrics to compute
@@ -559,9 +627,10 @@ def _AddDerivedCrossSliceAndDiffMetrics(  # pylint: disable=invalid-name
     return slice_key, result
 
   def add_diff_metrics(
-      sliced_metrics: Tuple[Union[slicer.SliceKeyType,
-                                  slicer.CrossSliceKeyType],
-                            Dict[metric_types.MetricKey, Any]],
+      sliced_metrics: Tuple[
+          Union[slicer.SliceKeyType, slicer.CrossSliceKeyType],
+          Dict[metric_types.MetricKey, Any],
+      ],
       baseline_model_name: Optional[str],
   ) -> Tuple[slicer.SliceKeyType, Dict[metric_types.MetricKey, Any]]:
     """Add diff metrics if there is a baseline model."""
@@ -577,29 +646,41 @@ def _AddDerivedCrossSliceAndDiffMetrics(  # pylint: disable=invalid-name
         if k.is_diff:
           # For metrics which directly produce diff metrics, we skip this step
           continue
-        if k.model_name != baseline_model_name and k.make_baseline_key(
-            baseline_model_name) in result:
+        if (
+            k.model_name != baseline_model_name
+            and k.make_baseline_key(baseline_model_name) in result
+        ):
           # Check if metric is diffable, skip plots and non-numerical values.
           if _is_metric_diffable(v):
-            diff_result[k.make_diff_key(
-            )] = v - result[k.make_baseline_key(baseline_model_name)]
+            diff_result[k.make_diff_key()] = (
+                v - result[k.make_baseline_key(baseline_model_name)]
+            )
       result.update(diff_result)
     return slice_key, result
 
   return (
       sliced_base_metrics
-      |
-      'AddDerivedMetrics' >> beam.Map(add_derived_metrics, derived_computations)
-      | 'AddCrossSliceMetrics' >> _AddCrossSliceMetrics(  # pylint: disable=no-value-for-parameter
-          cross_slice_specs, cross_slice_computations)
-      | 'AddDiffMetrics' >> beam.Map(add_diff_metrics, baseline_model_name))
+      | 'AddDerivedMetrics'
+      >> beam.Map(add_derived_metrics, derived_computations)
+      | 'AddCrossSliceMetrics'
+      >> _AddCrossSliceMetrics(  # pylint: disable=no-value-for-parameter
+          cross_slice_specs, cross_slice_computations
+      )
+      | 'AddDiffMetrics' >> beam.Map(add_diff_metrics, baseline_model_name)
+  )
 
 
 def _filter_by_key_type(
-    sliced_metrics_plots_attributions: Tuple[SliceKeyTypeVar,
-                                             Dict[metric_types.MetricKey, Any]],
-    key_type: Type[Union[metric_types.MetricKey, metric_types.PlotKey,
-                         metric_types.AttributionsKey]]
+    sliced_metrics_plots_attributions: Tuple[
+        SliceKeyTypeVar, Dict[metric_types.MetricKey, Any]
+    ],
+    key_type: Type[
+        Union[
+            metric_types.MetricKey,
+            metric_types.PlotKey,
+            metric_types.AttributionsKey,
+        ]
+    ],
 ) -> Tuple[SliceKeyTypeVar, Dict[metric_types.MetricKey, Any]]:
   """Filters metrics and plots by key type."""
   slice_value, metrics_plots_attributions = sliced_metrics_plots_attributions
@@ -614,21 +695,26 @@ def _filter_by_key_type(
       if isinstance(k, metric_types.AttributionsKey):
         output[k] = v
     else:
-      if (not isinstance(k, metric_types.PlotKey) and
-          not isinstance(k, metric_types.AttributionsKey)):
+      if not isinstance(k, metric_types.PlotKey) and not isinstance(
+          k, metric_types.AttributionsKey
+      ):
         output[k] = v
   return (slice_value, output)
 
 
 _ConfidenceIntervalParams = NamedTuple(
     '_ConfidenceIntervalParams',
-    [('num_jackknife_samples', int), ('num_bootstrap_samples', int),
-     ('skip_ci_metric_keys', Iterable[metric_types.MetricKey])])
+    [
+        ('num_jackknife_samples', int),
+        ('num_bootstrap_samples', int),
+        ('skip_ci_metric_keys', Iterable[metric_types.MetricKey]),
+    ],
+)
 
 
 def _get_confidence_interval_params(
     eval_config: config_pb2.EvalConfig,
-    metrics_specs: Iterable[config_pb2.MetricsSpec]
+    metrics_specs: Iterable[config_pb2.MetricsSpec],
 ) -> _ConfidenceIntervalParams:
   """Helper method for extracting confidence interval info from configs.
 
@@ -646,7 +732,9 @@ def _get_confidence_interval_params(
   """
   skip_ci_metric_keys = (
       metric_specs.metric_keys_to_skip_for_confidence_intervals(
-          metrics_specs, eval_config=eval_config))
+          metrics_specs, eval_config=eval_config
+      )
+  )
   num_jackknife_samples = 0
   num_bootstrap_samples = 0
   ci_method = eval_config.options.confidence_intervals.method
@@ -655,8 +743,9 @@ def _get_confidence_interval_params(
       num_jackknife_samples = _DEFAULT_NUM_JACKKNIFE_BUCKETS
     elif ci_method == config_pb2.ConfidenceIntervalOptions.POISSON_BOOTSTRAP:
       num_bootstrap_samples = _DEFAULT_NUM_BOOTSTRAP_SAMPLES
-  return _ConfidenceIntervalParams(num_jackknife_samples, num_bootstrap_samples,
-                                   skip_ci_metric_keys)
+  return _ConfidenceIntervalParams(
+      num_jackknife_samples, num_bootstrap_samples, skip_ci_metric_keys
+  )
 
 
 def _add_ci_derived_metrics(
@@ -692,7 +781,8 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     plots_key: str = constants.PLOTS_KEY,
     attributions_key: str = constants.ATTRIBUTIONS_KEY,
     schema: Optional[schema_pb2.Schema] = None,
-    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluation:
+    random_seed_for_testing: Optional[int] = None,
+) -> evaluator.Evaluation:
   """Computes metrics and plots.
 
   Args:
@@ -730,15 +820,21 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       if eval_shared_model.model_type == constants.TF_KERAS:
         computations.extend(
             keras_util.metric_computations_using_keras_saved_model(
-                model_name, eval_shared_model.model_loader, eval_config))
+                model_name, eval_shared_model.model_loader, eval_config
+            )
+        )
       elif eval_shared_model.model_type == constants.TFMA_EVAL:
         computations.extend(
             eval_saved_model_util.metric_computations_using_eval_saved_model(
-                model_name, eval_shared_model.model_loader))
+                model_name, eval_shared_model.model_loader
+            )
+        )
   # Add metric computations from specs
   metric_computations = _filter_and_separate_computations(
       metric_specs.to_computations(
-          metrics_specs, eval_config=eval_config, schema=schema))
+          metrics_specs, eval_config=eval_config, schema=schema
+      )
+  )
   computations.extend(metric_computations.non_derived_computations)
 
   # Find out which model is baseline.
@@ -759,9 +855,9 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   # Note that the output of this step is extracts instead of just a tuple of
   # computation outputs because FanoutSlices takes extracts as input (and in
   # many cases a subset of the extracts themselves are what is fanned out).
-  extracts = (
-      extracts
-      | 'Preprocesss' >> beam.ParDo(_PreprocessorDoFn(computations)))
+  extracts = extracts | 'Preprocesss' >> beam.ParDo(
+      _PreprocessorDoFn(computations)
+  )
 
   # Input: Single extract containing slice keys and initial combiner inputs. If
   #        query_key is used the extract represents multiple examples with the
@@ -775,17 +871,19 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   slices_count = (
       slices
       | 'ExtractSliceKeys' >> beam.Keys()
-      | 'CountPerSliceKey' >> beam.combiners.Count.PerElement())
+      | 'CountPerSliceKey' >> beam.combiners.Count.PerElement()
+  )
 
   model_types = _get_model_types_for_logging(eval_shared_models)
 
   _ = (
       extracts.pipeline
-      | 'IncrementMetricsSpecsCounters' >>
-      counter_util.IncrementMetricsSpecsCounters(metrics_specs, model_types),
+      | 'IncrementMetricsSpecsCounters'
+      >> counter_util.IncrementMetricsSpecsCounters(metrics_specs, model_types),
       slices_count
-      |
-      'IncrementSliceSpecCounters' >> counter_util.IncrementSliceSpecCounters())
+      | 'IncrementSliceSpecCounters'
+      >> counter_util.IncrementSliceSpecCounters(),
+  )
 
   ci_params = _get_confidence_interval_params(eval_config, metrics_specs)
 
@@ -796,8 +894,10 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   computations_combine_fn = _ComputationsCombineFn(computations=computations)
   derived_metrics_ptransform = _AddDerivedCrossSliceAndDiffMetrics(
       metric_computations.derived_computations,
-      metric_computations.cross_slice_computations, cross_slice_specs,
-      baseline_model_name)
+      metric_computations.cross_slice_computations,
+      cross_slice_specs,
+      baseline_model_name,
+  )
 
   # Input: Tuple of (slice key, combiner input extracts).
   # Output: Tuple of (slice key, dict of computed metrics/plots/attributions).
@@ -807,63 +907,79 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
   #         the keys should be unique across computations.
   if ci_params.num_bootstrap_samples:
     sliced_metrics_plots_and_attributions = (
-        slices | 'PoissonBootstrapConfidenceIntervals' >>
-        poisson_bootstrap.ComputeWithConfidenceIntervals(
+        slices
+        | 'PoissonBootstrapConfidenceIntervals'
+        >> poisson_bootstrap.ComputeWithConfidenceIntervals(
             computations_combine_fn=computations_combine_fn,
             derived_metrics_ptransform=derived_metrics_ptransform,
             num_bootstrap_samples=ci_params.num_bootstrap_samples,
             hot_key_fanout=_COMBINE_PER_SLICE_KEY_HOT_KEY_FANOUT,
             skip_ci_metric_keys=ci_params.skip_ci_metric_keys,
-            random_seed_for_testing=random_seed_for_testing))
+            random_seed_for_testing=random_seed_for_testing,
+        )
+    )
   elif ci_params.num_jackknife_samples:
     sliced_metrics_plots_and_attributions = (
         slices
-        | 'JackknifeConfidenceIntervals' >>
-        jackknife.ComputeWithConfidenceIntervals(
+        | 'JackknifeConfidenceIntervals'
+        >> jackknife.ComputeWithConfidenceIntervals(
             computations_combine_fn=computations_combine_fn,
             derived_metrics_ptransform=derived_metrics_ptransform,
             num_jackknife_samples=ci_params.num_jackknife_samples,
             skip_ci_metric_keys=ci_params.skip_ci_metric_keys,
-            random_seed_for_testing=random_seed_for_testing))
+            random_seed_for_testing=random_seed_for_testing,
+        )
+    )
   else:
     sliced_metrics_plots_and_attributions = (
         slices
-        |
-        'CombineMetricsPerSlice' >> beam.CombinePerKey(computations_combine_fn)
-        .with_hot_key_fanout(_COMBINE_PER_SLICE_KEY_HOT_KEY_FANOUT)
-        | 'AddDerivedCrossSliceAndDiffMetrics' >> derived_metrics_ptransform)
+        | 'CombineMetricsPerSlice'
+        >> beam.CombinePerKey(computations_combine_fn).with_hot_key_fanout(
+            _COMBINE_PER_SLICE_KEY_HOT_KEY_FANOUT
+        )
+        | 'AddDerivedCrossSliceAndDiffMetrics' >> derived_metrics_ptransform
+    )
 
   sliced_metrics_plots_and_attributions = (
       sliced_metrics_plots_and_attributions
-      | 'AddCIDerivedMetrics' >> beam.Map(
-          _add_ci_derived_metrics, metric_computations.ci_derived_computations)
-      | 'RemovePrivateMetrics' >> beam.MapTuple(_remove_private_metrics))
+      | 'AddCIDerivedMetrics'
+      >> beam.Map(
+          _add_ci_derived_metrics, metric_computations.ci_derived_computations
+      )
+      | 'RemovePrivateMetrics' >> beam.MapTuple(_remove_private_metrics)
+  )
 
   if eval_config.options.min_slice_size.value > 1:
     sliced_metrics_plots_and_attributions = (
         sliced_metrics_plots_and_attributions
-        | 'FilterSmallSlices' >> slicer.FilterOutSlices(
-            slices_count, eval_config.options.min_slice_size.value))
+        | 'FilterSmallSlices'
+        >> slicer.FilterOutSlices(
+            slices_count, eval_config.options.min_slice_size.value
+        )
+    )
 
   sliced_metrics = (
       sliced_metrics_plots_and_attributions
-      | 'FilterByMetrics' >> beam.Map(_filter_by_key_type,
-                                      metric_types.MetricKey))
+      | 'FilterByMetrics'
+      >> beam.Map(_filter_by_key_type, metric_types.MetricKey)
+  )
   sliced_plots = (
       sliced_metrics_plots_and_attributions
-      | 'FilterByPlots' >> beam.Map(_filter_by_key_type, metric_types.PlotKey))
+      | 'FilterByPlots' >> beam.Map(_filter_by_key_type, metric_types.PlotKey)
+  )
 
   sliced_attributions = (
       sliced_metrics_plots_and_attributions
-      | 'FilterByAttributions' >> beam.Map(_filter_by_key_type,
-                                           metric_types.AttributionsKey))
+      | 'FilterByAttributions'
+      >> beam.Map(_filter_by_key_type, metric_types.AttributionsKey)
+  )
 
   # pylint: enable=no-value-for-parameter
 
   return {
       metrics_key: sliced_metrics,
       plots_key: sliced_plots,
-      attributions_key: sliced_attributions
+      attributions_key: sliced_attributions,
   }
 
 
@@ -879,7 +995,8 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
     attributions_key: str = constants.ATTRIBUTIONS_KEY,
     validations_key: str = constants.VALIDATIONS_KEY,
     schema: Optional[schema_pb2.Schema] = None,
-    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluation:
+    random_seed_for_testing: Optional[int] = None,
+) -> evaluator.Evaluation:
   """Evaluates metrics, plots, and validations.
 
   Args:
@@ -925,30 +1042,30 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
   for query_key, metrics_specs in metrics_specs_by_query_key.items():
     query_key_text = query_key if query_key else ''
     if query_key:
-      extracts_for_evaluation = (
-          extracts
-          | 'GroupByQueryKey({})'.format(query_key_text) >>
-          _GroupByQueryKey(query_key))
+      extracts_for_evaluation = extracts | 'GroupByQueryKey({})'.format(
+          query_key_text
+      ) >> _GroupByQueryKey(query_key)
       include_default_metrics = False
     else:
       extracts_for_evaluation = extracts
-      include_default_metrics = (
-          eval_config and
-          (not eval_config.options.HasField('include_default_metrics') or
-           eval_config.options.include_default_metrics.value))
-    evaluation = (
-        extracts_for_evaluation
-        | 'ComputeMetricsAndPlots({})'.format(query_key_text) >>
-        _ComputeMetricsAndPlots(
-            eval_config=eval_config,
-            metrics_specs=metrics_specs,
-            eval_shared_models=(eval_shared_models
-                                if include_default_metrics else None),
-            metrics_key=metrics_key,
-            plots_key=plots_key,
-            attributions_key=attributions_key,
-            schema=schema,
-            random_seed_for_testing=random_seed_for_testing))
+      include_default_metrics = eval_config and (
+          not eval_config.options.HasField('include_default_metrics')
+          or eval_config.options.include_default_metrics.value
+      )
+    evaluation = extracts_for_evaluation | 'ComputeMetricsAndPlots({})'.format(
+        query_key_text
+    ) >> _ComputeMetricsAndPlots(
+        eval_config=eval_config,
+        metrics_specs=metrics_specs,
+        eval_shared_models=(
+            eval_shared_models if include_default_metrics else None
+        ),
+        metrics_key=metrics_key,
+        plots_key=plots_key,
+        attributions_key=attributions_key,
+        schema=schema,
+        random_seed_for_testing=random_seed_for_testing,
+    )
 
     for k, v in evaluation.items():
       if k not in evaluations:
@@ -956,18 +1073,19 @@ def _EvaluateMetricsPlotsAndValidations(  # pylint: disable=invalid-name
       evaluations[k].append(v)
   evaluation_results = evaluator.combine_dict_based_evaluations(evaluations)
 
-  validations = (
-      evaluation_results[metrics_key]
-      | 'ValidateMetrics' >> beam.Map(metrics_validator.validate_metrics,
-                                      eval_config))
+  validations = evaluation_results[metrics_key] | 'ValidateMetrics' >> beam.Map(
+      metrics_validator.validate_metrics, eval_config
+  )
   evaluation_results[validations_key] = validations
   return evaluation_results
 
 
 def _get_model_types_for_logging(
-    eval_shared_models: Dict[str, types.EvalSharedModel]):
+    eval_shared_models: Dict[str, types.EvalSharedModel],
+):
   if eval_shared_models:
     return set(
-        [model.model_type for (name, model) in eval_shared_models.items()])
+        [model.model_type for (name, model) in eval_shared_models.items()]
+    )
   else:
     return set([constants.MODEL_AGNOSTIC])

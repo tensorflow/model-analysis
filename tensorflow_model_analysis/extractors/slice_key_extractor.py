@@ -14,11 +14,9 @@
 """Public API for extracting slice keys."""
 
 import copy
-
 from typing import List, Optional
 
 import apache_beam as beam
-
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.extractors import extractor
@@ -32,7 +30,8 @@ SLICE_KEY_EXTRACTOR_STAGE_NAME = 'ExtractSliceKeys'
 def SliceKeyExtractor(
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    materialize: Optional[bool] = True) -> extractor.Extractor:
+    materialize: Optional[bool] = True,
+) -> extractor.Extractor:
   """Creates an extractor for extracting slice keys.
 
   The incoming Extracts must contain features stored under tfma.FEATURES_KEY
@@ -61,7 +60,8 @@ def SliceKeyExtractor(
     ]
     for cross_slice_spec in eval_config.cross_slicing_specs:
       baseline_slice_spec = slicer.SingleSliceSpec(
-          spec=cross_slice_spec.baseline_spec)
+          spec=cross_slice_spec.baseline_spec
+      )
       if baseline_slice_spec not in slice_spec:
         slice_spec.append(baseline_slice_spec)
       for spec in cross_slice_spec.slicing_specs:
@@ -72,7 +72,8 @@ def SliceKeyExtractor(
     slice_spec = [slicer.SingleSliceSpec()]
   return extractor.Extractor(
       stage_name=SLICE_KEY_EXTRACTOR_STAGE_NAME,
-      ptransform=ExtractSliceKeys(slice_spec, eval_config, materialize))
+      ptransform=ExtractSliceKeys(slice_spec, eval_config, materialize),
+  )
 
 
 def _not_empty(elems) -> bool:  # pylint: disable=invalid-name
@@ -86,19 +87,24 @@ def _not_empty(elems) -> bool:  # pylint: disable=invalid-name
 class ExtractSliceKeysFn(beam.DoFn):
   """A DoFn that extracts slice keys that apply per example."""
 
-  def __init__(self, eval_config: Optional[config_pb2.EvalConfig],
-               materialize: bool):
+  def __init__(
+      self, eval_config: Optional[config_pb2.EvalConfig], materialize: bool
+  ):
     self._eval_config = eval_config
     self._materialize = materialize
     self._duplicate_slice_keys_counter = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_examples_with_duplicate_slice_keys')
+        constants.METRICS_NAMESPACE, 'num_examples_with_duplicate_slice_keys'
+    )
 
-  def process(self, element: types.Extracts,
-              slice_spec: List[slicer.SingleSliceSpec]) -> List[types.Extracts]:
+  def process(
+      self, element: types.Extracts, slice_spec: List[slicer.SingleSliceSpec]
+  ) -> List[types.Extracts]:
     # Slice on transformed features if available.
     features_dicts = []
-    if (constants.TRANSFORMED_FEATURES_KEY in element and
-        element[constants.TRANSFORMED_FEATURES_KEY] is not None):
+    if (
+        constants.TRANSFORMED_FEATURES_KEY in element
+        and element[constants.TRANSFORMED_FEATURES_KEY] is not None
+    ):
       transformed_features = element[constants.TRANSFORMED_FEATURES_KEY]
       # If only one model, the output is stored without keying on model name.
       if not self._eval_config or len(self._eval_config.model_specs) == 1:
@@ -112,8 +118,9 @@ class ExtractSliceKeysFn(beam.DoFn):
     # not found there then search in raw features.
     slice_keys = list(
         slicer.get_slices_for_features_dicts(
-            features_dicts, util.get_features_from_extracts(element),
-            slice_spec))
+            features_dicts, util.get_features_from_extracts(element), slice_spec
+        )
+    )
 
     # If SLICE_KEY_TYPES_KEY already exists, that means the
     # SqlSliceKeyExtractor has generated some slice keys. We need to add
@@ -131,24 +138,31 @@ class ExtractSliceKeysFn(beam.DoFn):
     element_copy = copy.copy(element)
 
     element_copy[constants.SLICE_KEY_TYPES_KEY] = (
-        slicer.slice_keys_to_numpy_array(unique_slice_keys))
+        slicer.slice_keys_to_numpy_array(unique_slice_keys)
+    )
     # Add a list of stringified slice keys to be materialized to output table.
     if self._materialize:
       element_copy[constants.SLICE_KEYS_KEY] = types.MaterializedColumn(
           name=constants.SLICE_KEYS_KEY,
-          value=(list(
-              slicer.stringify_slice_key(x).encode('utf-8')
-              for x in unique_slice_keys)))
+          value=(
+              list(
+                  slicer.stringify_slice_key(x).encode('utf-8')
+                  for x in unique_slice_keys
+              )
+          ),
+      )
     return [element_copy]
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
-def ExtractSliceKeys(extracts: beam.pvalue.PCollection,
-                     slice_spec: List[slicer.SingleSliceSpec],
-                     eval_config: Optional[config_pb2.EvalConfig] = None,
-                     materialize: bool = True) -> beam.pvalue.PCollection:
+def ExtractSliceKeys(
+    extracts: beam.pvalue.PCollection,
+    slice_spec: List[slicer.SingleSliceSpec],
+    eval_config: Optional[config_pb2.EvalConfig] = None,
+    materialize: bool = True,
+) -> beam.pvalue.PCollection:
   return extracts | 'ExtractSliceKeys' >> beam.ParDo(
       ExtractSliceKeysFn(eval_config, materialize), slice_spec=slice_spec
   )

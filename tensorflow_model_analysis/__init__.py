@@ -110,6 +110,7 @@ try:
 
 except ImportError as err:
   import sys
+
   sys.stderr.write('Error importing: {}'.format(err))
 # pylint: enable=g-statement-before-imports
 # pylint: enable=g-import-not-at-top

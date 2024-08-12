@@ -36,8 +36,9 @@ from tensorflow_metadata.proto.v0 import schema_pb2
 _TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
 
 
-class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
-                                       parameterized.TestCase):
+class TransformedFeaturesExtractorTest(
+    testutil.TensorflowModelAnalysisTest, parameterized.TestCase
+):
 
   def createDenseInputsSchema(self):
     return text_format.Parse(
@@ -77,7 +78,9 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
           name: "non_model_feature"
           type: INT
         }
-        """, schema_pb2.Schema())
+        """,
+        schema_pb2.Schema(),
+    )
 
   def createModelWithMultipleDenseInputs(self, save_as_keras):
     input1 = tf_keras.layers.Input(shape=(1,), name='input_1')
@@ -97,10 +100,12 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
     @tf.function
     def serving_default(serialized_tf_examples):
       parsed_features = tf.io.parse_example(
-          serialized_tf_examples, {
+          serialized_tf_examples,
+          {
               'input_1': tf.io.FixedLenFeature([1], dtype=tf.float32),
-              'input_2': tf.io.FixedLenFeature([1], dtype=tf.float32)
-          })
+              'input_2': tf.io.FixedLenFeature([1], dtype=tf.float32),
+          },
+      )
       return model(parsed_features)
 
     @tf.function
@@ -117,26 +122,33 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
     def custom_preprocessing(features):
       return {
           'custom_feature': features['input_1'],
-          'custom_label': features['input_2']
+          'custom_label': features['input_2'],
       }
 
     single_input_spec = tf.TensorSpec(
-        shape=(None,), dtype=tf.string, name='examples')
+        shape=(None,), dtype=tf.string, name='examples'
+    )
     multi_input_spec = {
-        'input_1':
-            tf.TensorSpec(shape=(None, 1), dtype=tf.float32, name='input_1'),
-        'input_2':
-            tf.TensorSpec(shape=(None, 1), dtype=tf.float32, name='input_2')
+        'input_1': tf.TensorSpec(
+            shape=(None, 1), dtype=tf.float32, name='input_1'
+        ),
+        'input_2': tf.TensorSpec(
+            shape=(None, 1), dtype=tf.float32, name='input_2'
+        ),
     }
     signatures = {
-        'serving_default':
-            serving_default.get_concrete_function(single_input_spec),
-        'transformed_labels':
-            transformed_labels.get_concrete_function(multi_input_spec),
-        'transformed_features':
-            transformed_features.get_concrete_function(multi_input_spec),
-        'custom_preprocessing':
-            custom_preprocessing.get_concrete_function(multi_input_spec)
+        'serving_default': serving_default.get_concrete_function(
+            single_input_spec
+        ),
+        'transformed_labels': transformed_labels.get_concrete_function(
+            multi_input_spec
+        ),
+        'transformed_features': transformed_features.get_concrete_function(
+            multi_input_spec
+        ),
+        'custom_preprocessing': custom_preprocessing.get_concrete_function(
+            multi_input_spec
+        ),
     }
 
     export_path = tempfile.mkdtemp()
@@ -163,8 +175,9 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
                   # 'tft_label',  # added by tft_layer
                   'transformed_feature',  # added by transformed_features
                   'transformed_label',  # added by transformed_labels
-              ]
-          }),
+              ],
+          },
+      ),
       (
           'tf_defaults',
           False,
@@ -181,8 +194,9 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
                   # 'tft_label',  # added by tft_layer
                   'transformed_feature',  # added by transformed_features
                   'transformed_label',  # added by transformed_labels
-              ]
-          }),
+              ],
+          },
+      ),
       (
           'keras_custom',
           True,
@@ -196,8 +210,9 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
               'transformed_features': [
                   'custom_feature',  # added by custom_preprocessing
                   'custom_label',  # added by custom_preprocessing
-              ]
-          }),
+              ],
+          },
+      ),
       (
           'tf_custom',
           False,
@@ -211,34 +226,45 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
               'transformed_features': [
                   'custom_feature',  # added by custom_preprocessing
                   'custom_label',  # added by custom_preprocessing
-              ]
-          }),
+              ],
+          },
+      ),
   )
-  @unittest.skipIf(_TF_MAJOR_VERSION < 2,
-                   'not all signatures supported for TF1')
-  def testPreprocessedFeaturesExtractor(self, save_as_keras,
-                                        preprocessing_function_names,
-                                        expected_extract_keys):
+  @unittest.skipIf(
+      _TF_MAJOR_VERSION < 2, 'not all signatures supported for TF1'
+  )
+  def testPreprocessedFeaturesExtractor(
+      self, save_as_keras, preprocessing_function_names, expected_extract_keys
+  ):
     export_path = self.createModelWithMultipleDenseInputs(save_as_keras)
 
-    eval_config = config_pb2.EvalConfig(model_specs=[
-        config_pb2.ModelSpec(
-            preprocessing_function_names=preprocessing_function_names)
-    ])
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(
+                preprocessing_function_names=preprocessing_function_names
+            )
+        ]
+    )
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_path, tags=[tf.saved_model.SERVING])
+        eval_saved_model_path=export_path, tags=[tf.saved_model.SERVING]
+    )
     schema = self.createDenseInputsSchema()
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN
+    )
     tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
         arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations())
+        tensor_representations=tfx_io.TensorRepresentations(),
+    )
     feature_extractor = features_extractor.FeaturesExtractor(
         eval_config=eval_config,
-        tensor_representations=tensor_adapter_config.tensor_representations)
+        tensor_representations=tensor_adapter_config.tensor_representations,
+    )
     transformation_extractor = (
         transformed_features_extractor.TransformedFeaturesExtractor(
-            eval_config=eval_config, eval_shared_model=eval_shared_model))
+            eval_config=eval_config, eval_shared_model=eval_shared_model
+        )
+    )
 
     examples = [
         self._makeExample(input_1=1.0, input_2=2.0),
@@ -250,13 +276,16 @@ class TransformedFeaturesExtractorTest(testutil.TensorflowModelAnalysisTest,
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
+          | 'Create'
+          >> beam.Create(
+              [e.SerializeToString() for e in examples], reshuffle=False
+          )
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
-          | transformation_extractor.stage_name >>
-          transformation_extractor.ptransform)
+          | transformation_extractor.stage_name
+          >> transformation_extractor.ptransform
+      )
 
       # pylint: enable=no-value-for-parameter
 

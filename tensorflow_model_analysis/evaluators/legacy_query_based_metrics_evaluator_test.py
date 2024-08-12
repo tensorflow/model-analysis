@@ -63,39 +63,45 @@ class QueryBasedMetricsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
         label=1.0,
         fixed_float=1.0,
         fixed_string='query1',
-        fixed_int=1)
+        fixed_int=1,
+    )
     query1_example2 = self._makeExample(
         prediction=0.8,
         label=0.0,
         fixed_float=0.5,
         fixed_string='query1',
-        fixed_int=1)
+        fixed_int=1,
+    )
 
     query2_example1 = self._makeExample(
         prediction=0.5,
         label=0.0,
         fixed_float=0.5,
         fixed_string='query2',
-        fixed_int=2)
+        fixed_int=2,
+    )
     query2_example2 = self._makeExample(
         prediction=0.9,
         label=1.0,
         fixed_float=1.0,
         fixed_string='query2',
-        fixed_int=2)
+        fixed_int=2,
+    )
     query2_example3 = self._makeExample(
         prediction=0.1,
         label=0.0,
         fixed_float=0.1,
         fixed_string='query2',
-        fixed_int=2)
+        fixed_int=2,
+    )
 
     query3_example1 = self._makeExample(
         prediction=0.9,
         label=1.0,
         fixed_float=1.0,
         fixed_string='query3',
-        fixed_int=3)
+        fixed_int=3,
+    )
 
     serialized_examples = [
         query1_example1.SerializeToString(),
@@ -111,14 +117,16 @@ class QueryBasedMetricsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
   def testEvaluateQueryBasedMetrics(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
-        fixed_prediction_estimator_extra_fields
-        .simple_fixed_prediction_estimator_extra_fields(None,
-                                                        temp_eval_export_dir))
+        fixed_prediction_estimator_extra_fields.simple_fixed_prediction_estimator_extra_fields(
+            None, temp_eval_export_dir
+        )
+    )
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=eval_export_dir)
+        eval_saved_model_path=eval_export_dir
+    )
     extractors = [
         legacy_predict_extractor.PredictExtractor(eval_shared_model),
-        slice_key_extractor.SliceKeyExtractor()
+        slice_key_extractor.SliceKeyExtractor(),
     ]
 
     with beam.Pipeline() as pipeline:
@@ -127,8 +135,8 @@ class QueryBasedMetricsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
           | 'Create' >> beam.Create(self._get_examples())
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
           | 'Extract' >> tfma_unit.Extract(extractors=extractors)  # pylint: disable=no-value-for-parameter
-          | 'EvaluateQueryBasedMetrics' >>
-          query_based_metrics_evaluator.EvaluateQueryBasedMetrics(
+          | 'EvaluateQueryBasedMetrics'
+          >> query_based_metrics_evaluator.EvaluateQueryBasedMetrics(
               prediction_key='',
               query_id='fixed_string',
               combine_fns=[
@@ -136,10 +144,14 @@ class QueryBasedMetricsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
                   ndcg.NdcgMetricCombineFn(
                       at_vals=[1, 2],
                       gain_key='fixed_float',
-                      weight_key='fixed_int'),
+                      weight_key='fixed_int',
+                  ),
                   min_label_position.MinLabelPositionCombineFn(
-                      label_key='', weight_key='fixed_int'),
-              ]))
+                      label_key='', weight_key='fixed_int'
+                  ),
+              ],
+          )
+      )
 
       def check_metrics(got):
         try:
@@ -147,28 +159,26 @@ class QueryBasedMetricsEvaluatorTest(testutil.TensorflowModelAnalysisTest):
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertDictElementsAlmostEqual(
-              got_metrics, {
-                  'post_export_metrics/total_queries':
-                      3.0,
-                  'post_export_metrics/total_documents':
-                      6.0,
-                  'post_export_metrics/min_documents':
-                      1.0,
-                  'post_export_metrics/max_documents':
-                      3.0,
-                  'post_export_metrics/ndcg@1':
-                      0.9166667,
-                  'post_export_metrics/ndcg@2':
-                      0.9766198,
-                  'post_export_metrics/average_min_label_position/__labels':
-                      0.6666667,
-              })
+              got_metrics,
+              {
+                  'post_export_metrics/total_queries': 3.0,
+                  'post_export_metrics/total_documents': 6.0,
+                  'post_export_metrics/min_documents': 1.0,
+                  'post_export_metrics/max_documents': 3.0,
+                  'post_export_metrics/ndcg@1': 0.9166667,
+                  'post_export_metrics/ndcg@2': 0.9766198,
+                  'post_export_metrics/average_min_label_position/__labels': (
+                      0.6666667
+                  ),
+              },
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
 
       util.assert_that(
-          metrics[constants.METRICS_KEY], check_metrics, label='metrics')
+          metrics[constants.METRICS_KEY], check_metrics, label='metrics'
+      )
 
 
 if __name__ == '__main__':

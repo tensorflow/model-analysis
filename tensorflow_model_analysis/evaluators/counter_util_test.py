@@ -15,7 +15,6 @@
 
 import apache_beam as beam
 import tensorflow as tf
-
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.evaluators import counter_util
 from tensorflow_model_analysis.post_export_metrics import post_export_metrics
@@ -27,14 +26,19 @@ class CounterUtilTest(tf.test.TestCase):
   def testMetricComputedBeamCounter(self):
     with beam.Pipeline() as pipeline:
       auc = post_export_metrics.auc()
-      _ = pipeline | counter_util.IncrementMetricsCallbacksCounters([auc],
-                                                                    'tf_js')
+      _ = pipeline | counter_util.IncrementMetricsCallbacksCounters(
+          [auc], 'tf_js'
+      )
 
     result = pipeline.run()
-    metric_filter = beam.metrics.metric.MetricsFilter().with_namespace(
-        constants.METRICS_NAMESPACE).with_name('metric_computed_auc_v1_tf_js')
-    actual_metrics_count = result.metrics().query(
-        filter=metric_filter)['counters'][0].committed
+    metric_filter = (
+        beam.metrics.metric.MetricsFilter()
+        .with_namespace(constants.METRICS_NAMESPACE)
+        .with_name('metric_computed_auc_v1_tf_js')
+    )
+    actual_metrics_count = (
+        result.metrics().query(filter=metric_filter)['counters'][0].committed
+    )
 
     self.assertEqual(actual_metrics_count, 1)
 
@@ -43,33 +47,44 @@ class CounterUtilTest(tf.test.TestCase):
       _ = (
           pipeline
           | beam.Create([((('slice_key', 'first_slice'),), 2)])
-          | counter_util.IncrementSliceSpecCounters())
+          | counter_util.IncrementSliceSpecCounters()
+      )
 
     result = pipeline.run()
 
-    slice_spec_filter = beam.metrics.metric.MetricsFilter().with_namespace(
-        constants.METRICS_NAMESPACE).with_name(
-            'slice_computed_slice_key_first_slice')
-    slice_count = result.metrics().query(
-        filter=slice_spec_filter)['counters'][0].committed
+    slice_spec_filter = (
+        beam.metrics.metric.MetricsFilter()
+        .with_namespace(constants.METRICS_NAMESPACE)
+        .with_name('slice_computed_slice_key_first_slice')
+    )
+    slice_count = (
+        result.metrics()
+        .query(filter=slice_spec_filter)['counters'][0]
+        .committed
+    )
     self.assertEqual(slice_count, 1)
 
   def testMetricsSpecBeamCounter(self):
     with beam.Pipeline() as pipeline:
       metrics_spec = config_pb2.MetricsSpec(
-          metrics=[config_pb2.MetricConfig(class_name='FairnessIndicators')])
+          metrics=[config_pb2.MetricConfig(class_name='FairnessIndicators')]
+      )
       model_types = set(['tf_js', 'tf_keras'])
-      _ = pipeline | counter_util.IncrementMetricsSpecsCounters([metrics_spec],
-                                                                model_types)
+      _ = pipeline | counter_util.IncrementMetricsSpecsCounters(
+          [metrics_spec], model_types
+      )
 
     result = pipeline.run()
 
     for model_type in model_types:
-      metric_filter = beam.metrics.metric.MetricsFilter().with_namespace(
-          constants.METRICS_NAMESPACE).with_name(
-              'metric_computed_FairnessIndicators_v2_' + model_type)
-      actual_metrics_count = result.metrics().query(
-          filter=metric_filter)['counters'][0].committed
+      metric_filter = (
+          beam.metrics.metric.MetricsFilter()
+          .with_namespace(constants.METRICS_NAMESPACE)
+          .with_name('metric_computed_FairnessIndicators_v2_' + model_type)
+      )
+      actual_metrics_count = (
+          result.metrics().query(filter=metric_filter)['counters'][0].committed
+      )
 
       self.assertEqual(actual_metrics_count, 1)
 

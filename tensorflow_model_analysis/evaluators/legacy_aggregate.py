@@ -17,7 +17,6 @@ from typing import Any, Dict, Generator, Iterable, List, Optional, Tuple
 
 import apache_beam as beam
 import numpy as np
-
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
@@ -34,7 +33,8 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
     compute_with_sampling: Optional[bool] = False,
-    random_seed_for_testing: Optional[int] = None) -> beam.pvalue.PCollection:
+    random_seed_for_testing: Optional[int] = None,
+) -> beam.pvalue.PCollection:
   """PTransform for computing, aggregating and combining metrics.
 
   Args:
@@ -49,24 +49,30 @@ def ComputePerSliceMetrics(  # pylint: disable=invalid-name
   """
   return (
       slice_result
-      | 'CombinePerSlice' >> beam.CombinePerKey(
+      | 'CombinePerSlice'
+      >> beam.CombinePerKey(
           _AggregateCombineFn(
               eval_shared_model=eval_shared_model,
               desired_batch_size=desired_batch_size,
               compute_with_sampling=compute_with_sampling,
-              seed_for_testing=random_seed_for_testing))
-      | 'InterpretOutput' >> beam.ParDo(
-          _ExtractOutputDoFn(eval_shared_model=eval_shared_model)))
+              seed_for_testing=random_seed_for_testing,
+          )
+      )
+      | 'InterpretOutput'
+      >> beam.ParDo(_ExtractOutputDoFn(eval_shared_model=eval_shared_model))
+  )
 
 
 def _add_metric_variables(  # pylint: disable=invalid-name
-    left: types.MetricVariablesType,
-    right: types.MetricVariablesType) -> types.MetricVariablesType:
+    left: types.MetricVariablesType, right: types.MetricVariablesType
+) -> types.MetricVariablesType:
   """Returns left and right metric variables combined."""
   if left is not None and right is not None:
     if len(left) != len(right):
-      raise ValueError('metric variables lengths should match, but got '
-                       '%d and %d' % (len(left), len(right)))
+      raise ValueError(
+          'metric variables lengths should match, but got %d and %d'
+          % (len(left), len(right))
+      )
     return [x + y for x, y in zip(left, right)]
   elif left is not None:
     return left
@@ -90,22 +96,27 @@ class _AggState:
   _DEFAULT_DESIRED_BATCH_SIZE = 1000
 
   __slots__ = [
-      'metric_variables', 'inputs', 'size_estimator', '_desired_batch_size'
+      'metric_variables',
+      'inputs',
+      'size_estimator',
+      '_desired_batch_size',
   ]
 
   def __init__(self, desired_batch_size: Optional[int] = None):
     self.metric_variables = None  # type: Optional[types.MetricVariablesType]
     self.inputs = []  # type: List[bytes]
     self.size_estimator = size_estimator.SizeEstimator(
-        size_threshold=self._TOTAL_INPUT_BYTE_SIZE_THRESHOLD, size_fn=len)
+        size_threshold=self._TOTAL_INPUT_BYTE_SIZE_THRESHOLD, size_fn=len
+    )
     if desired_batch_size and desired_batch_size > 0:
       self._desired_batch_size = desired_batch_size
     else:
       self._desired_batch_size = self._DEFAULT_DESIRED_BATCH_SIZE
 
   def __iadd__(self, other: '_AggState') -> '_AggState':
-    self.metric_variables = _add_metric_variables(self.metric_variables,
-                                                  other.metric_variables)
+    self.metric_variables = _add_metric_variables(
+        self.metric_variables, other.metric_variables
+    )
     self.inputs.extend(other.inputs)
     self.size_estimator += other.size_estimator
     return self
@@ -119,12 +130,15 @@ class _AggState:
     self.size_estimator.clear()
 
   def add_metrics_variables(self, metric_variables: types.MetricVariablesType):
-    self.metric_variables = _add_metric_variables(self.metric_variables,
-                                                  metric_variables)
+    self.metric_variables = _add_metric_variables(
+        self.metric_variables, metric_variables
+    )
 
   def should_flush(self) -> bool:
-    return (len(self.inputs) >= self._desired_batch_size or
-            self.size_estimator.should_flush())
+    return (
+        len(self.inputs) >= self._desired_batch_size
+        or self.size_estimator.should_flush()
+    )
 
 
 @beam.typehints.with_input_types(types.Extracts)
@@ -159,15 +173,18 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
 
   # TODO(b/173811366): Consider removing the desired_batch_size knob and
   # only use input size.
-  def __init__(self,
-               eval_shared_model: types.EvalSharedModel,
-               desired_batch_size: Optional[int] = None,
-               compute_with_sampling: Optional[bool] = False,
-               seed_for_testing: Optional[int] = None) -> None:
+  def __init__(
+      self,
+      eval_shared_model: types.EvalSharedModel,
+      desired_batch_size: Optional[int] = None,
+      compute_with_sampling: Optional[bool] = False,
+      seed_for_testing: Optional[int] = None,
+  ) -> None:
     super().__init__({'': eval_shared_model.model_loader})
     self._seed_for_testing = seed_for_testing
-    self._eval_metrics_graph: Optional[
-        eval_metrics_graph.EvalMetricsGraph] = None
+    self._eval_metrics_graph: Optional[eval_metrics_graph.EvalMetricsGraph] = (
+        None
+    )
     self._desired_batch_size = desired_batch_size
 
     self._compute_with_sampling = compute_with_sampling
@@ -175,11 +192,14 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
 
     # Metrics.
     self._combine_batch_size = beam.metrics.Metrics.distribution(
-        constants.METRICS_NAMESPACE, 'combine_batch_size')
+        constants.METRICS_NAMESPACE, 'combine_batch_size'
+    )
     self._combine_total_input_byte_size = beam.metrics.Metrics.distribution(
-        constants.METRICS_NAMESPACE, 'combine_batch_bytes_size')
+        constants.METRICS_NAMESPACE, 'combine_batch_bytes_size'
+    )
     self._num_compacts = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_compacts')
+        constants.METRICS_NAMESPACE, 'num_compacts'
+    )
 
   def _poissonify(self, accumulator: _AggState) -> List[bytes]:
     # pylint: disable=line-too-long
@@ -209,9 +229,9 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
         result.extend([input_item] * poisson_counts[i])
     return result
 
-  def _maybe_do_batch(self,
-                      accumulator: _AggState,
-                      force: bool = False) -> None:
+  def _maybe_do_batch(
+      self, accumulator: _AggState, force: bool = False
+  ) -> None:
     """Maybe intro metrics and update accumulator in place.
 
     Checks if accumulator has enough FPLs for a batch, and if so, does the
@@ -229,7 +249,8 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
       if accumulator.inputs:
         self._combine_batch_size.update(len(accumulator.inputs))
         self._combine_total_input_byte_size.update(
-            accumulator.size_estimator.get_estimate())
+            accumulator.size_estimator.get_estimate()
+        )
         inputs_for_metrics = accumulator.inputs
         if self._compute_with_sampling:
           # If we are computing with multiple bootstrap replicates, use fpls
@@ -238,7 +259,9 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
         if inputs_for_metrics:
           accumulator.add_metrics_variables(
               self._eval_metrics_graph.metrics_reset_update_get_list(
-                  inputs_for_metrics))
+                  inputs_for_metrics
+              )
+          )
         else:
           # Call to metrics_reset_update_get_list does a reset prior to the
           # metrics update, but does not handle empty updates. Explicitly
@@ -249,8 +272,9 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
   def create_accumulator(self) -> _AggState:
     return _AggState(desired_batch_size=self._desired_batch_size)
 
-  def add_input(self, accumulator: _AggState,
-                elem: types.Extracts) -> _AggState:
+  def add_input(
+      self, accumulator: _AggState, elem: types.Extracts
+  ) -> _AggState:
     accumulator.add_input(elem[constants.INPUT_KEY])
     self._maybe_do_batch(accumulator)
     return accumulator
@@ -281,7 +305,8 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
     return accumulator
 
   def extract_output(
-      self, accumulator: _AggState) -> Optional[types.MetricVariablesType]:
+      self, accumulator: _AggState
+  ) -> Optional[types.MetricVariablesType]:
     # It's possible that the accumulator has not been fully flushed, if it was
     # not produced by a call to compact (which is not guaranteed across all Beam
     # Runners), or if compact was called on an accumulator with only one value,
@@ -291,8 +316,9 @@ class _AggregateCombineFn(model_util.CombineFnWithModels):
     return accumulator.metric_variables
 
 
-@beam.typehints.with_input_types(Tuple[slicer.SliceKeyType,
-                                       Optional[List[Any]]])
+@beam.typehints.with_input_types(
+    Tuple[slicer.SliceKeyType, Optional[List[Any]]]
+)
 # TODO(b/123516222): Add output typehints. Similarly elsewhere that it applies.
 class _ExtractOutputDoFn(model_util.DoFnWithModels):
   """A DoFn that extracts the metrics output."""
@@ -305,7 +331,8 @@ class _ExtractOutputDoFn(model_util.DoFnWithModels):
     # practice, keeping this counter will help us understand if something is
     # misbehaving.
     self._num_bootstrap_empties = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_bootstrap_empties')
+        constants.METRICS_NAMESPACE, 'num_bootstrap_empties'
+    )
 
   def process(
       self, element: Tuple[slicer.SliceKeyType, types.MetricVariablesType]
@@ -314,7 +341,8 @@ class _ExtractOutputDoFn(model_util.DoFnWithModels):
     if metric_variables:
       eval_saved_model = self._loaded_models['']
       result = eval_saved_model.metrics_set_variables_and_get_values(
-          metric_variables)
+          metric_variables
+      )
       yield (slice_key, result)
     else:
       # Increase a counter for empty bootstrap samples. When sampling is not

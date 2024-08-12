@@ -36,7 +36,7 @@ def BuildAnalysisTable(  # pylint: disable=invalid-name
     slice_spec: Optional[List[slicer.SingleSliceSpec]] = None,
     desired_batch_size: Optional[int] = None,
     extractors: Optional[List[extractor.Extractor]] = None,
-    evaluators: Optional[List[evaluator.Evaluator]] = None
+    evaluators: Optional[List[evaluator.Evaluator]] = None,
 ) -> beam.pvalue.PCollection:
   """Builds an analysis table from data extracted from the input.
 
@@ -65,17 +65,21 @@ def BuildAnalysisTable(  # pylint: disable=invalid-name
 
   if not extractors:
     extractors = [
-        legacy_predict_extractor.PredictExtractor(eval_shared_model,
-                                                  desired_batch_size),
+        legacy_predict_extractor.PredictExtractor(
+            eval_shared_model, desired_batch_size
+        ),
         legacy_feature_extractor.FeatureExtractor(),
-        slice_key_extractor.SliceKeyExtractor(slice_spec)
+        slice_key_extractor.SliceKeyExtractor(slice_spec),
     ]
   if not evaluators:
     evaluators = [analysis_table_evaluator.AnalysisTableEvaluator()]
 
   # pylint: disable=no-value-for-parameter
-  return (examples
-          | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
-          | model_eval_lib.ExtractAndEvaluate(
-              extractors=extractors, evaluators=evaluators))
+  return (
+      examples
+      | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
+      | model_eval_lib.ExtractAndEvaluate(
+          extractors=extractors, evaluators=evaluators
+      )
+  )
   # pylint: enable=no-value-for-parameter

@@ -31,9 +31,13 @@ class PoissonBootstrapTest(absltest.TestCase):
       result = (
           pipeline
           | 'Create' >> beam.Create(range(5), reshuffle=False)
-          | 'BootstrapCombine' >> beam.CombineGlobally(
+          | 'BootstrapCombine'
+          >> beam.CombineGlobally(
               poisson_bootstrap._BootstrapCombineFn(
-                  combine_fn=beam.combiners.ToListCombineFn(), random_seed=0)))
+                  combine_fn=beam.combiners.ToListCombineFn(), random_seed=0
+              )
+          )
+      )
 
       def check_result(got_pcoll):
         self.assertLen(got_pcoll, 1)
@@ -45,21 +49,27 @@ class PoissonBootstrapTest(absltest.TestCase):
     metric_key = metric_types.MetricKey(name='metric')
     samples = [
         confidence_intervals_util.SampleMetrics(
-            sample_id=0, metrics={metric_key: 0}),
+            sample_id=0, metrics={metric_key: 0}
+        ),
         confidence_intervals_util.SampleMetrics(
-            sample_id=1, metrics={metric_key: 7}),
+            sample_id=1, metrics={metric_key: 7}
+        ),
         confidence_intervals_util.SampleMetrics(
-            sample_id=poisson_bootstrap._FULL_SAMPLE_ID,
-            metrics={metric_key: 4})
+            sample_id=poisson_bootstrap._FULL_SAMPLE_ID, metrics={metric_key: 4}
+        ),
     ]
 
     with beam.Pipeline() as pipeline:
       result = (
           pipeline
           | 'Create' >> beam.Create(samples, reshuffle=False)
-          | 'CombineSamples' >> beam.CombineGlobally(
+          | 'CombineSamples'
+          >> beam.CombineGlobally(
               poisson_bootstrap._BootstrapSampleCombineFn(
-                  num_bootstrap_samples=2)))
+                  num_bootstrap_samples=2
+              )
+          )
+      )
 
       def check_result(got_pcoll):
         self.assertLen(got_pcoll, 1)
@@ -68,7 +78,8 @@ class PoissonBootstrapTest(absltest.TestCase):
         self.assertIn(metric_key, metrics)
         self.assertAlmostEqual(metrics[metric_key].sample_mean, 3.5, delta=0.1)
         self.assertAlmostEqual(
-            metrics[metric_key].sample_standard_deviation, 4.94, delta=0.1)
+            metrics[metric_key].sample_standard_deviation, 4.94, delta=0.1
+        )
         self.assertEqual(metrics[metric_key].sample_degrees_of_freedom, 1)
         self.assertEqual(metrics[metric_key].unsampled_value, 4.0)
 
@@ -79,136 +90,159 @@ class PoissonBootstrapTest(absltest.TestCase):
     y_key = metric_types.MetricKey('y')
     cm_key = metric_types.MetricKey('confusion_matrix')
     cm_metric = binary_confusion_matrices.Matrices(
-        thresholds=[0.5], tp=[0], fp=[1], tn=[2], fn=[3])
+        thresholds=[0.5], tp=[0], fp=[1], tn=[2], fn=[3]
+    )
     skipped_metric_key = metric_types.MetricKey('skipped_metric')
     slice_key1 = (('slice_feature', 1),)
     slice_key2 = (('slice_feature', 2),)
     samples = [
         # unsampled value for slice 1
-        (slice_key1,
-         confidence_intervals_util.SampleMetrics(
-             sample_id=poisson_bootstrap._FULL_SAMPLE_ID,
-             metrics={
-                 x_key: 1.6,
-                 y_key: 16,
-                 cm_key: cm_metric,
-                 skipped_metric_key: 100,
-             })),
+        (
+            slice_key1,
+            confidence_intervals_util.SampleMetrics(
+                sample_id=poisson_bootstrap._FULL_SAMPLE_ID,
+                metrics={
+                    x_key: 1.6,
+                    y_key: 16,
+                    cm_key: cm_metric,
+                    skipped_metric_key: 100,
+                },
+            ),
+        ),
         # sample values 1 of 2 for slice 1
-        (slice_key1,
-         confidence_intervals_util.SampleMetrics(
-             sample_id=0,
-             metrics={
-                 x_key: 1,
-                 y_key: 10,
-                 cm_key: cm_metric,
-                 skipped_metric_key: 45,
-             })),
+        (
+            slice_key1,
+            confidence_intervals_util.SampleMetrics(
+                sample_id=0,
+                metrics={
+                    x_key: 1,
+                    y_key: 10,
+                    cm_key: cm_metric,
+                    skipped_metric_key: 45,
+                },
+            ),
+        ),
         # sample values 2 of 2 for slice 1
-        (slice_key1,
-         confidence_intervals_util.SampleMetrics(
-             sample_id=1,
-             metrics={
-                 x_key: 2,
-                 y_key: 20,
-                 cm_key: cm_metric,
-                 skipped_metric_key: 55,
-             })),
+        (
+            slice_key1,
+            confidence_intervals_util.SampleMetrics(
+                sample_id=1,
+                metrics={
+                    x_key: 2,
+                    y_key: 20,
+                    cm_key: cm_metric,
+                    skipped_metric_key: 55,
+                },
+            ),
+        ),
         # unsampled value for slice 2
-        (slice_key2,
-         confidence_intervals_util.SampleMetrics(
-             sample_id=poisson_bootstrap._FULL_SAMPLE_ID,
-             metrics={
-                 x_key: 3.3,
-                 y_key: 33,
-                 cm_key: cm_metric,
-                 skipped_metric_key: 1000,
-             })),
+        (
+            slice_key2,
+            confidence_intervals_util.SampleMetrics(
+                sample_id=poisson_bootstrap._FULL_SAMPLE_ID,
+                metrics={
+                    x_key: 3.3,
+                    y_key: 33,
+                    cm_key: cm_metric,
+                    skipped_metric_key: 1000,
+                },
+            ),
+        ),
         # sample values 1 of 2 for slice 2
-        (slice_key2,
-         confidence_intervals_util.SampleMetrics(
-             sample_id=0,
-             metrics={
-                 x_key: 2,
-                 y_key: 20,
-                 cm_key: cm_metric,
-                 skipped_metric_key: 450,
-             })),
+        (
+            slice_key2,
+            confidence_intervals_util.SampleMetrics(
+                sample_id=0,
+                metrics={
+                    x_key: 2,
+                    y_key: 20,
+                    cm_key: cm_metric,
+                    skipped_metric_key: 450,
+                },
+            ),
+        ),
         # sample values 2 of 2 for slice 2
-        (slice_key2,
-         confidence_intervals_util.SampleMetrics(
-             sample_id=1,
-             metrics={
-                 x_key: 4,
-                 y_key: 40,
-                 cm_key: cm_metric,
-                 skipped_metric_key: 550,
-             })),
+        (
+            slice_key2,
+            confidence_intervals_util.SampleMetrics(
+                sample_id=1,
+                metrics={
+                    x_key: 4,
+                    y_key: 40,
+                    cm_key: cm_metric,
+                    skipped_metric_key: 550,
+                },
+            ),
+        ),
     ]
 
     with beam.Pipeline() as pipeline:
       result = (
           pipeline
           | 'Create' >> beam.Create(samples, reshuffle=False)
-          | 'CombineSamplesPerKey' >> beam.CombinePerKey(
+          | 'CombineSamplesPerKey'
+          >> beam.CombinePerKey(
               poisson_bootstrap._BootstrapSampleCombineFn(
                   num_bootstrap_samples=2,
-                  skip_ci_metric_keys=[skipped_metric_key])))
+                  skip_ci_metric_keys=[skipped_metric_key],
+              )
+          )
+      )
 
       def check_result(got_pcoll):
         expected_pcoll = [
             (
                 slice_key1,
                 {
-                    x_key:
-                        types.ValueWithTDistribution(
-                            sample_mean=1.5,
-                            # sample_standard_deviation=0.5
-                            sample_standard_deviation=np.std([1, 2], ddof=1),
-                            sample_degrees_of_freedom=1,
-                            unsampled_value=1.6),
-                    y_key:
-                        types.ValueWithTDistribution(
-                            sample_mean=15.,
-                            # sample_standard_deviation=5,
-                            sample_standard_deviation=np.std([10, 20], ddof=1),
-                            sample_degrees_of_freedom=1,
-                            unsampled_value=16),
-                    cm_key:
-                        types.ValueWithTDistribution(
-                            sample_mean=cm_metric,
-                            sample_standard_deviation=cm_metric * 0,
-                            sample_degrees_of_freedom=1,
-                            unsampled_value=cm_metric),
-                    skipped_metric_key:
-                        100,
-                }),
+                    x_key: types.ValueWithTDistribution(
+                        sample_mean=1.5,
+                        # sample_standard_deviation=0.5
+                        sample_standard_deviation=np.std([1, 2], ddof=1),
+                        sample_degrees_of_freedom=1,
+                        unsampled_value=1.6,
+                    ),
+                    y_key: types.ValueWithTDistribution(
+                        sample_mean=15.0,
+                        # sample_standard_deviation=5,
+                        sample_standard_deviation=np.std([10, 20], ddof=1),
+                        sample_degrees_of_freedom=1,
+                        unsampled_value=16,
+                    ),
+                    cm_key: types.ValueWithTDistribution(
+                        sample_mean=cm_metric,
+                        sample_standard_deviation=cm_metric * 0,
+                        sample_degrees_of_freedom=1,
+                        unsampled_value=cm_metric,
+                    ),
+                    skipped_metric_key: 100,
+                },
+            ),
             (
                 slice_key2,
                 {
-                    x_key:
-                        types.ValueWithTDistribution(
-                            sample_mean=3.,
-                            # sample_standard_deviation=1,
-                            sample_standard_deviation=np.std([2, 4], ddof=1),
-                            sample_degrees_of_freedom=1,
-                            unsampled_value=3.3),
-                    y_key:
-                        types.ValueWithTDistribution(
-                            sample_mean=30.,
-                            # sample_standard_deviation=10,
-                            sample_standard_deviation=np.std([20, 40], ddof=1),
-                            sample_degrees_of_freedom=1,
-                            unsampled_value=33),
-                    cm_key:
-                        types.ValueWithTDistribution(
-                            sample_mean=cm_metric,
-                            sample_standard_deviation=cm_metric * 0,
-                            sample_degrees_of_freedom=1,
-                            unsampled_value=cm_metric),
-                    skipped_metric_key:
-                        1000,
-                }),
+                    x_key: types.ValueWithTDistribution(
+                        sample_mean=3.0,
+                        # sample_standard_deviation=1,
+                        sample_standard_deviation=np.std([2, 4], ddof=1),
+                        sample_degrees_of_freedom=1,
+                        unsampled_value=3.3,
+                    ),
+                    y_key: types.ValueWithTDistribution(
+                        sample_mean=30.0,
+                        # sample_standard_deviation=10,
+                        sample_standard_deviation=np.std([20, 40], ddof=1),
+                        sample_degrees_of_freedom=1,
+                        unsampled_value=33,
+                    ),
+                    cm_key: types.ValueWithTDistribution(
+                        sample_mean=cm_metric,
+                        sample_standard_deviation=cm_metric * 0,
+                        sample_degrees_of_freedom=1,
+                        unsampled_value=cm_metric,
+                    ),
+                    skipped_metric_key: 1000,
+                },
+            ),
         ]
         self.assertCountEqual(expected_pcoll, got_pcoll)
 
@@ -219,24 +253,37 @@ class PoissonBootstrapTest(absltest.TestCase):
     # the sample value is irrelevant for this test as we only verify counters.
     samples = [
         # unsampled value
-        (confidence_intervals_util.SampleMetrics(
-            sample_id=poisson_bootstrap._FULL_SAMPLE_ID,
-            metrics={
-                metric_key: 2,
-            })),
-        (confidence_intervals_util.SampleMetrics(
-            sample_id=0, metrics={metric_key: 2})),
-        (confidence_intervals_util.SampleMetrics(
-            sample_id=1, metrics={metric_key: float('nan')})),
+        (
+            confidence_intervals_util.SampleMetrics(
+                sample_id=poisson_bootstrap._FULL_SAMPLE_ID,
+                metrics={
+                    metric_key: 2,
+                },
+            )
+        ),
+        (
+            confidence_intervals_util.SampleMetrics(
+                sample_id=0, metrics={metric_key: 2}
+            )
+        ),
+        (
+            confidence_intervals_util.SampleMetrics(
+                sample_id=1, metrics={metric_key: float('nan')}
+            )
+        ),
     ]
 
     with beam.Pipeline() as pipeline:
       result = (
           pipeline
           | 'Create' >> beam.Create(samples, reshuffle=False)
-          | 'CombineSamplesPerKey' >> beam.CombineGlobally(
+          | 'CombineSamplesPerKey'
+          >> beam.CombineGlobally(
               poisson_bootstrap._BootstrapSampleCombineFn(
-                  num_bootstrap_samples=2)))
+                  num_bootstrap_samples=2
+              )
+          )
+      )
 
       def check_result(got_pcoll):
         self.assertLen(got_pcoll, 1)
@@ -258,31 +305,39 @@ class PoissonBootstrapTest(absltest.TestCase):
             sample_id=poisson_bootstrap._FULL_SAMPLE_ID,
             metrics={
                 metric_key: 1,
-            })
+            },
+        )
     ]
     for sample_id, value in enumerate(sample_values):
       samples.append(
           confidence_intervals_util.SampleMetrics(
-              sample_id=sample_id, metrics={
+              sample_id=sample_id,
+              metrics={
                   metric_key: value,
-              }))
+              },
+          )
+      )
     with beam.Pipeline() as pipeline:
       result = (
           pipeline
           | 'Create' >> beam.Create(samples, reshuffle=False)
-          | 'CombineSamples' >> beam.CombineGlobally(
+          | 'CombineSamples'
+          >> beam.CombineGlobally(
               poisson_bootstrap._BootstrapSampleCombineFn(
-                  num_bootstrap_samples=20)))
+                  num_bootstrap_samples=20
+              )
+          )
+      )
 
       def check_result(got_pcoll):
         expected_pcoll = [
             {
-                metric_key:
-                    types.ValueWithTDistribution(
-                        sample_mean=5293977041.15,
-                        sample_standard_deviation=3023624729.537024,
-                        sample_degrees_of_freedom=19,
-                        unsampled_value=1),
+                metric_key: types.ValueWithTDistribution(
+                    sample_mean=5293977041.15,
+                    sample_standard_deviation=3023624729.537024,
+                    sample_degrees_of_freedom=19,
+                    unsampled_value=1,
+                ),
             },
         ]
         self.assertCountEqual(expected_pcoll, got_pcoll)

@@ -20,14 +20,12 @@ from typing import List, Mapping
 import apache_beam as beam
 import pyarrow as pa
 import tensorflow as tf
-
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib
 from tensorflow_model_analysis.utils import util
-
 from tfx_bsl.arrow import sql_util
 from tfx_bsl.tfxio import tensor_to_arrow
 
@@ -37,7 +35,8 @@ _SQL_SLICE_KEY_EXTRACTOR_STAGE_NAME = 'ExtractSqlSliceKeys'
 
 
 def SqlSliceKeyExtractor(
-    eval_config: config_pb2.EvalConfig) -> extractor.Extractor:
+    eval_config: config_pb2.EvalConfig,
+) -> extractor.Extractor:
   """Creates an extractor for sql slice keys.
 
   This extractor extracts slices keys in a batch based on the SQL statement in
@@ -53,7 +52,8 @@ def SqlSliceKeyExtractor(
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=_SQL_SLICE_KEY_EXTRACTOR_STAGE_NAME,
-      ptransform=_ExtractSqlSliceKey(eval_config))
+      ptransform=_ExtractSqlSliceKey(eval_config),
+  )
 
 
 @beam.typehints.with_input_types(types.Extracts)
@@ -75,12 +75,15 @@ class ExtractSqlSliceKeyFn(beam.DoFn):
     ]
     self._sql_slicer_num_record_batch_schemas = (
         beam.metrics.Metrics.distribution(
-            constants.METRICS_NAMESPACE, 'sql_slicer_num_record_batch_schemas'))
+            constants.METRICS_NAMESPACE, 'sql_slicer_num_record_batch_schemas'
+        )
+    )
 
   def setup(self):
 
     def _GenerateQueries(
-        schema: pa.Schema) -> List[sql_util.RecordBatchSQLSliceQuery]:
+        schema: pa.Schema,
+    ) -> List[sql_util.RecordBatchSQLSliceQuery]:
       result = []
       for sql in self._sqls:
         try:
@@ -97,8 +100,10 @@ class ExtractSqlSliceKeyFn(beam.DoFn):
   def process(self, batched_extract: types.Extracts) -> List[types.Extracts]:
     features = batched_extract[constants.FEATURES_KEY]
     # Slice on transformed features if available.
-    if (constants.TRANSFORMED_FEATURES_KEY in batched_extract and
-        batched_extract[constants.TRANSFORMED_FEATURES_KEY] is not None):
+    if (
+        constants.TRANSFORMED_FEATURES_KEY in batched_extract
+        and batched_extract[constants.TRANSFORMED_FEATURES_KEY] is not None
+    ):
       transformed_features = batched_extract[constants.TRANSFORMED_FEATURES_KEY]
       # If only one model, the output is stored without keying on model name.
       if not self._eval_config or len(self._eval_config.model_specs) == 1:
@@ -155,7 +160,8 @@ class ExtractSqlSliceKeyFn(beam.DoFn):
     batched_extract_copy[constants.SLICE_KEY_TYPES_KEY] = varlen_sql_slice_keys
 
     self._sql_slicer_num_record_batch_schemas.update(
-        self._cached_queries.cache_info().currsize)
+        self._cached_queries.cache_info().currsize
+    )
 
     return [batched_extract_copy]
 
@@ -164,6 +170,6 @@ class ExtractSqlSliceKeyFn(beam.DoFn):
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractSqlSliceKey(
-    extracts: beam.pvalue.PCollection,
-    eval_config: config_pb2.EvalConfig) -> beam.pvalue.PCollection:
+    extracts: beam.pvalue.PCollection, eval_config: config_pb2.EvalConfig
+) -> beam.pvalue.PCollection:
   return extracts | beam.ParDo(ExtractSqlSliceKeyFn(eval_config))

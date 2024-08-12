@@ -34,20 +34,24 @@ class EvalSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
   def testNativeEvalSavedModelMetricComputations(self):
     temp_export_dir = self._getExportDir()
     _, export_dir = linear_classifier.simple_linear_classifier(
-        None, temp_export_dir)
+        None, temp_export_dir
+    )
 
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir)
+        eval_saved_model_path=export_dir
+    )
 
     computation = (
         eval_saved_model_util.metric_computations_using_eval_saved_model(
-            '', eval_shared_model.model_loader)[0])
+            '', eval_shared_model.model_loader
+        )[0]
+    )
 
     examples = [
         self._makeExample(age=3.0, language='english', label=1.0),
         self._makeExample(age=3.0, language='chinese', label=0.0),
         self._makeExample(age=4.0, language='english', label=1.0),
-        self._makeExample(age=5.0, language='chinese', label=0.0)
+        self._makeExample(age=5.0, language='chinese', label=0.0),
     ]
 
     extracts = []
@@ -60,10 +64,11 @@ class EvalSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
           pipeline
           | 'Create' >> beam.Create(extracts)
           | 'Process' >> beam.ParDo(computation.preprocessors[0])
-          | 'ToStandardMetricInputs' >> beam.Map(
-              metric_types.StandardMetricInputs)
+          | 'ToStandardMetricInputs'
+          >> beam.Map(metric_types.StandardMetricInputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'ComputeMetric' >> beam.CombinePerKey(computation.combiner))
+          | 'ComputeMetric' >> beam.CombinePerKey(computation.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -73,20 +78,22 @@ class EvalSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           self.assertDictElementsAlmostEqual(
-              got_metrics, {
+              got_metrics,
+              {
                   metric_types.MetricKey(
-                      name='accuracy', example_weighted=None):
-                      1.0,
+                      name='accuracy', example_weighted=None
+                  ): 1.0,
                   metric_types.MetricKey(
-                      name='label/mean', example_weighted=None):
-                      0.5,
+                      name='label/mean', example_weighted=None
+                  ): 0.5,
                   metric_types.MetricKey(
-                      name='my_mean_age', example_weighted=None):
-                      3.75,
+                      name='my_mean_age', example_weighted=None
+                  ): 3.75,
                   metric_types.MetricKey(
-                      name='my_mean_age_times_label', example_weighted=None):
-                      1.75
-              })
+                      name='my_mean_age_times_label', example_weighted=None
+                  ): 1.75,
+              },
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)
@@ -98,11 +105,14 @@ class EvalSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
     _, export_dir = multi_head.simple_multi_head(None, temp_export_dir)
 
     eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_dir)
+        eval_saved_model_path=export_dir
+    )
 
     computation = (
         eval_saved_model_util.metric_computations_using_eval_saved_model(
-            '', eval_shared_model.model_loader)[0])
+            '', eval_shared_model.model_loader
+        )[0]
+    )
 
     examples = [
         self._makeExample(
@@ -110,25 +120,29 @@ class EvalSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
             language='english',
             english_label=1.0,
             chinese_label=0.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=1.0,
             language='chinese',
             english_label=0.0,
             chinese_label=1.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=2.0,
             language='english',
             english_label=1.0,
             chinese_label=0.0,
-            other_label=0.0),
+            other_label=0.0,
+        ),
         self._makeExample(
             age=2.0,
             language='other',
             english_label=0.0,
             chinese_label=1.0,
-            other_label=1.0),
+            other_label=1.0,
+        ),
     ]
 
     extracts = []
@@ -141,10 +155,11 @@ class EvalSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
           pipeline
           | 'Create' >> beam.Create(extracts)
           | 'Process' >> beam.ParDo(computation.preprocessors[0])
-          | 'ToStandardMetricInputs' >> beam.Map(
-              metric_types.StandardMetricInputs)
+          | 'ToStandardMetricInputs'
+          >> beam.Map(metric_types.StandardMetricInputs)
           | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'ComputeMetric' >> beam.CombinePerKey(computation.combiner))
+          | 'ComputeMetric' >> beam.CombinePerKey(computation.combiner)
+      )
 
       # pylint: enable=no-value-for-parameter
 
@@ -154,36 +169,38 @@ class EvalSavedModelUtilTest(testutil.TensorflowModelAnalysisTest):
           got_slice_key, got_metrics = got[0]
           self.assertEqual(got_slice_key, ())
           chinese_accuracy_key = metric_types.MetricKey(
-              name='accuracy',
-              output_name='chinese_head',
-              example_weighted=None)
+              name='accuracy', output_name='chinese_head', example_weighted=None
+          )
           chinese_mean_label_key = metric_types.MetricKey(
               name='label/mean',
               output_name='chinese_head',
-              example_weighted=None)
+              example_weighted=None,
+          )
           english_accuracy_key = metric_types.MetricKey(
-              name='accuracy',
-              output_name='english_head',
-              example_weighted=None)
+              name='accuracy', output_name='english_head', example_weighted=None
+          )
           english_mean_label_key = metric_types.MetricKey(
               name='label/mean',
               output_name='english_head',
-              example_weighted=None)
+              example_weighted=None,
+          )
           other_accuracy_key = metric_types.MetricKey(
-              name='accuracy', output_name='other_head', example_weighted=None)
+              name='accuracy', output_name='other_head', example_weighted=None
+          )
           other_mean_label_key = metric_types.MetricKey(
-              name='label/mean',
-              output_name='other_head',
-              example_weighted=None)
+              name='label/mean', output_name='other_head', example_weighted=None
+          )
           self.assertDictElementsAlmostEqual(
-              got_metrics, {
+              got_metrics,
+              {
                   chinese_accuracy_key: 0.75,
                   chinese_mean_label_key: 0.5,
                   english_accuracy_key: 1.0,
                   english_mean_label_key: 0.5,
                   other_accuracy_key: 1.0,
-                  other_mean_label_key: 0.25
-              })
+                  other_mean_label_key: 0.25,
+              },
+          )
 
         except AssertionError as err:
           raise util.BeamAssertException(err)

@@ -28,19 +28,16 @@ class ExtractorTest(test_util.TensorflowModelAnalysisTest):
         _ = (
             pipeline
             | 'Create' >> beam.Create([])
-            | 'Filter' >> extractor.Filter(include=['a'], exclude=['b']))
+            | 'Filter' >> extractor.Filter(include=['a'], exclude=['b'])
+        )
 
   def testIncludeFilter(self):
     with beam.Pipeline() as pipeline:
       got = (
           pipeline
-          | 'Create' >> beam.Create([{
-              'a': 1,
-              'b': 2,
-              'c': 3,
-              'd': 4
-          }])
-          | 'Filter' >> extractor.Filter(include=['a', 'c']))
+          | 'Create' >> beam.Create([{'a': 1, 'b': 2, 'c': 3, 'd': 4}])
+          | 'Filter' >> extractor.Filter(include=['a', 'c'])
+      )
 
       def check_result(got):
         try:
@@ -54,29 +51,16 @@ class ExtractorTest(test_util.TensorflowModelAnalysisTest):
     with beam.Pipeline() as pipeline:
       got = (
           pipeline
-          | 'Create' >> beam.Create([{
+          | 'Create'
+          >> beam.Create([{
               'a': 1,
-              'b': {
-                  'b2': 2
-              },
-              'c': {
-                  'c2': {
-                      'c21': 3,
-                      'c22': 4
-                  }
-              },
-              'd': {
-                  'd2': 4
-              }
+              'b': {'b2': 2},
+              'c': {'c2': {'c21': 3, 'c22': 4}},
+              'd': {'d2': 4},
           }])
-          | 'Filter' >> extractor.Filter(include={
-              'b': {},
-              'c': {
-                  'c2': {
-                      'c21': {}
-                  }
-              }
-          }))
+          | 'Filter'
+          >> extractor.Filter(include={'b': {}, 'c': {'c2': {'c21': {}}}})
+      )
 
       def check_result(got):
         try:
@@ -90,13 +74,9 @@ class ExtractorTest(test_util.TensorflowModelAnalysisTest):
     with beam.Pipeline() as pipeline:
       got = (
           pipeline
-          | 'Create' >> beam.Create([{
-              'a': 1,
-              'b': 2,
-              'c': 3,
-              'd': 4
-          }])
-          | 'Filter' >> extractor.Filter(exclude=['b', 'd']))
+          | 'Create' >> beam.Create([{'a': 1, 'b': 2, 'c': 3, 'd': 4}])
+          | 'Filter' >> extractor.Filter(exclude=['b', 'd'])
+      )
 
       def check_result(got):
         try:
@@ -110,43 +90,22 @@ class ExtractorTest(test_util.TensorflowModelAnalysisTest):
     with beam.Pipeline() as pipeline:
       got = (
           pipeline
-          | 'Create' >> beam.Create([{
+          | 'Create'
+          >> beam.Create([{
               'a': 1,
-              'b': {
-                  'b2': 2
-              },
-              'c': {
-                  'c2': {
-                      'c21': 3,
-                      'c22': 4
-                  }
-              },
-              'd': {
-                  'd2': 4
-              }
+              'b': {'b2': 2},
+              'c': {'c2': {'c21': 3, 'c22': 4}},
+              'd': {'d2': 4},
           }])
-          | 'Filter' >> extractor.Filter(exclude={
-              'b': {},
-              'c': {
-                  'c2': {
-                      'c21': {}
-                  }
-              }
-          }))
+          | 'Filter'
+          >> extractor.Filter(exclude={'b': {}, 'c': {'c2': {'c21': {}}}})
+      )
 
       def check_result(got):
         try:
-          self.assertEqual(got, [{
-              'a': 1,
-              'c': {
-                  'c2': {
-                      'c22': 4
-                  }
-              },
-              'd': {
-                  'd2': 4
-              }
-          }])
+          self.assertEqual(
+              got, [{'a': 1, 'c': {'c2': {'c22': 4}}, 'd': {'d2': 4}}]
+          )
         except AssertionError as err:
           raise util.BeamAssertException(err)
 

@@ -27,12 +27,10 @@ class AnalysisTableEvaulatorTest(test_util.TensorflowModelAnalysisTest):
     with beam.Pipeline() as pipeline:
       got = (
           pipeline
-          | 'Create' >> beam.Create([{
-              'a': 1,
-              'b': 2
-          }])
-          | 'EvaluateExtracts' >>
-          analysis_table_evaluator.EvaluateExtracts(include=['a']))
+          | 'Create' >> beam.Create([{'a': 1, 'b': 2}])
+          | 'EvaluateExtracts'
+          >> analysis_table_evaluator.EvaluateExtracts(include=['a'])
+      )
 
       def check_result(got):
         try:
@@ -46,12 +44,10 @@ class AnalysisTableEvaulatorTest(test_util.TensorflowModelAnalysisTest):
     with beam.Pipeline() as pipeline:
       got = (
           pipeline
-          | 'Create' >> beam.Create([{
-              'a': 1,
-              'b': 2
-          }])
-          | 'EvaluateExtracts' >>
-          analysis_table_evaluator.EvaluateExtracts(exclude=['a']))
+          | 'Create' >> beam.Create([{'a': 1, 'b': 2}])
+          | 'EvaluateExtracts'
+          >> analysis_table_evaluator.EvaluateExtracts(exclude=['a'])
+      )
 
       def check_result(got):
         try:
@@ -65,11 +61,10 @@ class AnalysisTableEvaulatorTest(test_util.TensorflowModelAnalysisTest):
     with beam.Pipeline() as pipeline:
       got = (
           pipeline
-          | 'Create' >> beam.Create([{
-              constants.INPUT_KEY: 'input',
-              'other': 2
-          }])
-          | 'EvaluateExtracts' >> analysis_table_evaluator.EvaluateExtracts())
+          | 'Create'
+          >> beam.Create([{constants.INPUT_KEY: 'input', 'other': 2}])
+          | 'EvaluateExtracts' >> analysis_table_evaluator.EvaluateExtracts()
+      )
 
       def check_result(got):
         try:
@@ -83,12 +78,11 @@ class AnalysisTableEvaulatorTest(test_util.TensorflowModelAnalysisTest):
     with beam.Pipeline() as pipeline:
       got = (
           pipeline
-          | 'Create' >> beam.Create([{
-              constants.INPUT_KEY: 'input',
-              'other': 2
-          }])
-          | 'EvaluateExtracts' >>
-          analysis_table_evaluator.EvaluateExtracts(exclude=[]))
+          | 'Create'
+          >> beam.Create([{constants.INPUT_KEY: 'input', 'other': 2}])
+          | 'EvaluateExtracts'
+          >> analysis_table_evaluator.EvaluateExtracts(exclude=[])
+      )
 
       def check_result(got):
         try:

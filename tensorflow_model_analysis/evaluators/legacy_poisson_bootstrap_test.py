@@ -46,12 +46,14 @@ class PoissonBootstrapTest(tf.test.TestCase):
         [4, 0, 2, 3, 0.60000002, 0.42857143],
     ])
     result = poisson_bootstrap._calculate_t_distribution(
-        sampling_data_list, unsampled_data)
+        sampling_data_list, unsampled_data
+    )
     self.assertIsInstance(result, np.ndarray)
     self.assertEqual(result.shape, (5, 6))
     self.assertAlmostEqual(result[0][0].sample_mean, 3.5, delta=0.1)
     self.assertAlmostEqual(
-        result[0][0].sample_standard_deviation, 4.94, delta=0.1)
+        result[0][0].sample_standard_deviation, 4.94, delta=0.1
+    )
     self.assertEqual(result[0][0].sample_degrees_of_freedom, 1)
     self.assertEqual(result[0][0].unsampled_value, 4.0)
     self.assertAlmostEqual(result[0][4].sample_mean, 0.77, delta=0.1)
@@ -62,24 +64,30 @@ class PoissonBootstrapTest(tf.test.TestCase):
     sampling_data_list = [
         np.array([1, 2]),
         np.array([1, 2]),
-        np.array([1, float('nan')])
+        np.array([1, float('nan')]),
     ]
     unsampled_data = np.array([1, 2])
     result = poisson_bootstrap._calculate_t_distribution(
-        sampling_data_list, unsampled_data)
+        sampling_data_list, unsampled_data
+    )
     self.assertIsInstance(result, np.ndarray)
-    self.assertEqual(result.tolist(), [
-        types.ValueWithTDistribution(
-            sample_mean=1.0,
-            sample_standard_deviation=0.0,
-            sample_degrees_of_freedom=2,
-            unsampled_value=1),
-        types.ValueWithTDistribution(
-            sample_mean=2.0,
-            sample_standard_deviation=0.0,
-            sample_degrees_of_freedom=1,
-            unsampled_value=2)
-    ])
+    self.assertEqual(
+        result.tolist(),
+        [
+            types.ValueWithTDistribution(
+                sample_mean=1.0,
+                sample_standard_deviation=0.0,
+                sample_degrees_of_freedom=2,
+                unsampled_value=1,
+            ),
+            types.ValueWithTDistribution(
+                sample_mean=2.0,
+                sample_standard_deviation=0.0,
+                sample_degrees_of_freedom=1,
+                unsampled_value=2,
+            ),
+        ],
+    )
 
 
 if __name__ == '__main__':

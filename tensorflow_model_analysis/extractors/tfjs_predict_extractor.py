@@ -20,7 +20,6 @@ import os
 import subprocess
 import tempfile
 from typing import Dict, List, NamedTuple, Sequence, Union
-
 import uuid
 
 import apache_beam as beam
@@ -48,7 +47,8 @@ _TF_INPUT_NAME_JSON = 'tf_input_name.json'
 
 
 class _InputSpec(
-    NamedTuple('_InputSpec', [('dim', List[int]), ('dtype', str)])):
+    NamedTuple('_InputSpec', [('dim', List[int]), ('dtype', str)])
+):
   """_InputSpec encapsulates the processed input spec from TFJS model.
 
   Attributes:
@@ -63,8 +63,11 @@ class _InputSpec(
 class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
   """A DoFn that loads tfjs models and predicts."""
 
-  def __init__(self, eval_config: config_pb2.EvalConfig,
-               eval_shared_models: Dict[str, types.EvalSharedModel]) -> None:
+  def __init__(
+      self,
+      eval_config: config_pb2.EvalConfig,
+      eval_shared_models: Dict[str, types.EvalSharedModel],
+  ) -> None:
     super().__init__({k: v.model_loader for k, v in eval_shared_models.items()})
     self._eval_config = eval_config
     self._src_model_paths = {
@@ -82,15 +85,18 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
     for model_name, model_path in self._src_model_paths.items():
       with tf.io.gfile.GFile(os.path.join(model_path, _MODEL_JSON)) as f:
         model_json = json.load(f)
-        if ('userDefinedMetadata' in model_json and
-            'signature' in model_json['userDefinedMetadata']):
+        if (
+            'userDefinedMetadata' in model_json
+            and 'signature' in model_json['userDefinedMetadata']
+        ):
           model_signature = model_json['userDefinedMetadata']['signature']
         else:
           model_signature = model_json['signature']
         model_inputs = {}
         for k, v in model_signature['inputs'].items():
           model_inputs[k] = _InputSpec(
-              [int(d['size']) for d in v['tensorShape']['dim']], v['dtype'])
+              [int(d['size']) for d in v['tensorShape']['dim']], v['dtype']
+          )
 
         model_outputs = {}
         for k, v in model_signature['outputs'].items():
@@ -100,22 +106,24 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
       self._model_properties[model_name] = {
           'inputs': model_inputs,
           'outputs': model_outputs,
-          'path': cur_model_path
+          'path': cur_model_path,
       }
 
       # We copy models to local tmp storage so that the tfjs binary can
       # access them.
       tf.io.gfile.makedirs(cur_model_path)
       for directory, _, files in tf.io.gfile.walk(model_path):
-        cur_path = os.path.join(cur_model_path,
-                                os.path.relpath(directory, model_path))
+        cur_path = os.path.join(
+            cur_model_path, os.path.relpath(directory, model_path)
+        )
         tf.io.gfile.makedirs(cur_path)
         for f in files:
           src_path = os.path.join(directory, f)
           tf.io.gfile.copy(src_path, os.path.join(cur_path, f))
 
   def _batch_reducible_process(
-      self, element: types.Extracts) -> Sequence[types.Extracts]:
+      self, element: types.Extracts
+  ) -> Sequence[types.Extracts]:
     """Invokes the tfjs model on the provided inputs and stores the result."""
     result = copy.copy(element)
 
@@ -129,21 +137,29 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
     for spec in self._eval_config.model_specs:
       model_name = spec.name if len(self._eval_config.model_specs) > 1 else ''
       if model_name not in self._loaded_models:
-        raise ValueError('model for "{}" not found: eval_config={}'.format(
-            spec.name, self._eval_config))
+        raise ValueError(
+            'model for "{}" not found: eval_config={}'.format(
+                spec.name, self._eval_config
+            )
+        )
 
       model_features = {}
       for k in self._model_properties[model_name]['inputs']:
         k_name = k.split(':')[0]
         if k_name not in batched_features:
-          raise ValueError('model requires feature "{}" not available in '
-                           'input.'.format(k_name))
+          raise ValueError(
+              'model requires feature "{}" not available in input.'.format(
+                  k_name
+              )
+          )
         dim = self._model_properties[model_name]['inputs'][k].dim
         elems = []
         for i in batched_features[k_name]:
           if np.ndim(i) > len(dim):
-            raise ValueError('ranks for input "{}" are not compatible '
-                             'with the model.'.format(k_name))
+            raise ValueError(
+                'ranks for input "{}" are not compatible '
+                'with the model.'.format(k_name)
+            )
           # TODO(dzats): See if we can support case where multiple dimensions
           # are not defined.
           elems.append(np.reshape(i, dim))
@@ -153,8 +169,10 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
 
       batched_entries = collections.defaultdict(list)
       for feature, value in model_features.items():
-        if (self._model_properties[model_name]['inputs'][feature].dtype ==
-            'DT_STRING'):
+        if (
+            self._model_properties[model_name]['inputs'][feature].dtype
+            == 'DT_STRING'
+        ):
           # For numpy array, even we cast it to string, we cannot get 'string'
           # by directly calling str(value.tdype).
           value = value.astype(str)
@@ -167,32 +185,45 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
         batched_entries[_TF_INPUT_NAME_JSON].append(feature)
 
       cur_subdir = str(uuid.uuid4())
-      cur_input_path = os.path.join(self._model_properties[model_name]['path'],
-                                    _EXAMPLES_SUBDIR, cur_subdir)
+      cur_input_path = os.path.join(
+          self._model_properties[model_name]['path'],
+          _EXAMPLES_SUBDIR,
+          cur_subdir,
+      )
       tf.io.gfile.makedirs(cur_input_path)
       for entry, value in batched_entries.items():
         with tf.io.gfile.GFile(os.path.join(cur_input_path, entry), 'w') as f:
           f.write(json.dumps(value))
 
-      cur_output_path = os.path.join(self._model_properties[model_name]['path'],
-                                     _OUTPUTS_SUBDIR, cur_subdir)
+      cur_output_path = os.path.join(
+          self._model_properties[model_name]['path'],
+          _OUTPUTS_SUBDIR,
+          cur_subdir,
+      )
       tf.io.gfile.makedirs(cur_output_path)
       inference_command = [
-          self._binary_path, '--model_path=' +
-          os.path.join(self._model_properties[model_name]['path'], _MODEL_JSON),
-          '--inputs_dir=' + cur_input_path, '--outputs_dir=' + cur_output_path
+          self._binary_path,
+          '--model_path='
+          + os.path.join(
+              self._model_properties[model_name]['path'], _MODEL_JSON
+          ),
+          '--inputs_dir=' + cur_input_path,
+          '--outputs_dir=' + cur_output_path,
       ]
 
       popen = subprocess.Popen(
           inference_command,
           stdin=subprocess.PIPE,
           stdout=subprocess.PIPE,
-          stderr=subprocess.PIPE)
+          stderr=subprocess.PIPE,
+      )
       stdout, stderr = popen.communicate()
       if popen.returncode != 0:
         raise ValueError(
             'Inference failed with status {}\nstdout:\n{}\nstderr:\n{}'.format(
-                popen.returncode, stdout, stderr))
+                popen.returncode, stdout, stderr
+            )
+        )
 
       try:
         with tf.io.gfile.GFile(os.path.join(cur_output_path, _DATA_JSON)) as f:
@@ -206,7 +237,9 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
             'Unable to find files containing inference result. This likely '
             'means that inference did not succeed. Error {}.\n Inference failed'
             ' with status {}\nstdout:\n{}\nstderr:\n{}'.format(
-                e, popen.returncode, stdout, stderr))
+                e, popen.returncode, stdout, stderr
+            )
+        ) from e
 
       name = [
           n.split(':')[0] for n in self._model_properties[model_name]['outputs']
@@ -240,9 +273,10 @@ class _TFJSPredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractTFJSPredictions(  # pylint: disable=invalid-name
-    extracts: beam.pvalue.PCollection, eval_config: config_pb2.EvalConfig,
-    eval_shared_models: Dict[str,
-                             types.EvalSharedModel]) -> beam.pvalue.PCollection:
+    extracts: beam.pvalue.PCollection,
+    eval_config: config_pb2.EvalConfig,
+    eval_shared_models: Dict[str, types.EvalSharedModel],
+) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions and possibly other tensors to extracts.
 
   Args:
@@ -254,17 +288,18 @@ def _ExtractTFJSPredictions(  # pylint: disable=invalid-name
   Returns:
     PCollection of Extracts updated with the predictions.
   """
-  return (
-      extracts
-      | 'Predict' >> beam.ParDo(
-          _TFJSPredictionDoFn(
-              eval_config=eval_config, eval_shared_models=eval_shared_models)))
+  return extracts | 'Predict' >> beam.ParDo(
+      _TFJSPredictionDoFn(
+          eval_config=eval_config, eval_shared_models=eval_shared_models
+      )
+  )
 
 
 def TFJSPredictExtractor(  # pylint: disable=invalid-name
     eval_config: config_pb2.EvalConfig,
-    eval_shared_model: Union[types.EvalSharedModel, Dict[str,
-                                                         types.EvalSharedModel]]
+    eval_shared_model: Union[
+        types.EvalSharedModel, Dict[str, types.EvalSharedModel]
+    ],
 ) -> extractor.Extractor:
   """Creates an extractor for performing predictions on tfjs models.
 
@@ -283,11 +318,14 @@ def TFJSPredictExtractor(  # pylint: disable=invalid-name
     Extractor for extracting predictions.
   """
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_model)
+      eval_shared_model
+  )
 
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=_TFJS_PREDICT_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractTFJSPredictions(
           eval_config=eval_config,
-          eval_shared_models={m.model_name: m for m in eval_shared_models}))
+          eval_shared_models={m.model_name: m for m in eval_shared_models},
+      ),
+  )

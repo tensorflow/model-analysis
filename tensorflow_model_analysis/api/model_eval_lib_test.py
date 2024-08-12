@@ -48,12 +48,14 @@ from tensorflow_metadata.proto.v0 import schema_pb2
 
 try:
   import tensorflow_ranking as tfr  # pylint: disable=g-import-not-at-top
+
   _TFR_IMPORTED = True
 except (ImportError, tf.errors.NotFoundError):
   _TFR_IMPORTED = False
 
 try:
   from tensorflowjs.converters import converter as tfjs_converter  # pylint: disable=g-import-not-at-top
+
   _TFJS_IMPORTED = True
 except ModuleNotFoundError:
   _TFJS_IMPORTED = False
@@ -98,13 +100,15 @@ class EvaluateTest(
         writer.write(example + '\n')
     return data_location
 
-  def assertMetricsAlmostEqual(self,
-                               got_slicing_metrics,
-                               expected_slicing_metrics,
-                               output_name='',
-                               subkey=''):
+  def assertMetricsAlmostEqual(
+      self,
+      got_slicing_metrics,
+      expected_slicing_metrics,
+      output_name='',
+      subkey='',
+  ):
     if got_slicing_metrics:
-      for (s, m) in got_slicing_metrics:
+      for s, m in got_slicing_metrics:
         metrics = m[output_name][subkey]
         self.assertIn(s, expected_slicing_metrics)
         for metric_name in expected_slicing_metrics[s]:
@@ -115,7 +119,8 @@ class EvaluateTest(
     else:
       # Only pass if expected_slicing_metrics also evaluates to False.
       self.assertFalse(
-          expected_slicing_metrics, msg='Actual slicing_metrics was empty.')
+          expected_slicing_metrics, msg='Actual slicing_metrics was empty.'
+      )
 
   def assertSliceMetricsEqual(self, expected_metrics, got_metrics):
     self.assertCountEqual(
@@ -128,53 +133,64 @@ class EvaluateTest(
       self.assertProtoEquals(
           expected_metrics[key],
           got_metrics[key],
-          msg='value for key %s does not match' % key)
+          msg='value for key %s does not match' % key,
+      )
 
   def assertSliceListEqual(self, expected_list, got_list, value_assert_fn):
     self.assertEqual(
         len(expected_list),
         len(got_list),
-        msg='expected_list: %s, got_list: %s' % (expected_list, got_list))
+        msg='expected_list: %s, got_list: %s' % (expected_list, got_list),
+    )
     for index, (expected, got) in enumerate(zip(expected_list, got_list)):
       (expected_key, expected_value) = expected
       (got_key, got_value) = got
       self.assertEqual(
-          expected_key, got_key, msg='key mismatch at index %d' % index)
+          expected_key, got_key, msg='key mismatch at index %d' % index
+      )
       value_assert_fn(expected_value, got_value)
 
   def assertSlicePlotsListEqual(self, expected_list, got_list):
     self.assertSliceListEqual(expected_list, got_list, self.assertProtoEquals)
 
   def assertSliceMetricsListEqual(self, expected_list, got_list):
-    self.assertSliceListEqual(expected_list, got_list,
-                              self.assertSliceMetricsEqual)
+    self.assertSliceListEqual(
+        expected_list, got_list, self.assertSliceMetricsEqual
+    )
 
-  @parameterized.named_parameters(('tflite', constants.TF_LITE),
-                                  ('tfjs', constants.TF_JS))
+  @parameterized.named_parameters(
+      ('tflite', constants.TF_LITE), ('tfjs', constants.TF_JS)
+  )
   def testMixedModelTypes(self, model_type):
     examples = [self._makeExample(age=3.0, language='english', label=1.0)]
     data_location = self._writeTFExamplesToTFRecords(examples)
-    eval_config = config_pb2.EvalConfig(model_specs=[
-        config_pb2.ModelSpec(name='model1'),
-        config_pb2.ModelSpec(name='model2', model_type=model_type)
-    ])
+    eval_config = config_pb2.EvalConfig(
+        model_specs=[
+            config_pb2.ModelSpec(name='model1'),
+            config_pb2.ModelSpec(name='model2', model_type=model_type),
+        ]
+    )
     eval_shared_models = [
         model_eval_lib.default_eval_shared_model(
             model_name='model1',
             eval_saved_model_path='/model1/path',
-            eval_config=eval_config),
+            eval_config=eval_config,
+        ),
         model_eval_lib.default_eval_shared_model(
             model_name='model2',
             eval_saved_model_path='/model2/path',
-            eval_config=eval_config)
+            eval_config=eval_config,
+        ),
     ]
     with self.assertRaisesRegex(
-        NotImplementedError, 'support for mixing .* models is not implemented'):
+        NotImplementedError, 'support for mixing .* models is not implemented'
+    ):
       model_eval_lib.run_model_analysis(
           eval_config=eval_config,
           eval_shared_model=eval_shared_models,
           data_location=data_location,
-          output_path=self._getTempDir())
+          output_path=self._getTempDir(),
+      )
 
   def testRunModelAnalysis(self):
     examples = [
@@ -182,7 +198,7 @@ class EvaluateTest(
         self._makeExample(age=3.0, language='chinese', label=0.0),
         self._makeExample(age=4.0, language='english', label=1.0),
         self._makeExample(age=5.0, language='chinese', label=1.0),
-        self._makeExample(age=5.0, language='hindi', label=1.0)
+        self._makeExample(age=5.0, language='hindi', label=1.0),
     ]
     classifier = example_keras_model.ExampleClassifierModel(
         example_keras_model.LANGUAGE
@@ -251,8 +267,10 @@ class EvaluateTest(
     }
     self.assertEqual(eval_result.model_location, model_location)
     self.assertEqual(eval_result.data_location, data_location)
-    self.assertEqual(eval_result.config.slicing_specs[0],
-                     config_pb2.SlicingSpec(feature_keys=['language']))
+    self.assertEqual(
+        eval_result.config.slicing_specs[0],
+        config_pb2.SlicingSpec(feature_keys=['language']),
+    )
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     for _, plot in eval_result.plots:
       self.assertFalse(plot)
@@ -403,26 +421,33 @@ class EvaluateTest(
   def testRunModelAnalysisWithExplicitModelAgnosticPredictions(self):
     examples = [
         self._makeExample(
-            age=3.0, language='english', label=1.0, prediction=0.9),
+            age=3.0, language='english', label=1.0, prediction=0.9
+        ),
         self._makeExample(
-            age=3.0, language='chinese', label=0.0, prediction=0.4),
+            age=3.0, language='chinese', label=0.0, prediction=0.4
+        ),
         self._makeExample(
-            age=4.0, language='english', label=1.0, prediction=0.7),
+            age=4.0, language='english', label=1.0, prediction=0.7
+        ),
         self._makeExample(
-            age=5.0, language='chinese', label=1.0, prediction=0.2)
+            age=5.0, language='chinese', label=1.0, prediction=0.2
+        ),
     ]
     metrics_specs = [
         config_pb2.MetricsSpec(
             metrics=[config_pb2.MetricConfig(class_name='ExampleCount')],
-            example_weights=config_pb2.ExampleWeightOptions(unweighted=True)),
+            example_weights=config_pb2.ExampleWeightOptions(unweighted=True),
+        ),
         config_pb2.MetricsSpec(
             metrics=[
                 config_pb2.MetricConfig(class_name='WeightedExampleCount')
             ],
-            example_weights=config_pb2.ExampleWeightOptions(weighted=True)),
+            example_weights=config_pb2.ExampleWeightOptions(weighted=True),
+        ),
         config_pb2.MetricsSpec(
             metrics=[config_pb2.MetricConfig(class_name='BinaryAccuracy')],
-            example_weights=config_pb2.ExampleWeightOptions(weighted=True))
+            example_weights=config_pb2.ExampleWeightOptions(weighted=True),
+        ),
     ]
     slicing_specs = [config_pb2.SlicingSpec(feature_keys=['language'])]
     model_spec = config_pb2.ModelSpec(
@@ -468,11 +493,13 @@ class EvaluateTest(
       ('rubber_stamp', constants.TF_KERAS, True, True),
       ('tf_keras_custom_metrics', constants.TF_KERAS, False, False, True),
   )
-  def testRunModelAnalysisWithKerasModel(self,
-                                         model_type,
-                                         remove_baseline=False,
-                                         rubber_stamp=False,
-                                         add_custom_metrics=False):
+  def testRunModelAnalysisWithKerasModel(
+      self,
+      model_type,
+      remove_baseline=False,
+      rubber_stamp=False,
+      add_custom_metrics=False,
+  ):
     if model_type == constants.TF_JS and not _TFJS_IMPORTED:
       self.skipTest('This test requires TensorFlow JS.')
 
@@ -480,9 +507,9 @@ class EvaluateTest(
     if _TF_MAJOR_VERSION < 2:
       add_custom_metrics = False
 
-    def _build_keras_model(eval_config,
-                           export_name='export_dir',
-                           rubber_stamp=False):
+    def _build_keras_model(
+        eval_config, export_name='export_dir', rubber_stamp=False
+    ):
       input_layer = tf_keras.layers.Input(shape=(28 * 28,), name='data')
       output_layer = tf_keras.layers.Dense(10, activation=tf.nn.softmax)(
           input_layer
@@ -499,8 +526,9 @@ class EvaluateTest(
         converter = tf.compat.v2.lite.TFLiteConverter.from_keras_model(model)
         tflite_model = converter.convert()
         tf.io.gfile.makedirs(model_location)
-        with tf.io.gfile.GFile(os.path.join(model_location, 'tflite'),
-                               'wb') as f:
+        with tf.io.gfile.GFile(
+            os.path.join(model_location, 'tflite'), 'wb'
+        ) as f:
           f.write(tflite_model)
       elif model_type == constants.TF_JS:
         src_model_path = tempfile.mkdtemp()
@@ -518,18 +546,22 @@ class EvaluateTest(
       return model_eval_lib.default_eval_shared_model(
           eval_saved_model_path=model_location,
           eval_config=eval_config,
-          rubber_stamp=rubber_stamp)
+          rubber_stamp=rubber_stamp,
+      )
 
     examples = [
         self._makeExample(
             data=[0.0] * 28 * 28,
-            label=[0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+            label=[0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        ),
         self._makeExample(
             data=[1.0] * 28 * 28,
-            label=[0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0]),
+            label=[0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0],
+        ),
         self._makeExample(
             data=[1.0] * 28 * 28,
-            label=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]),
+            label=[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0],
+        ),
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
 
@@ -559,7 +591,9 @@ class EvaluateTest(
           shape: { dim { size: 10 } }
           presence: { min_fraction: 1 }
         }
-        """, schema_pb2.Schema())
+        """,
+        schema_pb2.Schema(),
+    )
     # TODO(b/73109633): Remove when field is removed or its default changes to
     # False.
     if hasattr(schema, 'generate_legacy_feature_spec'):
@@ -570,11 +604,13 @@ class EvaluateTest(
       cfg = metric_util.serialize_keras_object(metric)
       metrics_spec.metrics.append(
           config_pb2.MetricConfig(
-              class_name=cfg['class_name'], config=json.dumps(cfg['config'])))
+              class_name=cfg['class_name'], config=json.dumps(cfg['config'])
+          )
+      )
     tf_keras.backend.clear_session()
     slicing_specs = [
         config_pb2.SlicingSpec(),
-        config_pb2.SlicingSpec(feature_keys=['non_existent_slice'])
+        config_pb2.SlicingSpec(feature_keys=['non_existent_slice']),
     ]
     metrics_spec.metrics.append(
         config_pb2.MetricConfig(
@@ -584,21 +620,29 @@ class EvaluateTest(
                     slicing_specs=slicing_specs,
                     threshold=config_pb2.MetricThreshold(
                         value_threshold=config_pb2.GenericValueThreshold(
-                            lower_bound={'value': 1}))),
+                            lower_bound={'value': 1}
+                        )
+                    ),
+                ),
                 # Change thresholds would be ignored when rubber stamp is true.
                 config_pb2.PerSliceMetricThreshold(
                     slicing_specs=slicing_specs,
                     threshold=config_pb2.MetricThreshold(
                         change_threshold=config_pb2.GenericChangeThreshold(
-                            direction=config_pb2.MetricDirection
-                            .HIGHER_IS_BETTER,
-                            absolute={'value': 1})))
-            ]))
+                            direction=config_pb2.MetricDirection.HIGHER_IS_BETTER,
+                            absolute={'value': 1},
+                        )
+                    ),
+                ),
+            ],
+        )
+    )
     for class_id in (0, 5):
       metrics_spec.binarize.class_ids.values.append(class_id)
     eval_config = config_pb2.EvalConfig(
         model_specs=[config_pb2.ModelSpec(label_key='label')],
-        metrics_specs=[metrics_spec])
+        metrics_specs=[metrics_spec],
+    )
     if model_type != constants.TF_KERAS:
       for s in eval_config.model_specs:
         s.model_type = model_type
@@ -618,7 +662,8 @@ class EvaluateTest(
             eval_shared_model=eval_shared_model,
             data_location=data_location,
             output_path=output_path,
-            schema=schema)
+            schema=schema,
+        )
       # Will not have any result since the pipeline didn't run.
       return
     else:
@@ -627,16 +672,19 @@ class EvaluateTest(
           eval_shared_model=eval_shared_model,
           data_location=data_location,
           output_path=output_path,
-          schema=schema)
+          schema=schema,
+      )
 
     # Directly check validation file since it is not in EvalResult.
-    validations_file = os.path.join(output_path,
-                                    f'{constants.VALIDATIONS_KEY}.tfrecord')
+    validations_file = os.path.join(
+        output_path, f'{constants.VALIDATIONS_KEY}.tfrecord'
+    )
     self.assertTrue(os.path.exists(validations_file))
     validation_records = []
     for record in tf.compat.v1.python_io.tf_record_iterator(validations_file):
       validation_records.append(
-          validation_result_pb2.ValidationResult.FromString(record))
+          validation_result_pb2.ValidationResult.FromString(record)
+      )
     self.assertLen(validation_records, 1)
     # Change thresholds ignored when rubber stamping
     expected_result = text_format.Parse(
@@ -652,7 +700,9 @@ class EvaluateTest(
             }
             num_matching_slices: 1
           }
-        }""" % rubber_stamp, validation_result_pb2.ValidationResult())
+        }""" % rubber_stamp,
+        validation_result_pb2.ValidationResult(),
+    )
     # Normal run with change threshold not satisfied.
     if not rubber_stamp and not remove_baseline:
       text_format.Parse(
@@ -695,7 +745,9 @@ class EvaluateTest(
              }
              metric_value { double_value {} }
             }
-          }""", expected_result)
+          }""",
+          expected_result,
+      )
     self.assertProtoEquals(expected_result, validation_records[0])
 
     def check_eval_result(eval_result, model_location):
@@ -714,8 +766,10 @@ class EvaluateTest(
               'auc': True,
           },
       }
-      if (model_type not in (constants.TF_LITE, constants.TF_JS) and
-          _TF_MAJOR_VERSION >= 2):
+      if (
+          model_type not in (constants.TF_LITE, constants.TF_JS)
+          and _TF_MAJOR_VERSION >= 2
+      ):
         expected_metrics[''] = {'loss': True}
         if add_custom_metrics:
           expected_metrics['']['custom'] = True
@@ -750,7 +804,8 @@ class EvaluateTest(
       return model_eval_lib.default_eval_shared_model(
           eval_saved_model_path=model_location,
           eval_config=eval_config,
-          rubber_stamp=False)
+          rubber_stamp=False,
+      )
 
     examples = [
         self._makeExample(output_1=1.0, output_2=0.0, label_1=0.0, label_2=0.0),
@@ -761,18 +816,18 @@ class EvaluateTest(
 
     metrics_spec = config_pb2.MetricsSpec(
         output_names=['output_1', 'output_2'],
-        output_weights={
-            'output_1': 1.0,
-            'output_2': 1.0
-        })
+        output_weights={'output_1': 1.0, 'output_2': 1.0},
+    )
     for metric in (confusion_matrix_metrics.AUC(name='auc'),):
       cfg = metric_util.serialize_keras_object(metric)
       metrics_spec.metrics.append(
           config_pb2.MetricConfig(
-              class_name=cfg['class_name'], config=json.dumps(cfg['config'])))
+              class_name=cfg['class_name'], config=json.dumps(cfg['config'])
+          )
+      )
     slicing_specs = [
         config_pb2.SlicingSpec(),
-        config_pb2.SlicingSpec(feature_keys=['non_existent_slice'])
+        config_pb2.SlicingSpec(feature_keys=['non_existent_slice']),
     ]
     metrics_spec.metrics.append(
         config_pb2.MetricConfig(
@@ -782,24 +837,31 @@ class EvaluateTest(
                     slicing_specs=slicing_specs,
                     threshold=config_pb2.MetricThreshold(
                         value_threshold=config_pb2.GenericValueThreshold(
-                            lower_bound={'value': 1}))),
+                            lower_bound={'value': 1}
+                        )
+                    ),
+                ),
                 # Change thresholds would be ignored when rubber stamp is true.
                 config_pb2.PerSliceMetricThreshold(
                     slicing_specs=slicing_specs,
                     threshold=config_pb2.MetricThreshold(
                         change_threshold=config_pb2.GenericChangeThreshold(
-                            direction=config_pb2.MetricDirection
-                            .HIGHER_IS_BETTER,
-                            absolute={'value': 1})))
-            ]))
+                            direction=config_pb2.MetricDirection.HIGHER_IS_BETTER,
+                            absolute={'value': 1},
+                        )
+                    ),
+                ),
+            ],
+        )
+    )
     eval_config = config_pb2.EvalConfig(
         model_specs=[
-            config_pb2.ModelSpec(label_keys={
-                'output_1': 'label_1',
-                'output_2': 'label_2'
-            })
+            config_pb2.ModelSpec(
+                label_keys={'output_1': 'label_1', 'output_2': 'label_2'}
+            )
         ],
-        metrics_specs=[metrics_spec])
+        metrics_specs=[metrics_spec],
+    )
 
     model = _build_keras_model(eval_config)
     baseline = _build_keras_model(eval_config, 'baseline_export')
@@ -809,16 +871,19 @@ class EvaluateTest(
         eval_config=eval_config,
         eval_shared_model=eval_shared_model,
         data_location=data_location,
-        output_path=output_path)
+        output_path=output_path,
+    )
 
     # Directly check validation file since it is not in EvalResult.
-    validations_file = os.path.join(output_path,
-                                    f'{constants.VALIDATIONS_KEY}.tfrecord')
+    validations_file = os.path.join(
+        output_path, f'{constants.VALIDATIONS_KEY}.tfrecord'
+    )
     self.assertTrue(os.path.exists(validations_file))
     validation_records = []
     for record in tf.compat.v1.python_io.tf_record_iterator(validations_file):
       validation_records.append(
-          validation_result_pb2.ValidationResult.FromString(record))
+          validation_result_pb2.ValidationResult.FromString(record)
+      )
     self.assertLen(validation_records, 1)
     expected_result = text_format.Parse(
         """
@@ -865,7 +930,9 @@ class EvaluateTest(
               slicing_spec {}
               num_matching_slices: 1
             }
-          }""", validation_result_pb2.ValidationResult())
+          }""",
+        validation_result_pb2.ValidationResult(),
+    )
     self.assertProtoEquals(expected_result, validation_records[0])
 
     def check_eval_result(eval_result, model_location):
@@ -904,7 +971,8 @@ class EvaluateTest(
     labels = [[1]]
     example_weights = [1.0]
     dataset = tf.data.Dataset.from_tensor_slices(
-        (features, labels, example_weights))
+        (features, labels, example_weights)
+    )
     dataset = dataset.shuffle(buffer_size=1).repeat().batch(1)
     model.fit(dataset, steps_per_epoch=1)
 
@@ -952,13 +1020,16 @@ class EvaluateTest(
           name: "varlen"
           type: INT
         }
-        """, schema_pb2.Schema())
+        """,
+        schema_pb2.Schema(),
+    )
     examples = [
         self._makeExample(age=3.0, language='english', label=1.0, varlen=[0]),
         self._makeExample(age=5.0, language='chinese', label=0.0, varlen=[1]),
         self._makeExample(age=3.0, language='english', label=0.0, varlen=[2]),
         self._makeExample(
-            age=5.0, language='chinese', label=1.0, varlen=[3, 4])
+            age=5.0, language='chinese', label=1.0, varlen=[3, 4]
+        ),
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
     slicing_specs = [config_pb2.SlicingSpec()]
@@ -971,21 +1042,30 @@ class EvaluateTest(
     if _TFR_IMPORTED:
       metrics.append(tfr.keras.metrics.MRRMetric())
     metrics_specs = metric_specs.specs_from_metrics(
-        metrics, query_key='language', include_weighted_example_count=True)
+        metrics, query_key='language', include_weighted_example_count=True
+    )
     metrics_specs.append(
-        config_pb2.MetricsSpec(metrics=[
-            config_pb2.MetricConfig(
-                class_name='ExampleCount',
-                threshold=config_pb2.MetricThreshold(
-                    value_threshold=config_pb2.GenericValueThreshold(
-                        lower_bound={'value': 0})))
-        ]))
+        config_pb2.MetricsSpec(
+            metrics=[
+                config_pb2.MetricConfig(
+                    class_name='ExampleCount',
+                    threshold=config_pb2.MetricThreshold(
+                        value_threshold=config_pb2.GenericValueThreshold(
+                            lower_bound={'value': 0}
+                        )
+                    ),
+                )
+            ]
+        )
+    )
     eval_config = config_pb2.EvalConfig(
         model_specs=[config_pb2.ModelSpec(label_key='label')],
         slicing_specs=slicing_specs,
-        metrics_specs=metrics_specs)
+        metrics_specs=metrics_specs,
+    )
     eval_shared_model = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=model_location, eval_config=eval_config)
+        eval_saved_model_path=model_location, eval_config=eval_config
+    )
     output_path = self._getTempDir()
     eval_result = model_eval_lib.run_model_analysis(
         eval_config=eval_config,
@@ -993,20 +1073,23 @@ class EvaluateTest(
         data_location=data_location,
         output_path=output_path,
         evaluators=[
-            metrics_plots_and_validations_evaluator
-            .MetricsPlotsAndValidationsEvaluator(
-                eval_config=eval_config, eval_shared_model=eval_shared_model)
+            metrics_plots_and_validations_evaluator.MetricsPlotsAndValidationsEvaluator(
+                eval_config=eval_config, eval_shared_model=eval_shared_model
+            )
         ],
-        schema=schema)
+        schema=schema,
+    )
 
     # Directly check validation file since it is not in EvalResult.
-    validations_file = os.path.join(output_path,
-                                    f'{constants.VALIDATIONS_KEY}.tfrecord')
+    validations_file = os.path.join(
+        output_path, f'{constants.VALIDATIONS_KEY}.tfrecord'
+    )
     self.assertTrue(os.path.exists(validations_file))
     validation_records = []
     for record in tf.compat.v1.python_io.tf_record_iterator(validations_file):
       validation_records.append(
-          validation_result_pb2.ValidationResult.FromString(record))
+          validation_result_pb2.ValidationResult.FromString(record)
+      )
     self.assertLen(validation_records, 1)
     self.assertTrue(validation_records[0].validation_ok)
 
@@ -1043,7 +1126,7 @@ class EvaluateTest(
         self._makeExample(age=3.0, language='chinese', label=0.0),
         self._makeExample(age=4.0, language='english', label=1.0),
         self._makeExample(age=5.0, language='chinese', label=1.0),
-        self._makeExample(age=5.0, language='hindi', label=1.0)
+        self._makeExample(age=5.0, language='hindi', label=1.0),
     ]
     classifier = example_keras_model.ExampleClassifierModel(
         example_keras_model.LANGUAGE
@@ -1125,8 +1208,10 @@ class EvaluateTest(
     }
     self.assertEqual(eval_result.model_location, model_location)
     self.assertEqual(eval_result.data_location, data_location)
-    self.assertEqual(eval_result.config.slicing_specs[0],
-                     config_pb2.SlicingSpec(feature_keys=['language']))
+    self.assertEqual(
+        eval_result.config.slicing_specs[0],
+        config_pb2.SlicingSpec(feature_keys=['language']),
+    )
     # raise ValueError(eval_result.slicing_metrics)
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     for _, plot in eval_result.plots:
@@ -1138,7 +1223,7 @@ class EvaluateTest(
         self._makeExample(age=3.0, language='chinese', label=0.0),
         self._makeExample(age=4.0, language='english', label=1.0),
         self._makeExample(age=5.0, language='chinese', label=1.0),
-        self._makeExample(age=5.0, language='hindi', label=1.0)
+        self._makeExample(age=5.0, language='hindi', label=1.0),
     ]
     classifier = example_keras_model.ExampleClassifierModel(
         example_keras_model.LANGUAGE
@@ -1221,8 +1306,10 @@ class EvaluateTest(
     }
     self.assertEqual(eval_result.model_location, model_location)
     self.assertEqual(eval_result.data_location, data_location)
-    self.assertEqual(eval_result.config.slicing_specs[0],
-                     config_pb2.SlicingSpec(feature_keys=['language']))
+    self.assertEqual(
+        eval_result.config.slicing_specs[0],
+        config_pb2.SlicingSpec(feature_keys=['language']),
+    )
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
 
     for key, value in eval_result.slicing_metrics:
@@ -1232,6 +1319,7 @@ class EvaluateTest(
 
     for _, plot in eval_result.plots:
       self.assertFalse(plot)
+
   # TODO(b/350996394): Add test for plots and CSVtext with Keras model.
 
   def testRunModelAnalysisWithSchema(self):
@@ -1240,7 +1328,7 @@ class EvaluateTest(
         self._makeExample(age=3.0, language='chinese', label=1.0),
         self._makeExample(age=4.0, language='english', label=2.0),
         self._makeExample(age=5.0, language='chinese', label=2.0),
-        self._makeExample(age=5.0, language='hindi', label=2.0)
+        self._makeExample(age=5.0, language='hindi', label=2.0),
     ]
     data_location = self._writeTFExamplesToTFRecords(examples)
     classifier = example_keras_model.ExampleClassifierModel(
@@ -1258,7 +1346,9 @@ class EvaluateTest(
     eval_config = config_pb2.EvalConfig(
         model_specs=[config_pb2.ModelSpec(label_key='label')],
         metrics_specs=metric_specs.specs_from_metrics(
-            [calibration_plot.CalibrationPlot(num_buckets=4)]))
+            [calibration_plot.CalibrationPlot(num_buckets=4)]
+        ),
+    )
     schema = text_format.Parse(
         """
         feature {
@@ -1307,16 +1397,18 @@ class EvaluateTest(
 
   def testLoadValidationResultDir(self):
     result = validation_result_pb2.ValidationResult(validation_ok=True)
-    path = os.path.join(absltest.get_default_test_tmpdir(),
-                        constants.VALIDATIONS_KEY)
+    path = os.path.join(
+        absltest.get_default_test_tmpdir(), constants.VALIDATIONS_KEY
+    )
     with tf.io.TFRecordWriter(path) as writer:
       writer.write(result.SerializeToString())
     loaded_result = model_eval_lib.load_validation_result(os.path.dirname(path))
     self.assertTrue(loaded_result.validation_ok)
 
   def testLoadValidationResultEmptyFile(self):
-    path = os.path.join(absltest.get_default_test_tmpdir(),
-                        constants.VALIDATIONS_KEY)
+    path = os.path.join(
+        absltest.get_default_test_tmpdir(), constants.VALIDATIONS_KEY
+    )
     with tf.io.TFRecordWriter(path):
       pass
     with self.assertRaises(AssertionError):
@@ -1328,17 +1420,10 @@ class EvaluateTest(
     # age language  label  prediction
     # 17  english   0      0
     # 30  spanish   1      1
-    dict_data = [{
-        'age': 17,
-        'language': 'english',
-        'prediction': 0,
-        'label': 0
-    }, {
-        'age': 30,
-        'language': 'spanish',
-        'prediction': 1,
-        'label': 1
-    }]
+    dict_data = [
+        {'age': 17, 'language': 'english', 'prediction': 0, 'label': 0},
+        {'age': 30, 'language': 'spanish', 'prediction': 1, 'label': 1},
+    ]
     df_data = pd.DataFrame(dict_data)
 
     # Expected Output
@@ -1391,7 +1476,8 @@ class EvaluateTest(
 
     # Compare Actual and Expected
     self.assertEqual(
-        len(eval_result.slicing_metrics), len(expected_slicing_metrics))
+        len(eval_result.slicing_metrics), len(expected_slicing_metrics)
+    )
     for slicing_metric in eval_result.slicing_metrics:
       slice_key, slice_val = slicing_metric
       self.assertIn(slice_key, expected_slicing_metrics)
@@ -1403,10 +1489,12 @@ class EvaluateTest(
     ]
     metrics_specs = [
         config_pb2.MetricsSpec(
-            metrics=[config_pb2.MetricConfig(class_name='Accuracy')])
+            metrics=[config_pb2.MetricConfig(class_name='Accuracy')]
+        )
     ]
     eval_config = config_pb2.EvalConfig(
-        model_specs=model_specs, metrics_specs=metrics_specs)
+        model_specs=model_specs, metrics_specs=metrics_specs
+    )
     df_data = pd.DataFrame([{
         'prediction': 0,
         'label': 0,
@@ -1418,10 +1506,12 @@ class EvaluateTest(
     model_specs = [config_pb2.ModelSpec(prediction_key='nonexistent_label_key')]
     metrics_specs = [
         config_pb2.MetricsSpec(
-            metrics=[config_pb2.MetricConfig(class_name='Accuracy')])
+            metrics=[config_pb2.MetricConfig(class_name='Accuracy')]
+        )
     ]
     eval_config = config_pb2.EvalConfig(
-        model_specs=model_specs, metrics_specs=metrics_specs)
+        model_specs=model_specs, metrics_specs=metrics_specs
+    )
     df_data = pd.DataFrame([{
         'prediction': 0,
         'label': 0,
@@ -1435,21 +1525,23 @@ class EvaluateTest(
         self._makeExample(age=3.0, language='chinese', label=0.0),
         self._makeExample(age=4.0, language='english', label=1.0),
         self._makeExample(age=5.0, language='chinese', label=1.0),
-        self._makeExample(age=5.0, language='hindi', label=1.0)
+        self._makeExample(age=5.0, language='hindi', label=1.0),
     ]
     serialized_examples = [example.SerializeToString() for example in examples]
     expected_num_bytes = sum([len(se) for se in serialized_examples])
     with beam.Pipeline() as p:
       _ = (
-          p | beam.Create(serialized_examples)
+          p
+          | beam.Create(serialized_examples)
           | 'InputsToExtracts' >> model_eval_lib.InputsToExtracts()
-          | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
-              extractors=[], evaluators=[]))
+          | 'ExtractAndEvaluate'
+          >> model_eval_lib.ExtractAndEvaluate(extractors=[], evaluators=[])
+      )
     pipeline_result = p.run()
     metrics = pipeline_result.metrics()
     actual_counter = metrics.query(
-        beam.metrics.metric.MetricsFilter().with_name(
-            'extract_input_bytes'))['counters']
+        beam.metrics.metric.MetricsFilter().with_name('extract_input_bytes')
+    )['counters']
     self.assertLen(actual_counter, 1)
     self.assertEqual(actual_counter[0].committed, expected_num_bytes)
 
@@ -1459,7 +1551,7 @@ class EvaluateTest(
         self._makeExample(age=3.0, language='chinese', label=0.0),
         self._makeExample(age=4.0, language='english', label=1.0),
         self._makeExample(age=5.0, language='chinese', label=1.0),
-        self._makeExample(age=5.0, language='hindi', label=1.0)
+        self._makeExample(age=5.0, language='hindi', label=1.0),
     ]
     examples = [example.SerializeToString() for example in examples]
     decoder = example_coder.ExamplesToRecordBatchDecoder()
@@ -1467,16 +1559,18 @@ class EvaluateTest(
     expected_num_bytes = record_batch.nbytes
     with beam.Pipeline() as p:
       _ = (
-          p | beam.Create(record_batch)
-          |
-          'BatchedInputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
-          | 'ExtractAndEvaluate' >> model_eval_lib.ExtractAndEvaluate(
-              extractors=[], evaluators=[]))
+          p
+          | beam.Create(record_batch)
+          | 'BatchedInputsToExtracts'
+          >> model_eval_lib.BatchedInputsToExtracts()
+          | 'ExtractAndEvaluate'
+          >> model_eval_lib.ExtractAndEvaluate(extractors=[], evaluators=[])
+      )
     pipeline_result = p.run()
     metrics = pipeline_result.metrics()
     actual_counter = metrics.query(
-        beam.metrics.metric.MetricsFilter().with_name('extract_input_bytes'))[
-            metrics.COUNTERS]
+        beam.metrics.metric.MetricsFilter().with_name('extract_input_bytes')
+    )[metrics.COUNTERS]
     self.assertLen(actual_counter, 1)
     self.assertEqual(actual_counter[0].committed, expected_num_bytes)
 

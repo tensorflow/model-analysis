@@ -14,14 +14,12 @@
 """Implements API for extracting features from an example."""
 
 import copy
-
 from typing import Any, Dict, List, Optional
 
 from absl import logging
 import apache_beam as beam
 import numpy as np
 import tensorflow as tf
-
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import encoding
@@ -35,7 +33,8 @@ def FeatureExtractor(
     additional_extracts: Optional[List[str]] = None,
     excludes: Optional[List[bytes]] = None,
     extract_source: str = constants.FEATURES_PREDICTIONS_LABELS_KEY,
-    extract_dest: str = constants.MATERIALIZE_COLUMNS):
+    extract_dest: str = constants.MATERIALIZE_COLUMNS,
+):
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=_FEATURE_EXTRACTOR_STAGE_NAME,
@@ -43,12 +42,18 @@ def FeatureExtractor(
           additional_extracts=additional_extracts,
           excludes=excludes,
           source=extract_source,
-          dest=extract_dest))
+          dest=extract_dest,
+      ),
+  )
   # pylint: enable=no-value-for-parameter
 
 
-def _AugmentExtracts(data: Dict[str, Any], prefix: str, excludes: List[bytes],
-                     extracts: types.Extracts) -> None:
+def _AugmentExtracts(
+    data: Dict[str, Any],
+    prefix: str,
+    excludes: List[bytes],
+    extracts: types.Extracts,
+) -> None:
   """Augments the Extracts with FeaturesPredictionsLabels.
 
   Args:
@@ -80,7 +85,8 @@ def _AugmentExtracts(data: Dict[str, Any], prefix: str, excludes: List[bytes],
 
     if isinstance(val, tf.compat.v1.SparseTensorValue):
       extracts[col_name] = types.MaterializedColumn(
-          name=col_name, value=val.values)
+          name=col_name, value=val.values
+      )
 
     elif isinstance(val, np.ndarray) or isinstance(val, list):
       # Only support first dim for now
@@ -89,12 +95,14 @@ def _AugmentExtracts(data: Dict[str, Any], prefix: str, excludes: List[bytes],
 
     else:
       raise TypeError(
-          'Dictionary item with key %s, value %s had unexpected type %s' %
-          (name, val, type(val)))
+          'Dictionary item with key %s, value %s had unexpected type %s'
+          % (name, val, type(val))
+      )
 
 
-def _ParseExample(extracts: types.Extracts,
-                  materialize_columns: bool = True) -> None:
+def _ParseExample(
+    extracts: types.Extracts, materialize_columns: bool = True
+) -> None:
   """Feature extraction from serialized tf.Example."""
   # Deserialize the example.
   example = tf.train.Example()
@@ -170,23 +178,26 @@ def _MaterializeFeatures(
     if not isinstance(fpl, types.FeaturesPredictionsLabels):
       raise TypeError(
           'Expected FPL to be instance of FeaturesPredictionsLabel. FPL was: %s'
-          'of type %s' % (str(fpl), type(fpl)))
+          'of type %s' % (str(fpl), type(fpl))
+      )
 
     # We disable pytyping here because we know that 'fpl' key corresponds to a
     # non-materialized column.
     # pytype: disable=attribute-error
     _AugmentExtracts(fpl.features, constants.FEATURES_KEY, excludes, result)
-    _AugmentExtracts(fpl.predictions, constants.PREDICTIONS_KEY, excludes,
-                     result)
+    _AugmentExtracts(
+        fpl.predictions, constants.PREDICTIONS_KEY, excludes, result
+    )
     _AugmentExtracts(fpl.labels, constants.LABELS_KEY, excludes, result)
     # pytype: enable=attribute-error
     return result
   elif source == constants.INPUT_KEY:
     serialized_example = result.get(constants.INPUT_KEY)
     if not serialized_example:
-      raise RuntimeError('tf.Example missing. Ensure extracts contain '
-                         'serialized tf.Example.')
-    materialize_columns = (dest == constants.MATERIALIZE_COLUMNS)
+      raise RuntimeError(
+          'tf.Example missing. Ensure extracts contain serialized tf.Example.'
+      )
+    materialize_columns = dest == constants.MATERIALIZE_COLUMNS
     _ParseExample(result, materialize_columns)
     return result
   else:
@@ -201,7 +212,8 @@ def _ExtractFeatures(
     additional_extracts: Optional[List[str]] = None,
     excludes: Optional[List[bytes]] = None,
     source: str = constants.FEATURES_PREDICTIONS_LABELS_KEY,
-    dest: str = constants.MATERIALIZE_COLUMNS) -> beam.pvalue.PCollection:
+    dest: str = constants.MATERIALIZE_COLUMNS,
+) -> beam.pvalue.PCollection:
   """Builds MaterializedColumn extracts from FPL created in evaluate.Predict().
 
   It must be the case that the PredictExtractor was called before calling this
@@ -227,4 +239,5 @@ def _ExtractFeatures(
       additional_extracts=additional_extracts,
       excludes=excludes,
       source=source,
-      dest=dest)
+      dest=dest,
+  )

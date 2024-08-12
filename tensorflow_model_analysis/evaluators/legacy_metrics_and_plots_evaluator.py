@@ -38,7 +38,8 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     compute_confidence_intervals: Optional[bool] = False,
     min_slice_size: int = 1,
     serialize=False,
-    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluator:
+    random_seed_for_testing: Optional[int] = None,
+) -> evaluator.Evaluator:
   """Creates an Evaluator for evaluating metrics and plots.
 
   Args:
@@ -49,10 +50,10 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
     run_after: Extractor to run after (None means before any extractors).
     compute_confidence_intervals: Whether or not to compute confidence
       intervals.
-    min_slice_size: If the number of examples in a specific slice is less
-      than min_slice_size, then an error will be returned for that slice.
-      This will be useful to ensure privacy by not displaying the aggregated
-      data for smaller number of examples.
+    min_slice_size: If the number of examples in a specific slice is less than
+      min_slice_size, then an error will be returned for that slice. This will
+      be useful to ensure privacy by not displaying the aggregated data for
+      smaller number of examples.
     serialize: If true, serialize the metrics to protos as part of the
       evaluation as well.
     random_seed_for_testing: Provide for deterministic tests only.
@@ -73,7 +74,9 @@ def MetricsAndPlotsEvaluator(  # pylint: disable=invalid-name
           compute_confidence_intervals=compute_confidence_intervals,
           min_slice_size=min_slice_size,
           serialize=serialize,
-          random_seed_for_testing=random_seed_for_testing))
+          random_seed_for_testing=random_seed_for_testing,
+      ),
+  )
 
 
 @beam.ptransform_fn
@@ -85,7 +88,7 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
     eval_shared_model: types.EvalSharedModel,
     desired_batch_size: Optional[int] = None,
     compute_confidence_intervals: Optional[bool] = False,
-    random_seed_for_testing: Optional[int] = None
+    random_seed_for_testing: Optional[int] = None,
 ) -> Tuple[beam.pvalue.DoOutputsTuple, beam.pvalue.PCollection]:
   """Computes metrics and plots using the EvalSavedModel.
 
@@ -116,47 +119,61 @@ def _ComputeMetricsAndPlots(  # pylint: disable=invalid-name
       # Note that fanout itself will prune the slice keys.
       # TODO(b/130032676, b/111353165): Prune FPLs to contain only the necessary
       # set for the calculation of post_export_metrics if possible.
-      | 'PruneExtracts' >> extractor.Filter(include=[
-          constants.FEATURES_PREDICTIONS_LABELS_KEY,
-          constants.SLICE_KEY_TYPES_KEY,
-          constants.INPUT_KEY,
-      ])
+      | 'PruneExtracts'
+      >> extractor.Filter(
+          include=[
+              constants.FEATURES_PREDICTIONS_LABELS_KEY,
+              constants.SLICE_KEY_TYPES_KEY,
+              constants.INPUT_KEY,
+          ]
+      )
       # Input: one example at a time, with slice keys in extracts.
       # Output: one fpl example per slice key (notice that the example turns
       #         into n logical examples, references to which are replicated once
       #         per applicable slice key).
-      | 'FanoutSlices' >> slicer.FanoutSlices())
+      | 'FanoutSlices' >> slicer.FanoutSlices()
+  )
 
   slices_count = (
       slices
       | 'ExtractSliceKeys' >> beam.Keys()
-      | 'CountPerSliceKey' >> beam.combiners.Count.PerElement())
+      | 'CountPerSliceKey' >> beam.combiners.Count.PerElement()
+  )
 
-  _ = (extracts.pipeline
-       | 'IncrementMetricsCallbacksCounters' >>
-       counter_util.IncrementMetricsCallbacksCounters(
-           eval_shared_model.add_metrics_callbacks,
-           eval_shared_model.model_type), slices_count
-       | 'IncreamentSliceSpecCounters' >>
-       counter_util.IncrementSliceSpecCounters())
+  _ = (
+      extracts.pipeline
+      | 'IncrementMetricsCallbacksCounters'
+      >> counter_util.IncrementMetricsCallbacksCounters(
+          eval_shared_model.add_metrics_callbacks, eval_shared_model.model_type
+      ),
+      slices_count
+      | 'IncreamentSliceSpecCounters'
+      >> counter_util.IncrementSliceSpecCounters(),
+  )
 
   aggregated_metrics = (
       slices
       # Metrics are computed per slice key.
       # Output: Multi-outputs, a dict of slice key to computed metrics, and
       # plots if applicable.
-      | 'ComputePerSliceMetrics' >>
-      poisson_bootstrap.ComputeWithConfidenceIntervals(
+      | 'ComputePerSliceMetrics'
+      >> poisson_bootstrap.ComputeWithConfidenceIntervals(
           legacy_aggregate.ComputePerSliceMetrics,
-          num_bootstrap_samples=(poisson_bootstrap.DEFAULT_NUM_BOOTSTRAP_SAMPLES
-                                 if compute_confidence_intervals else 1),
+          num_bootstrap_samples=(
+              poisson_bootstrap.DEFAULT_NUM_BOOTSTRAP_SAMPLES
+              if compute_confidence_intervals
+              else 1
+          ),
           random_seed_for_testing=random_seed_for_testing,
           eval_shared_model=eval_shared_model,
-          desired_batch_size=desired_batch_size)
-      | 'SeparateMetricsAndPlots' >> beam.ParDo(
-          _SeparateMetricsAndPlotsFn()).with_outputs(
-              _SeparateMetricsAndPlotsFn.OUTPUT_TAG_PLOTS,
-              main=_SeparateMetricsAndPlotsFn.OUTPUT_TAG_METRICS))
+          desired_batch_size=desired_batch_size,
+      )
+      | 'SeparateMetricsAndPlots'
+      >> beam.ParDo(_SeparateMetricsAndPlotsFn()).with_outputs(
+          _SeparateMetricsAndPlotsFn.OUTPUT_TAG_PLOTS,
+          main=_SeparateMetricsAndPlotsFn.OUTPUT_TAG_METRICS,
+      )
+  )
 
   return (aggregated_metrics, slices_count)
 
@@ -172,7 +189,8 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     compute_confidence_intervals: Optional[bool] = False,
     min_slice_size: int = 1,
     serialize: bool = False,
-    random_seed_for_testing: Optional[int] = None) -> evaluator.Evaluation:
+    random_seed_for_testing: Optional[int] = None,
+) -> evaluator.Evaluation:
   """Evaluates metrics and plots using the EvalSavedModel.
 
   Args:
@@ -189,10 +207,10 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
     plots_key: Name to use for plots key in Evaluation output.
     compute_confidence_intervals: Whether or not to compute confidence
       intervals.
-    min_slice_size: If the number of examples in a specific slice is less
-      than min_slice_size, then an error will be returned for that slice.
-      This will be useful to ensure privacy by not displaying the aggregated
-      data for smaller number of examples.
+    min_slice_size: If the number of examples in a specific slice is less than
+      min_slice_size, then an error will be returned for that slice. This will
+      be useful to ensure privacy by not displaying the aggregated data for
+      smaller number of examples.
     serialize: If true, serialize the metrics to protos as part of the
       evaluation as well.
     random_seed_for_testing: Provide for deterministic tests only.
@@ -205,35 +223,42 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
 
   (metrics, plots), slices_count = (
       extracts
-      | 'ComputeMetricsAndPlots' >> _ComputeMetricsAndPlots(
+      | 'ComputeMetricsAndPlots'
+      >> _ComputeMetricsAndPlots(
           eval_shared_model,
           desired_batch_size,
           compute_confidence_intervals=compute_confidence_intervals,
-          random_seed_for_testing=random_seed_for_testing))
+          random_seed_for_testing=random_seed_for_testing,
+      )
+  )
 
   if min_slice_size > 1:
-    metrics = (
-        metrics
-        | 'FilterMetricsForSmallSlices' >> slicer.FilterOutSlices(
-            slices_count, min_slice_size, metric_keys.ERROR_METRIC))
-    plots = (
-        plots
-        | 'FilterPlotsForSmallSlices' >> slicer.FilterOutSlices(
-            slices_count, min_slice_size, metric_keys.ERROR_METRIC))
+    metrics = metrics | 'FilterMetricsForSmallSlices' >> slicer.FilterOutSlices(
+        slices_count, min_slice_size, metric_keys.ERROR_METRIC
+    )
+    plots = plots | 'FilterPlotsForSmallSlices' >> slicer.FilterOutSlices(
+        slices_count, min_slice_size, metric_keys.ERROR_METRIC
+    )
 
   if serialize:
     metrics = (
         metrics
-        | 'ConvertSliceMetricsToProto' >> beam.Map(
+        | 'ConvertSliceMetricsToProto'
+        >> beam.Map(
             metrics_plots_and_validations_writer.convert_slice_metrics_to_proto,
-            add_metrics_callbacks=eval_shared_model.add_metrics_callbacks)
-        | 'SerializeMetrics' >> beam.Map(lambda m: m.SerializeToString()))
+            add_metrics_callbacks=eval_shared_model.add_metrics_callbacks,
+        )
+        | 'SerializeMetrics' >> beam.Map(lambda m: m.SerializeToString())
+    )
     plots = (
         plots
-        | 'ConvertSlicePlotsToProto' >> beam.Map(
+        | 'ConvertSlicePlotsToProto'
+        >> beam.Map(
             metrics_plots_and_validations_writer.convert_slice_plots_to_proto,
-            add_metrics_callbacks=eval_shared_model.add_metrics_callbacks)
-        | 'SerializePlots' >> beam.Map(lambda p: p.SerializeToString()))
+            add_metrics_callbacks=eval_shared_model.add_metrics_callbacks,
+        )
+        | 'SerializePlots' >> beam.Map(lambda p: p.SerializeToString())
+    )
 
   return {metrics_key: metrics, plots_key: plots}
 
@@ -243,6 +268,7 @@ def _EvaluateMetricsAndPlots(  # pylint: disable=invalid-name
 # Beam doesn't support typehints for yet (BEAM-3280).
 class _SeparateMetricsAndPlotsFn(beam.DoFn):
   """Separates metrics and plots into two separate PCollections."""
+
   OUTPUT_TAG_METRICS = 'tag_metrics'
   OUTPUT_TAG_PLOTS = 'tag_plots'
 

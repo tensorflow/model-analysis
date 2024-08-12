@@ -131,21 +131,25 @@ class TFLitePredictExtractorTest(
     model_specs = [config_pb2.ModelSpec(name='model1', model_type='tf_lite')]
     if multi_model:
       model_specs.append(
-          config_pb2.ModelSpec(name='model2', model_type='tf_lite'))
+          config_pb2.ModelSpec(name='model2', model_type='tf_lite')
+      )
 
     eval_config = config_pb2.EvalConfig(model_specs=model_specs)
     eval_shared_models = [
         self.createTestEvalSharedModel(
             model_name='model1',
             eval_saved_model_path=tflite_model_dir,
-            model_type='tf_lite')
+            model_type='tf_lite',
+        )
     ]
     if multi_model:
       eval_shared_models.append(
           self.createTestEvalSharedModel(
               model_name='model2',
               eval_saved_model_path=tflite_model_dir,
-              model_type='tf_lite'))
+              model_type='tf_lite',
+          )
+      )
 
     schema = text_format.Parse(
         """
@@ -165,30 +169,39 @@ class TFLitePredictExtractorTest(
           name: "non_model_feature"
           type: INT
         }
-        """, schema_pb2.Schema())
+        """,
+        schema_pb2.Schema(),
+    )
     tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN)
+        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN
+    )
     feature_extractor = features_extractor.FeaturesExtractor(eval_config)
     predictor = tflite_predict_extractor.TFLitePredictExtractor(
-        eval_config=eval_config, eval_shared_model=eval_shared_models)
+        eval_config=eval_config, eval_shared_model=eval_shared_models
+    )
 
     examples = [
         self._makeExample(
-            input1=0.0, input2=1.0, input3=b'a', non_model_feature=0),
+            input1=0.0, input2=1.0, input3=b'a', non_model_feature=0
+        ),
         self._makeExample(
-            input1=1.0, input2=0.0, input3=b'b', non_model_feature=1),
+            input1=1.0, input2=0.0, input3=b'b', non_model_feature=1
+        ),
     ]
 
     with beam.Pipeline() as pipeline:
       # pylint: disable=no-value-for-parameter
       result = (
           pipeline
-          | 'Create' >> beam.Create([e.SerializeToString() for e in examples],
-                                    reshuffle=False)
+          | 'Create'
+          >> beam.Create(
+              [e.SerializeToString() for e in examples], reshuffle=False
+          )
           | 'BatchExamples' >> tfx_io.BeamSource(batch_size=2)
           | 'InputsToExtracts' >> model_eval_lib.BatchedInputsToExtracts()
           | feature_extractor.stage_name >> feature_extractor.ptransform
-          | predictor.stage_name >> predictor.ptransform)
+          | predictor.stage_name >> predictor.ptransform
+      )
 
       # pylint: enable=no-value-for-parameter
 

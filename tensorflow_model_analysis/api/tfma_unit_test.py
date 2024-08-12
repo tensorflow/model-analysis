@@ -34,23 +34,28 @@ class TFMAUnitTest(tfma_unit.TestCase):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
         fixed_prediction_estimator.simple_fixed_prediction_estimator(
-            None, temp_eval_export_dir))
+            None, temp_eval_export_dir
+        )
+    )
     examples = [
         self.makeExample(prediction=0.0, label=1.0),
         self.makeExample(prediction=0.7, label=0.0),
         self.makeExample(prediction=0.8, label=1.0),
-        self.makeExample(prediction=1.0, label=1.0)
+        self.makeExample(prediction=1.0, label=1.0),
     ]
     self.assertMetricsComputedWithoutBeamAre(
         eval_saved_model_path=eval_export_dir,
         serialized_examples=examples,
-        expected_metrics={'average_loss': (1.0 + 0.49 + 0.04 + 0.00) / 4.0})
+        expected_metrics={'average_loss': (1.0 + 0.49 + 0.04 + 0.00) / 4.0},
+    )
 
   def testBoundedValueChecks(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
         fixed_prediction_estimator.simple_fixed_prediction_estimator(
-            None, temp_eval_export_dir))
+            None, temp_eval_export_dir
+        )
+    )
     examples = [
         self.makeExample(prediction=0.8, label=1.0),
     ]
@@ -58,102 +63,117 @@ class TFMAUnitTest(tfma_unit.TestCase):
     self.assertMetricsComputedWithBeamAre(
         eval_saved_model_path=eval_export_dir,
         serialized_examples=examples,
-        expected_metrics={'average_loss': 0.04})
+        expected_metrics={'average_loss': 0.04},
+    )
 
     self.assertMetricsComputedWithoutBeamAre(
         eval_saved_model_path=eval_export_dir,
         serialized_examples=examples,
         expected_metrics={
-            'average_loss':
-                tfma_unit.BoundedValue(lower_bound=0.03, upper_bound=0.05)
-        })
+            'average_loss': tfma_unit.BoundedValue(
+                lower_bound=0.03, upper_bound=0.05
+            )
+        },
+    )
 
     with self.assertRaisesRegex(
-        AssertionError, 'expecting key average_loss to have value between'):
+        AssertionError, 'expecting key average_loss to have value between'
+    ):
       self.assertMetricsComputedWithoutBeamAre(
           eval_saved_model_path=eval_export_dir,
           serialized_examples=examples,
           expected_metrics={
               'average_loss': tfma_unit.BoundedValue(upper_bound=0.01)
-          })
+          },
+      )
 
     with self.assertRaisesRegex(
-        AssertionError, 'expecting key average_loss to have value between'):
+        AssertionError, 'expecting key average_loss to have value between'
+    ):
       self.assertMetricsComputedWithoutBeamAre(
           eval_saved_model_path=eval_export_dir,
           serialized_examples=examples,
           expected_metrics={
               'average_loss': tfma_unit.BoundedValue(lower_bound=0.10)
-          })
+          },
+      )
 
   def testAssertMetricsComputedWithBeamAre(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
         fixed_prediction_estimator.simple_fixed_prediction_estimator(
-            None, temp_eval_export_dir))
+            None, temp_eval_export_dir
+        )
+    )
     examples = [
         self.makeExample(prediction=0.0, label=1.0),
         self.makeExample(prediction=0.7, label=0.0),
         self.makeExample(prediction=0.8, label=1.0),
-        self.makeExample(prediction=1.0, label=1.0)
+        self.makeExample(prediction=1.0, label=1.0),
     ]
     self.assertMetricsComputedWithBeamAre(
         eval_saved_model_path=eval_export_dir,
         serialized_examples=examples,
-        expected_metrics={'average_loss': (1.0 + 0.49 + 0.04 + 0.00) / 4.0})
+        expected_metrics={'average_loss': (1.0 + 0.49 + 0.04 + 0.00) / 4.0},
+    )
 
   def testAssertGeneralMetricsComputedWithBeamAre(self):
     temp_eval_export_dir = self._getEvalExportDir()
     _, eval_export_dir = (
-        fixed_prediction_estimator_extra_fields
-        .simple_fixed_prediction_estimator_extra_fields(None,
-                                                        temp_eval_export_dir))
+        fixed_prediction_estimator_extra_fields.simple_fixed_prediction_estimator_extra_fields(
+            None, temp_eval_export_dir
+        )
+    )
     examples = [
         self.makeExample(
             prediction=0.0,
             label=0.0,
             fixed_string='negative_slice',
             fixed_float=0.0,
-            fixed_int=0),
+            fixed_int=0,
+        ),
         self.makeExample(
             prediction=0.2,
             label=0.0,
             fixed_string='negative_slice',
             fixed_float=0.0,
-            fixed_int=0),
+            fixed_int=0,
+        ),
         self.makeExample(
             prediction=0.4,
             label=0.0,
             fixed_string='negative_slice',
             fixed_float=0.0,
-            fixed_int=0),
+            fixed_int=0,
+        ),
         self.makeExample(
             prediction=0.8,
             label=1.0,
             fixed_string='positive_slice',
             fixed_float=0.0,
-            fixed_int=0),
+            fixed_int=0,
+        ),
         self.makeExample(
             prediction=0.9,
             label=1.0,
             fixed_string='positive_slice',
             fixed_float=0.0,
-            fixed_int=0),
+            fixed_int=0,
+        ),
         self.makeExample(
             prediction=1.0,
             label=1.0,
             fixed_string='positive_slice',
             fixed_float=0.0,
-            fixed_int=0),
+            fixed_int=0,
+        ),
     ]
     expected_slice_metrics = {}
     expected_slice_metrics[()] = {
         'average_loss': (0.00 + 0.04 + 0.16 + 0.04 + 0.01 + 0.00) / 6.0,
-        'mae':
-            0.15,
+        'mae': 0.15,
         # Note that we don't check the exact value because of numerical errors.
-        metric_keys.AUC:
-            tfma_unit.BoundedValue(0.98, 1.00),
+        metric_keys.AUC: tfma_unit.BoundedValue(0.98, 1.00),
     }
     # We don't check AUC for the positive / negative only slices because
     # it's not clear what the value should be.
@@ -180,11 +200,11 @@ class TFMAUnitTest(tfma_unit.TestCase):
           examples_pcollection=examples_pcollection,
           slice_spec=[
               slicer.SingleSliceSpec(),
-              slicer.SingleSliceSpec(columns=['fixed_string'])
+              slicer.SingleSliceSpec(columns=['fixed_string']),
           ],
-          add_metrics_callbacks=[add_metrics,
-                                 post_export_metrics.auc()],
-          expected_slice_metrics=expected_slice_metrics)
+          add_metrics_callbacks=[add_metrics, post_export_metrics.auc()],
+          expected_slice_metrics=expected_slice_metrics,
+      )
 
 
 if __name__ == '__main__':

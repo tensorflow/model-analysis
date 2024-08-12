@@ -17,7 +17,6 @@ from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Type, U
 
 import apache_beam as beam
 import numpy as np
-
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
 
@@ -37,7 +36,8 @@ def ComputeWithConfidenceIntervals(  # pylint: disable=invalid-name
     compute_per_slice_metrics_cls: Type[beam.PTransform],
     num_bootstrap_samples: Optional[int] = DEFAULT_NUM_BOOTSTRAP_SAMPLES,
     random_seed_for_testing: Optional[int] = None,
-    **kwargs) -> beam.pvalue.PCollection:
+    **kwargs
+) -> beam.pvalue.PCollection:
   """PTransform for computing metrics using T-Distribution values.
 
   Args:
@@ -66,31 +66,40 @@ def ComputeWithConfidenceIntervals(  # pylint: disable=invalid-name
     num_bootstrap_samples = 1
   # TODO(ckuhn): Cap the number of bootstrap samples at 20.
   if num_bootstrap_samples < 1:
-    raise ValueError('num_bootstrap_samples should be > 0, got %d' %
-                     num_bootstrap_samples)
+    raise ValueError(
+        'num_bootstrap_samples should be > 0, got %d' % num_bootstrap_samples
+    )
 
   output_results = (
       sliced_extracts
-      | 'ComputeUnsampledMetrics' >> compute_per_slice_metrics_cls(
-          compute_with_sampling=False, random_seed_for_testing=None, **kwargs))
+      | 'ComputeUnsampledMetrics'
+      >> compute_per_slice_metrics_cls(
+          compute_with_sampling=False, random_seed_for_testing=None, **kwargs
+      )
+  )
 
   if num_bootstrap_samples > 1:
     multicombine = []
     for i in range(num_bootstrap_samples):
-      seed = (None if random_seed_for_testing is None else
-              random_seed_for_testing + i)
+      seed = (
+          None
+          if random_seed_for_testing is None
+          else random_seed_for_testing + i
+      )
       multicombine.append(
           sliced_extracts
-          | 'ComputeSampledMetrics%d' % i >> compute_per_slice_metrics_cls(
-              compute_with_sampling=True,
-              random_seed_for_testing=seed,
-              **kwargs))
+          | 'ComputeSampledMetrics%d' % i
+          >> compute_per_slice_metrics_cls(
+              compute_with_sampling=True, random_seed_for_testing=seed, **kwargs
+          )
+      )
     output_results = (
         multicombine
         | 'FlattenBootstrapPartitions' >> beam.Flatten()
         | 'GroupBySlice' >> beam.GroupByKey()
-        | 'MergeBootstrap' >> beam.ParDo(_MergeBootstrap(),
-                                         beam.pvalue.AsDict(output_results)))
+        | 'MergeBootstrap'
+        >> beam.ParDo(_MergeBootstrap(), beam.pvalue.AsDict(output_results))
+    )
   return output_results
 
 
@@ -98,8 +107,9 @@ class _MergeBootstrap(beam.DoFn):
   """Merge the bootstrap values and fit a T-distribution to get confidence."""
 
   def process(
-      self, element: Tuple[slicer.SliceKeyType, Iterable[_MetricsDict]],
-      unsampled_results: Dict[slicer.SliceKeyType, _MetricsDict]
+      self,
+      element: Tuple[slicer.SliceKeyType, Iterable[_MetricsDict]],
+      unsampled_results: Dict[slicer.SliceKeyType, _MetricsDict],
   ) -> Iterator[Tuple[slicer.SliceKeyType, _MetricsDict]]:
     """Merge the bootstrap values.
 
@@ -143,9 +153,11 @@ class _MergeBootstrap(beam.DoFn):
 
     # The key set of the two metrics dicts must be identical.
     if set(metrics_dict.keys()) != set(unsampled_metrics_dict.keys()):
-      raise ValueError('Keys of two metrics do not match: sampled_metrics: %s. '
-                       'unsampled_metrics: %s' %
-                       (metrics_dict.keys(), unsampled_metrics_dict.keys()))
+      raise ValueError(
+          'Keys of two metrics do not match: sampled_metrics: %s. '
+          'unsampled_metrics: %s'
+          % (metrics_dict.keys(), unsampled_metrics_dict.keys())
+      )
 
     metrics_with_confidence = {}
     for metrics_name in metrics_dict:
@@ -155,14 +167,16 @@ class _MergeBootstrap(beam.DoFn):
         metrics_with_confidence[metrics_name] = unsampled_value
       else:
         metrics_with_confidence[metrics_name] = _calculate_t_distribution(
-            metrics_dict[metrics_name], unsampled_value)
+            metrics_dict[metrics_name], unsampled_value
+        )
 
     yield slice_key, metrics_with_confidence
 
 
 def _calculate_t_distribution(  # pylint: disable=invalid-name
     sampling_data_list: List[Union[int, float, np.ndarray]],
-    unsampled_data: Union[int, float, np.ndarray]):
+    unsampled_data: Union[int, float, np.ndarray],
+):
   """Calculate the confidence interval of the data.
 
   Args:
@@ -181,7 +195,8 @@ def _calculate_t_distribution(  # pylint: disable=invalid-name
       merged_data = merged_data.astype(object)
     for index in range(len(merged_data)):
       merged_data[index] = _calculate_t_distribution(
-          [data[index] for data in sampling_data_list], unsampled_data[index])
+          [data[index] for data in sampling_data_list], unsampled_data[index]
+      )
     return merged_data
   else:
     # Data has to be numeric. That means throw out nan values.
@@ -192,8 +207,10 @@ def _calculate_t_distribution(  # pylint: disable=invalid-name
     if n_samples:
       sample_mean = np.mean(sampling_data_list)
       sample_std = np.std(sampling_data_list, ddof=1)
-      return types.ValueWithTDistribution(sample_mean, sample_std,
-                                          n_samples - 1, unsampled_data)
+      return types.ValueWithTDistribution(
+          sample_mean, sample_std, n_samples - 1, unsampled_data
+      )
     else:
       return types.ValueWithTDistribution(
-          float('nan'), float('nan'), -1, float('nan'))
+          float('nan'), float('nan'), -1, float('nan')
+      )

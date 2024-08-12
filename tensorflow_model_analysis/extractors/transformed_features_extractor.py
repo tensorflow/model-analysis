@@ -48,14 +48,17 @@ def TransformedFeaturesExtractor(
     Extractor for extracting preprocessed features.
   """
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_model)
+      eval_shared_model
+  )
 
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=_TRANSFORMED_FEATURES_EXTRACTOR_STAGE_NAME,
       ptransform=_ExtractTransformedFeatures(
           eval_config=eval_config,
-          eval_shared_models={m.model_name: m for m in eval_shared_models}))
+          eval_shared_models={m.model_name: m for m in eval_shared_models},
+      ),
+  )
 
 
 @beam.ptransform_fn

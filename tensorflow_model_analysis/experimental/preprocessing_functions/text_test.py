@@ -22,8 +22,11 @@ class TextTest(tf.test.TestCase, parameterized.TestCase):
   @parameterized.named_parameters(
       ('EmptyString', [''], [[]]),
       ('SingleString', ['Test foo Bar'], [['test', 'foo', 'bar']]),
-      ('BatchedString', ['app dog', 'test foo bar'], [['app', 'dog', ''],
-                                                      ['test', 'foo', 'bar']]),
+      (
+          'BatchedString',
+          ['app dog', 'test foo bar'],
+          [['app', 'dog', ''], ['test', 'foo', 'bar']],
+      ),
   )
   def testWhitespaceTokenization(self, input_text, expected_output):
     # TODO(b/194508683) Delete the check when TF1 is deprecated.

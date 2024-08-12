@@ -15,7 +15,6 @@
 
 These post export metrics can be included in the add_post_export_metrics
 parameter of Evaluate to compute them.
-
 """
 
 from typing import Any, Dict, List, Optional, Tuple
@@ -68,13 +67,15 @@ class _FairnessIndicators(post_export_metrics._ConfusionMatrixBasedMetric):
   thresholds_key = metric_keys.FAIRNESS_CONFUSION_MATRIX_THESHOLDS
   matrices_key = metric_keys.FAIRNESS_CONFUSION_MATRIX_MATRICES
 
-  def __init__(self,
-               thresholds: Optional[List[float]] = None,
-               example_weight_key: Optional[str] = None,
-               target_prediction_keys: Optional[List[str]] = None,
-               labels_key: Optional[str] = None,
-               metric_tag: Optional[str] = None,
-               tensor_index: Optional[int] = None) -> None:
+  def __init__(
+      self,
+      thresholds: Optional[List[float]] = None,
+      example_weight_key: Optional[str] = None,
+      target_prediction_keys: Optional[List[str]] = None,
+      labels_key: Optional[str] = None,
+      metric_tag: Optional[str] = None,
+      tensor_index: Optional[int] = None,
+  ) -> None:
     if not thresholds:
       thresholds = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
@@ -92,93 +93,134 @@ class _FairnessIndicators(post_export_metrics._ConfusionMatrixBasedMetric):
         target_prediction_keys,
         labels_key,
         metric_tag,
-        tensor_index=tensor_index)
+        tensor_index=tensor_index,
+    )
 
   def get_metric_ops(
-      self, features_dict: types.TensorTypeMaybeDict,
+      self,
+      features_dict: types.TensorTypeMaybeDict,
       predictions_dict: types.TensorTypeMaybeDict,
-      labels_dict: types.TensorTypeMaybeDict
+      labels_dict: types.TensorTypeMaybeDict,
   ) -> Dict[str, Tuple[types.TensorType, types.TensorType]]:
 
     values, update_ops = self.confusion_matrix_metric_ops(
-        features_dict, predictions_dict, labels_dict)
+        features_dict, predictions_dict, labels_dict
+    )
     # True positive rate is computed by confusion_matrix_metric_ops as 'recall'.
     # pytype: disable=unsupported-operands
-    values['tnr'] = tf.math.divide_no_nan(values['tn'],
-                                          values['tn'] + values['fp'])
-    values['fpr'] = tf.math.divide_no_nan(values['fp'],
-                                          values['fp'] + values['tn'])
+    values['tnr'] = tf.math.divide_no_nan(
+        values['tn'], values['tn'] + values['fp']
+    )
+    values['fpr'] = tf.math.divide_no_nan(
+        values['fp'], values['fp'] + values['tn']
+    )
     values['positive_rate'] = tf.math.divide_no_nan(
         values['tp'] + values['fp'],
-        values['tp'] + values['fp'] + values['tn'] + values['fn'])
-    values['fnr'] = tf.math.divide_no_nan(values['fn'],
-                                          values['fn'] + values['tp'])
+        values['tp'] + values['fp'] + values['tn'] + values['fn'],
+    )
+    values['fnr'] = tf.math.divide_no_nan(
+        values['fn'], values['fn'] + values['tp']
+    )
     values['negative_rate'] = tf.math.divide_no_nan(
         values['tn'] + values['fn'],
-        values['tp'] + values['fp'] + values['tn'] + values['fn'])
+        values['tp'] + values['fp'] + values['tn'] + values['fn'],
+    )
 
     values['false_discovery_rate'] = tf.math.divide_no_nan(
-        values['fp'], values['fp'] + values['tp'])
+        values['fp'], values['fp'] + values['tp']
+    )
     values['false_omission_rate'] = tf.math.divide_no_nan(
-        values['fn'], values['fn'] + values['tn'])
+        values['fn'], values['fn'] + values['tn']
+    )
 
     # pytype: enable=unsupported-operands
 
-    update_op = tf.group(update_ops['fn'], update_ops['tn'], update_ops['fp'],
-                         update_ops['tp'])
+    update_op = tf.group(
+        update_ops['fn'], update_ops['tn'], update_ops['fp'], update_ops['tp']
+    )
     value_op = tf.transpose(
         a=tf.stack([
-            values['fn'], values['tn'], values['fp'], values['tp'],
-            values['precision'], values['recall']
-        ]))
+            values['fn'],
+            values['tn'],
+            values['fp'],
+            values['tp'],
+            values['precision'],
+            values['recall'],
+        ])
+    )
 
     output_dict = {
         self._metric_key(self.matrices_key): (value_op, update_op),
-        self._metric_key(self.thresholds_key): (tf.identity(self._thresholds),
-                                                tf.no_op()),
+        self._metric_key(self.thresholds_key): (
+            tf.identity(self._thresholds),
+            tf.no_op(),
+        ),
     }
     for i, threshold in enumerate(self._thresholds):
-      output_dict[self._metric_key(
-          metric_keys.base_key(
-              'positive_rate@%.*f' %
-              (self._key_digits, threshold)))] = (values['positive_rate'][i],
-                                                  update_op)
-      output_dict[self._metric_key(
-          metric_keys.base_key(
-              'true_positive_rate@%.*f' %
-              (self._key_digits, threshold)))] = (values['recall'][i],
-                                                  update_op)
-      output_dict[self._metric_key(
-          metric_keys.base_key(
-              'false_positive_rate@%.*f' %
-              (self._key_digits, threshold)))] = (values['fpr'][i], update_op)
-      output_dict[self._metric_key(
-          metric_keys.base_key(
-              'negative_rate@%.*f' %
-              (self._key_digits, threshold)))] = (values['negative_rate'][i],
-                                                  update_op)
-      output_dict[self._metric_key(
-          metric_keys.base_key(
-              'true_negative_rate@%.*f' %
-              (self._key_digits, threshold)))] = (values['tnr'][i], update_op)
-      output_dict[self._metric_key(
-          metric_keys.base_key(
-              'false_negative_rate@%.*f' %
-              (self._key_digits, threshold)))] = (values['fnr'][i], update_op)
-      output_dict[self._metric_key(
-          metric_keys.base_key('false_discovery_rate@%.*f' %
-                               (self._key_digits, threshold)))] = (
-                                   values['false_discovery_rate'][i], update_op)
-      output_dict[self._metric_key(
-          metric_keys.base_key('false_omission_rate@%.*f' %
-                               (self._key_digits, threshold)))] = (
-                                   values['false_omission_rate'][i], update_op)
+      output_dict[
+          self._metric_key(
+              metric_keys.base_key(
+                  'positive_rate@%.*f' % (self._key_digits, threshold)
+              )
+          )
+      ] = (values['positive_rate'][i], update_op)
+      output_dict[
+          self._metric_key(
+              metric_keys.base_key(
+                  'true_positive_rate@%.*f' % (self._key_digits, threshold)
+              )
+          )
+      ] = (values['recall'][i], update_op)
+      output_dict[
+          self._metric_key(
+              metric_keys.base_key(
+                  'false_positive_rate@%.*f' % (self._key_digits, threshold)
+              )
+          )
+      ] = (values['fpr'][i], update_op)
+      output_dict[
+          self._metric_key(
+              metric_keys.base_key(
+                  'negative_rate@%.*f' % (self._key_digits, threshold)
+              )
+          )
+      ] = (values['negative_rate'][i], update_op)
+      output_dict[
+          self._metric_key(
+              metric_keys.base_key(
+                  'true_negative_rate@%.*f' % (self._key_digits, threshold)
+              )
+          )
+      ] = (values['tnr'][i], update_op)
+      output_dict[
+          self._metric_key(
+              metric_keys.base_key(
+                  'false_negative_rate@%.*f' % (self._key_digits, threshold)
+              )
+          )
+      ] = (values['fnr'][i], update_op)
+      output_dict[
+          self._metric_key(
+              metric_keys.base_key(
+                  'false_discovery_rate@%.*f' % (self._key_digits, threshold)
+              )
+          )
+      ] = (values['false_discovery_rate'][i], update_op)
+      output_dict[
+          self._metric_key(
+              metric_keys.base_key(
+                  'false_omission_rate@%.*f' % (self._key_digits, threshold)
+              )
+          )
+      ] = (values['false_omission_rate'][i], update_op)
     return output_dict  # pytype: disable=bad-return-type
 
   def populate_stats_and_pop(
-      self, unused_slice_key: slicer.SliceKeyType, combine_metrics: Dict[str,
-                                                                         Any],
-      output_metrics: Dict[str, metrics_pb2.MetricValue]) -> None:
+      self,
+      unused_slice_key: slicer.SliceKeyType,
+      combine_metrics: Dict[str, Any],
+      output_metrics: Dict[str, metrics_pb2.MetricValue],
+  ) -> None:
     matrices = combine_metrics.pop(self._metric_key(self.matrices_key))
     thresholds = combine_metrics.pop(self._metric_key(self.thresholds_key))
 
@@ -186,16 +228,23 @@ class _FairnessIndicators(post_export_metrics._ConfusionMatrixBasedMetric):
     if len(matrices) != len(thresholds):
       raise ValueError(
           'matrices should have the same length as thresholds, but lengths '
-          'were: matrices: %d, thresholds: %d' %
-          (len(matrices), len(thresholds)))
+          'were: matrices: %d, thresholds: %d'
+          % (len(matrices), len(thresholds))
+      )
     for threshold, raw_matrix in zip(thresholds, matrices):
       # Adds confusion matrix table as well as ratios used for fairness metrics.
       if isinstance(threshold, types.ValueWithTDistribution):
         threshold = threshold.unsampled_value
       output_matrix = post_export_metrics._create_confusion_matrix_proto(
-          raw_matrix, threshold)
-      (output_metrics[self._metric_key(metric_keys.FAIRNESS_CONFUSION_MATRIX)]
-       .confusion_matrix_at_thresholds.matrices.add().CopyFrom(output_matrix))
+          raw_matrix, threshold
+      )
+      (
+          output_metrics[
+              self._metric_key(metric_keys.FAIRNESS_CONFUSION_MATRIX)
+          ]
+          .confusion_matrix_at_thresholds.matrices.add()
+          .CopyFrom(output_matrix)
+      )
 
 
 # If the fairness_indicator in enabled, the slicing inside the tfx evaluator
@@ -217,14 +266,16 @@ class _FairnessAuc(post_export_metrics._PostExportMetric):
   _metric_tag = None  # type: str
   _tensor_index = ...  # type: int
 
-  def __init__(self,
-               subgroup_key: str,
-               example_weight_key: Optional[str] = None,
-               num_buckets: int = post_export_metrics._DEFAULT_NUM_BUCKETS,
-               target_prediction_keys: Optional[List[str]] = None,
-               labels_key: Optional[str] = None,
-               metric_tag: Optional[str] = None,
-               tensor_index: Optional[int] = None) -> None:
+  def __init__(
+      self,
+      subgroup_key: str,
+      example_weight_key: Optional[str] = None,
+      num_buckets: int = post_export_metrics._DEFAULT_NUM_BUCKETS,
+      target_prediction_keys: Optional[List[str]] = None,
+      labels_key: Optional[str] = None,
+      metric_tag: Optional[str] = None,
+      tensor_index: Optional[int] = None,
+  ) -> None:
     """Create a metric that computes fairness auc.
 
     Predictions should be one of:
@@ -258,55 +309,70 @@ class _FairnessAuc(post_export_metrics._PostExportMetric):
     self._curve = 'ROC'
     self._num_buckets = num_buckets
     self._metric_name = metric_keys.FAIRNESS_AUC
-    self._subgroup_auc_metric = self._metric_key(self._metric_name +
-                                                 '/subgroup_auc/' +
-                                                 self._subgroup_key)
-    self._bpsn_auc_metric = self._metric_key(self._metric_name + '/bpsn_auc/' +
-                                             self._subgroup_key)
-    self._bnsp_auc_metric = self._metric_key(self._metric_name + '/bnsp_auc/' +
-                                             self._subgroup_key)
+    self._subgroup_auc_metric = self._metric_key(
+        self._metric_name + '/subgroup_auc/' + self._subgroup_key
+    )
+    self._bpsn_auc_metric = self._metric_key(
+        self._metric_name + '/bpsn_auc/' + self._subgroup_key
+    )
+    self._bnsp_auc_metric = self._metric_key(
+        self._metric_name + '/bnsp_auc/' + self._subgroup_key
+    )
 
     super().__init__(
         target_prediction_keys=target_prediction_keys,
         labels_key=labels_key,
         metric_tag=metric_tag,
-        tensor_index=tensor_index)
+        tensor_index=tensor_index,
+    )
 
-  def check_compatibility(self, features_dict: types.TensorTypeMaybeDict,
-                          predictions_dict: types.TensorTypeMaybeDict,
-                          labels_dict: types.TensorTypeMaybeDict) -> None:
-    post_export_metrics._check_feature_present(features_dict,
-                                               self._example_weight_key)
-    post_export_metrics._check_feature_present(features_dict,
-                                               self._subgroup_key)
+  def check_compatibility(
+      self,
+      features_dict: types.TensorTypeMaybeDict,
+      predictions_dict: types.TensorTypeMaybeDict,
+      labels_dict: types.TensorTypeMaybeDict,
+  ) -> None:
+    post_export_metrics._check_feature_present(
+        features_dict, self._example_weight_key
+    )
+    post_export_metrics._check_feature_present(
+        features_dict, self._subgroup_key
+    )
     self._get_labels_and_predictions(predictions_dict, labels_dict)
 
   def get_metric_ops(
-      self, features_dict: types.TensorTypeMaybeDict,
+      self,
+      features_dict: types.TensorTypeMaybeDict,
       predictions_dict: types.TensorTypeMaybeDict,
-      labels_dict: types.TensorTypeMaybeDict
+      labels_dict: types.TensorTypeMaybeDict,
   ) -> Dict[str, Tuple[types.TensorType, types.TensorType]]:
     # Note that we have to squeeze predictions, labels, weights so they are all
     # N element vectors (otherwise some of them might be N x 1 tensors, and
     # multiplying a N element vector with a N x 1 tensor uses matrix
     # multiplication rather than element-wise multiplication).
     predictions, labels = self._get_labels_and_predictions(
-        predictions_dict, labels_dict)
+        predictions_dict, labels_dict
+    )
     predictions = post_export_metrics._flatten_to_one_dim(
-        tf.cast(predictions, tf.float64))
+        tf.cast(predictions, tf.float64)
+    )
     labels = post_export_metrics._flatten_to_one_dim(
-        tf.cast(labels, tf.float64))
+        tf.cast(labels, tf.float64)
+    )
     weights = tf.ones_like(predictions)
     subgroup = post_export_metrics._flatten_to_one_dim(
-        tf.cast(features_dict[self._subgroup_key], tf.bool))
+        tf.cast(features_dict[self._subgroup_key], tf.bool)
+    )
     if self._example_weight_key:
       weights = post_export_metrics._flatten_to_one_dim(
-          tf.cast(features_dict[self._example_weight_key], tf.float64))
+          tf.cast(features_dict[self._example_weight_key], tf.float64)
+      )
 
     predictions, labels, weights = (
-        post_export_metrics
-        ._create_predictions_labels_weights_for_fractional_labels(
-            predictions, labels, weights))
+        post_export_metrics._create_predictions_labels_weights_for_fractional_labels(
+            predictions, labels, weights
+        )
+    )
     # To let subgroup tensor match the size with prediction, labels and weights
     # above.
     subgroup = tf.concat([subgroup, subgroup], axis=0)
@@ -314,11 +380,14 @@ class _FairnessAuc(post_export_metrics._PostExportMetric):
     labels_bool = tf.cast(labels, tf.bool)
     pos_subgroup = tf.math.logical_and(labels_bool, subgroup)
     neg_subgroup = tf.math.logical_and(
-        tf.math.logical_not(labels_bool), subgroup)
-    pos_background = tf.math.logical_and(labels_bool,
-                                         tf.math.logical_not(subgroup))
+        tf.math.logical_not(labels_bool), subgroup
+    )
+    pos_background = tf.math.logical_and(
+        labels_bool, tf.math.logical_not(subgroup)
+    )
     neg_background = tf.math.logical_and(
-        tf.math.logical_not(labels_bool), tf.math.logical_not(subgroup))
+        tf.math.logical_not(labels_bool), tf.math.logical_not(subgroup)
+    )
     bnsp = tf.math.logical_or(pos_subgroup, neg_background)
     bpsn = tf.math.logical_or(neg_subgroup, pos_background)
 
@@ -326,42 +395,67 @@ class _FairnessAuc(post_export_metrics._PostExportMetric):
     # Add subgroup auc.
     ops_dict.update(
         post_export_metrics._build_auc_metrics_ops(
-            self._subgroup_auc_metric, labels, predictions,
+            self._subgroup_auc_metric,
+            labels,
+            predictions,
             tf.multiply(weights, tf.cast(subgroup, tf.float64)),
-            self._num_buckets + 1, self._curve))
+            self._num_buckets + 1,
+            self._curve,
+        )
+    )
     # Add backgroup positive subgroup negative auc.
     ops_dict.update(
         post_export_metrics._build_auc_metrics_ops(
-            self._bpsn_auc_metric, labels, predictions,
+            self._bpsn_auc_metric,
+            labels,
+            predictions,
             tf.multiply(weights, tf.cast(bpsn, tf.float64)),
-            self._num_buckets + 1, self._curve))
+            self._num_buckets + 1,
+            self._curve,
+        )
+    )
     # Add backgroup negative subgroup positive auc.
     ops_dict.update(
         post_export_metrics._build_auc_metrics_ops(
-            self._bnsp_auc_metric, labels, predictions,
+            self._bnsp_auc_metric,
+            labels,
+            predictions,
             tf.multiply(weights, tf.cast(bnsp, tf.float64)),
-            self._num_buckets + 1, self._curve))
+            self._num_buckets + 1,
+            self._curve,
+        )
+    )
 
     return ops_dict
 
   def populate_stats_and_pop(
-      self, slice_key: slicer.SliceKeyType, combine_metrics: Dict[str, Any],
-      output_metrics: Dict[str, metrics_pb2.MetricValue]) -> None:
+      self,
+      slice_key: slicer.SliceKeyType,
+      combine_metrics: Dict[str, Any],
+      output_metrics: Dict[str, metrics_pb2.MetricValue],
+  ) -> None:
     # Remove metrics if it's not Overall slice. This post export metrics
     # calculate subgroup_auc, bpsn_auc, bnsp_auc. All of these are based on
     # all examples. That's why only the overall slice makes sence and the rest
     # will be removed.
     if slice_key:
-      for metrics_key in (self._subgroup_auc_metric, self._bpsn_auc_metric,
-                          self._bnsp_auc_metric):
+      for metrics_key in (
+          self._subgroup_auc_metric,
+          self._bpsn_auc_metric,
+          self._bnsp_auc_metric,
+      ):
         combine_metrics.pop(metric_keys.lower_bound_key(metrics_key))
         combine_metrics.pop(metric_keys.upper_bound_key(metrics_key))
         combine_metrics.pop(metrics_key)
     else:
-      for metrics_key in (self._subgroup_auc_metric, self._bpsn_auc_metric,
-                          self._bnsp_auc_metric):
+      for metrics_key in (
+          self._subgroup_auc_metric,
+          self._bpsn_auc_metric,
+          self._bnsp_auc_metric,
+      ):
         post_export_metrics._populate_to_auc_bounded_value_and_pop(
-            combine_metrics, output_metrics, metrics_key)
+            combine_metrics, output_metrics, metrics_key
+        )
 
 
 # pylint: enable=protected-access

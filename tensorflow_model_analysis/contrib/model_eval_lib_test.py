@@ -18,10 +18,8 @@ import tempfile
 
 import apache_beam as beam
 from apache_beam.testing import util
-
 import numpy as np
 import tensorflow as tf
-
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import types
@@ -41,18 +39,17 @@ class BuildAnalysisTableTest(testutil.TensorflowModelAnalysisTest):
     _, eval_export_dir = classifier(None, temp_eval_export_dir)
     return eval_export_dir
 
-  def _assertMaterializedColumnsExist(self, got_values_dict,
-                                      expected_column_names):
+  def _assertMaterializedColumnsExist(
+      self, got_values_dict, expected_column_names
+  ):
     for key in expected_column_names:
       self.assertIn(key, got_values_dict)
       got_column = got_values_dict[key]
       self.assertIsInstance(got_column, types.MaterializedColumn)
 
-  def _assertMaterializedColumns(self,
-                                 got_values_dict,
-                                 expected_values_dict,
-                                 places=3,
-                                 sort_values=False):
+  def _assertMaterializedColumns(
+      self, got_values_dict, expected_values_dict, places=3, sort_values=False
+  ):
     for key, expected_column in expected_values_dict.items():
       self.assertIn(key, got_values_dict)
 
@@ -70,23 +67,28 @@ class BuildAnalysisTableTest(testutil.TensorflowModelAnalysisTest):
           self.assertAlmostEqual(got_v, expected_v, places, msg='key %s' % key)
       else:
         self.assertAlmostEqual(
-            got_column.value, expected_column.value, places, msg='key %s' % key)
+            got_column.value, expected_column.value, places, msg='key %s' % key
+        )
 
   def testBuildAnalysisTable(self):
     model_location = self._exportEvalSavedModel(
-        linear_classifier.simple_linear_classifier)
+        linear_classifier.simple_linear_classifier
+    )
     eval_shared_model = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=model_location)
+        eval_saved_model_path=model_location
+    )
 
     example1 = self._makeExample(
-        age=3.0, language='english', label=1.0, slice_key='first_slice')
+        age=3.0, language='english', label=1.0, slice_key='first_slice'
+    )
 
     with beam.Pipeline() as pipeline:
       result = (
           pipeline
           | 'CreateInput' >> beam.Create([example1.SerializeToString()])
-          | 'BuildTable' >>
-          contrib.BuildAnalysisTable(eval_shared_model=eval_shared_model))
+          | 'BuildTable'
+          >> contrib.BuildAnalysisTable(eval_shared_model=eval_shared_model)
+      )
 
       def check_result(got):
         self.assertEqual(1, len(got), 'got: %s' % got)
@@ -94,64 +96,76 @@ class BuildAnalysisTableTest(testutil.TensorflowModelAnalysisTest):
 
         # Values of type MaterializedColumn are emitted to signal to
         # downstream sink components to output the data to file.
-        materialized_dict = dict((k, v)
-                                 for k, v in extracts.items()
-                                 if isinstance(v, types.MaterializedColumn))
+        materialized_dict = dict(
+            (k, v)
+            for k, v in extracts.items()
+            if isinstance(v, types.MaterializedColumn)
+        )
         self._assertMaterializedColumns(
             materialized_dict,
             {
                 # Slice key
-                'features__slice_key':
-                    types.MaterializedColumn(
-                        name='features__slice_key', value=[b'first_slice']),
-
+                'features__slice_key': types.MaterializedColumn(
+                    name='features__slice_key', value=[b'first_slice']
+                ),
                 # Features
-                'features__language':
-                    types.MaterializedColumn(
-                        name='features__language', value=[b'english']),
-                'features__age':
-                    types.MaterializedColumn(
-                        name='features__age',
-                        value=np.array([3.], dtype=np.float32)),
-
+                'features__language': types.MaterializedColumn(
+                    name='features__language', value=[b'english']
+                ),
+                'features__age': types.MaterializedColumn(
+                    name='features__age',
+                    value=np.array([3.0], dtype=np.float32),
+                ),
                 # Label
-                'features__label':
-                    types.MaterializedColumn(
-                        name='features__label',
-                        value=np.array([1.], dtype=np.float32)),
-                'labels':
-                    types.MaterializedColumn(
-                        name='labels', value=np.array([1.], dtype=np.float32)),
-            })
-        self._assertMaterializedColumnsExist(materialized_dict, [
-            'predictions__logits', 'predictions__probabilities',
-            'predictions__classes', 'predictions__logistic',
-            'predictions__class_ids', constants.SLICE_KEYS_KEY
-        ])
+                'features__label': types.MaterializedColumn(
+                    name='features__label',
+                    value=np.array([1.0], dtype=np.float32),
+                ),
+                'labels': types.MaterializedColumn(
+                    name='labels', value=np.array([1.0], dtype=np.float32)
+                ),
+            },
+        )
+        self._assertMaterializedColumnsExist(
+            materialized_dict,
+            [
+                'predictions__logits',
+                'predictions__probabilities',
+                'predictions__classes',
+                'predictions__logistic',
+                'predictions__class_ids',
+                constants.SLICE_KEYS_KEY,
+            ],
+        )
 
       util.assert_that(result[constants.ANALYSIS_KEY], check_result)
 
   def testBuildAnalysisTableWithSlices(self):
     model_location = self._exportEvalSavedModel(
-        linear_classifier.simple_linear_classifier)
+        linear_classifier.simple_linear_classifier
+    )
     eval_shared_model = model_eval_lib.default_eval_shared_model(
-        eval_saved_model_path=model_location)
+        eval_saved_model_path=model_location
+    )
 
     example1 = self._makeExample(
-        age=3.0, language='english', label=1.0, slice_key='first_slice')
+        age=3.0, language='english', label=1.0, slice_key='first_slice'
+    )
     slice_spec = [
         slicer.SingleSliceSpec(columns=['age']),
         slicer.SingleSliceSpec(features=[('age', 3)]),
         slicer.SingleSliceSpec(
-            columns=['age'], features=[('language', 'english')])
+            columns=['age'], features=[('language', 'english')]
+        ),
     ]
 
     with beam.Pipeline() as pipeline:
       result = (
           pipeline
           | 'CreateInput' >> beam.Create([example1.SerializeToString()])
-          | 'BuildTable' >> contrib.BuildAnalysisTable(eval_shared_model,
-                                                       slice_spec))
+          | 'BuildTable'
+          >> contrib.BuildAnalysisTable(eval_shared_model, slice_spec)
+      )
 
       def check_result(got):
         self.assertEqual(1, len(got), 'got: %s' % got)
@@ -159,22 +173,31 @@ class BuildAnalysisTableTest(testutil.TensorflowModelAnalysisTest):
 
         # Values of type MaterializedColumn are emitted to signal to
         # downstream sink components to output the data to file.
-        materialized_dict = dict((k, v)
-                                 for k, v in extracts.items()
-                                 if isinstance(v, types.MaterializedColumn))
+        materialized_dict = dict(
+            (k, v)
+            for k, v in extracts.items()
+            if isinstance(v, types.MaterializedColumn)
+        )
         self._assertMaterializedColumns(
-            materialized_dict, {
-                constants.SLICE_KEYS_KEY:
-                    types.MaterializedColumn(
-                        name=constants.SLICE_KEYS_KEY,
-                        value=[b'age:3.0', b'age_X_language:3.0_X_english'])
+            materialized_dict,
+            {
+                constants.SLICE_KEYS_KEY: types.MaterializedColumn(
+                    name=constants.SLICE_KEYS_KEY,
+                    value=[b'age:3.0', b'age_X_language:3.0_X_english'],
+                )
             },
-            sort_values=True)
-        self._assertMaterializedColumnsExist(materialized_dict, [
-            'predictions__logits', 'predictions__probabilities',
-            'predictions__classes', 'predictions__logistic',
-            'predictions__class_ids'
-        ])
+            sort_values=True,
+        )
+        self._assertMaterializedColumnsExist(
+            materialized_dict,
+            [
+                'predictions__logits',
+                'predictions__probabilities',
+                'predictions__classes',
+                'predictions__logistic',
+                'predictions__class_ids',
+            ],
+        )
 
       util.assert_that(result[constants.ANALYSIS_KEY], check_result)
 

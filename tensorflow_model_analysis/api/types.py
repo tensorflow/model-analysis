@@ -16,8 +16,7 @@
 import abc
 import datetime
 import operator
-
-from typing import Any, Callable, Dict, Iterable, List, MutableMapping, NamedTuple, Optional, TypeVar, Tuple, Union
+from typing import Any, Callable, Dict, Iterable, List, MutableMapping, NamedTuple, Optional, Tuple, TypeVar, Union
 
 from apache_beam.utils import shared
 import numpy as np
@@ -27,8 +26,11 @@ from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 
 
 class RaggedTensorValue(
-    NamedTuple('RaggedTensorValue', [('values', np.ndarray),
-                                     ('nested_row_splits', List[np.ndarray])])):
+    NamedTuple(
+        'RaggedTensorValue',
+        [('values', np.ndarray), ('nested_row_splits', List[np.ndarray])],
+    )
+):
   """RaggedTensorValue encapsulates a batch of ragged tensor values.
 
   Attributes:
@@ -39,9 +41,15 @@ class RaggedTensorValue(
 
 
 class SparseTensorValue(
-    NamedTuple('SparseTensorValue', [('values', np.ndarray),
-                                     ('indices', np.ndarray),
-                                     ('dense_shape', np.ndarray)])):
+    NamedTuple(
+        'SparseTensorValue',
+        [
+            ('values', np.ndarray),
+            ('indices', np.ndarray),
+            ('dense_shape', np.ndarray),
+        ],
+    )
+):
   """SparseTensorValue encapsulates a batch of sparse tensor values.
 
   Attributes:
@@ -52,9 +60,15 @@ class SparseTensorValue(
 
 
 class VarLenTensorValue(
-    NamedTuple('VarLenTensorValue', [('values', np.ndarray),
-                                     ('indices', np.ndarray),
-                                     ('dense_shape', np.ndarray)])):
+    NamedTuple(
+        'VarLenTensorValue',
+        [
+            ('values', np.ndarray),
+            ('indices', np.ndarray),
+            ('dense_shape', np.ndarray),
+        ],
+    )
+):
   """VarLenTensorValue encapsulates a batch of varlen dense tensor values.
 
   Attributes:
@@ -66,33 +80,40 @@ class VarLenTensorValue(
       presence of values.
   """
 
-  def __new__(cls, values: np.ndarray, indices: np.ndarray,
-              dense_shape: np.ndarray):
+  def __new__(
+      cls, values: np.ndarray, indices: np.ndarray, dense_shape: np.ndarray
+  ):
     # we keep the sparse representation despite not needing it so that we can
     # convert back to TF sparse tensors for free.
     if len(dense_shape) != 2:
-      raise ValueError('A VarLenTensorValue can only be used to represent a '
-                       '2D tensor in which the size of the second dimension '
-                       'varies over rows. However, the provided dense_shape '
-                       f'({dense_shape}) implies a {dense_shape.size}D tensor')
+      raise ValueError(
+          'A VarLenTensorValue can only be used to represent a '
+          '2D tensor in which the size of the second dimension '
+          'varies over rows. However, the provided dense_shape '
+          f'({dense_shape}) implies a {dense_shape.size}D tensor'
+      )
     row_index_diffs = np.diff(indices[:, 0])
     column_index_diffs = np.diff(indices[:, 1])
     # Enforce row-major ordering of indices by checking that row indices are
     # always increasing, and column indices within the same row are also always
     # increasing.
-    bad_index_mask = ((row_index_diffs < 0) | ((row_index_diffs == 0) &
-                                               (column_index_diffs < 0)))
+    bad_index_mask = (row_index_diffs < 0) | (
+        (row_index_diffs == 0) & (column_index_diffs < 0)
+    )
     if np.any(bad_index_mask):
-      raise ValueError('The values and indices arrays must be provided in a '
-                       'row major order, and represent a set of variable '
-                       'length dense lists. However, indices['
-                       f'{np.nonzero(bad_index_mask)[0] + 1}, :] did not '
-                       'follow this pattern. The full indices array was: '
-                       f'{indices}.')
+      raise ValueError(
+          'The values and indices arrays must be provided in a '
+          'row major order, and represent a set of variable '
+          'length dense lists. However, indices['
+          f'{np.nonzero(bad_index_mask)[0] + 1}, :] did not '
+          'follow this pattern. The full indices array was: '
+          f'{indices}.'
+      )
     return super().__new__(
-        cls, values=values, indices=indices, dense_shape=dense_shape)
+        cls, values=values, indices=indices, dense_shape=dense_shape
+    )
 
-  class DenseRowIterator():
+  class DenseRowIterator:
     """An Iterator over rows of a VarLenTensorValue as dense np.arrays.
 
     Because the VarLenTensorValue was created from a set of variable length
@@ -108,8 +129,10 @@ class VarLenTensorValue(
       return self
 
     def __next__(self):
-      if (not self._tensor.indices.size or
-          self._offset >= self._tensor.dense_shape[0]):
+      if (
+          not self._tensor.indices.size
+          or self._offset >= self._tensor.dense_shape[0]
+      ):
         raise StopIteration
       row_mask = self._tensor.indices[:, 0] == self._offset
       self._offset += 1
@@ -126,15 +149,17 @@ class VarLenTensorValue(
           'The values for each row in the represented tensor must be '
           'contiguous in the values and indices arrays but found '
           f'row_start_index: {row_start_index}, row_end: {row_end}'
-          f'len(row_mask_indices): {len(row_mask_indices)}')
+          f'len(row_mask_indices): {len(row_mask_indices)}'
+      )
       return self._tensor.values[row_start_index:row_end]
 
   def dense_rows(self):
     return self.DenseRowIterator(self)
 
   @classmethod
-  def from_dense_rows(cls,
-                      dense_rows: Iterable[np.ndarray]) -> 'VarLenTensorValue':
+  def from_dense_rows(
+      cls, dense_rows: Iterable[np.ndarray]
+  ) -> 'VarLenTensorValue':
     """Converts a collection of variable length dense arrays into a tensor.
 
     Args:
@@ -174,7 +199,8 @@ class VarLenTensorValue(
       indices = np.empty((0, 2))
     dense_shape = np.array([num_rows, max_row_len])
     return cls.__new__(
-        cls, values=values, indices=indices, dense_shape=dense_shape)
+        cls, values=values, indices=indices, dense_shape=dense_shape
+    )
 
 
 # pylint: disable=invalid-name
@@ -184,8 +210,9 @@ TensorOrOperationType = Union[TensorType, tf.Operation]
 DictOfTensorType = Dict[str, TensorType]
 TensorTypeMaybeDict = Union[TensorType, DictOfTensorType]
 DictOfTensorTypeMaybeDict = Dict[str, TensorTypeMaybeDict]
-TensorTypeMaybeMultiLevelDict = Union[TensorTypeMaybeDict,
-                                      DictOfTensorTypeMaybeDict]
+TensorTypeMaybeMultiLevelDict = Union[
+    TensorTypeMaybeDict, DictOfTensorTypeMaybeDict
+]
 
 DictOfTypeSpec = Dict[str, tf.TypeSpec]
 TypeSpecMaybeDict = Union[tf.TypeSpec, DictOfTypeSpec]
@@ -193,20 +220,26 @@ DictOfTypeSpecMaybeDict = Dict[str, TypeSpecMaybeDict]
 TypeSpecMaybeMultiLevelDict = Union[TypeSpecMaybeDict, DictOfTypeSpecMaybeDict]
 
 # TODO(b/171992041): Remove tf.compat.v1.SparseTensorValue.
-TensorValue = Union[np.ndarray, SparseTensorValue, RaggedTensorValue,
-                    tf.compat.v1.SparseTensorValue]
+TensorValue = Union[
+    np.ndarray,
+    SparseTensorValue,
+    RaggedTensorValue,
+    tf.compat.v1.SparseTensorValue,
+]
 DictOfTensorValue = Dict[str, TensorValue]
 TensorValueMaybeDict = Union[TensorValue, DictOfTensorValue]
 DictOfTensorValueMaybeDict = Dict[str, TensorValueMaybeDict]
-TensorValueMaybeMultiLevelDict = Union[TensorValueMaybeDict,
-                                       DictOfTensorValueMaybeDict]
+TensorValueMaybeMultiLevelDict = Union[
+    TensorValueMaybeDict, DictOfTensorValueMaybeDict
+]
 
 MetricVariablesType = List[Any]
 
 PrimitiveMetricValueType = Union[float, int, np.number]
 
 ConcreteStructuredMetricValue = TypeVar(
-    'ConcreteStructuredMetricValue', bound='StructuredMetricValue')
+    'ConcreteStructuredMetricValue', bound='StructuredMetricValue'
+)
 
 
 class StructuredMetricValue(abc.ABC):
@@ -224,8 +257,10 @@ class StructuredMetricValue(abc.ABC):
 
   @abc.abstractmethod
   def _apply_binary_op_elementwise(
-      self: ConcreteStructuredMetricValue, other: ConcreteStructuredMetricValue,
-      op: Callable[[float, float], float]) -> ConcreteStructuredMetricValue:
+      self: ConcreteStructuredMetricValue,
+      other: ConcreteStructuredMetricValue,
+      op: Callable[[float, float], float],
+  ) -> ConcreteStructuredMetricValue:
     """Applies the binary operator elementwise on self and `other`.
 
     Given two structures of the same type, this function's job is to find
@@ -251,8 +286,10 @@ class StructuredMetricValue(abc.ABC):
 
   @abc.abstractmethod
   def _apply_binary_op_broadcast(
-      self: ConcreteStructuredMetricValue, other: float,
-      op: Callable[[float, float], float]) -> ConcreteStructuredMetricValue:
+      self: ConcreteStructuredMetricValue,
+      other: float,
+      op: Callable[[float, float], float],
+  ) -> ConcreteStructuredMetricValue:
     """Applies the binary operator on each element in self and a single float.
 
     This function supports broadcasting operations on the structured metric by
@@ -277,7 +314,8 @@ class StructuredMetricValue(abc.ABC):
   def _apply_binary_op(
       self: ConcreteStructuredMetricValue,
       other: Union[PrimitiveMetricValueType, ConcreteStructuredMetricValue],
-      op: Callable[[float, float], float]) -> ConcreteStructuredMetricValue:
+      op: Callable[[float, float], float],
+  ) -> ConcreteStructuredMetricValue:
     if type(other) is type(self):  # pylint: disable=unidiomatic-typecheck
       return self._apply_binary_op_elementwise(other, op)
     elif isinstance(other, (float, int, np.number)):
@@ -288,40 +326,56 @@ class StructuredMetricValue(abc.ABC):
           'same StructuredMetricValue subclass or using broadcasting with one '
           'StructuredMetricValue and a primitive numeric type (int, float, '
           'np.number). Cannot apply binary op on objects of type '
-          '{} and {}'.format(type(self), type(other)))
+          '{} and {}'.format(type(self), type(other))
+      )
 
-  def __add__(self: ConcreteStructuredMetricValue,
-              other: Union[ConcreteStructuredMetricValue, float]):
+  def __add__(
+      self: ConcreteStructuredMetricValue,
+      other: Union[ConcreteStructuredMetricValue, float],
+  ):
     return self._apply_binary_op(other, operator.add)
 
-  def __sub__(self: ConcreteStructuredMetricValue,
-              other: Union[ConcreteStructuredMetricValue, float]):
+  def __sub__(
+      self: ConcreteStructuredMetricValue,
+      other: Union[ConcreteStructuredMetricValue, float],
+  ):
     return self._apply_binary_op(other, operator.sub)
 
-  def __mul__(self: ConcreteStructuredMetricValue,
-              other: Union[ConcreteStructuredMetricValue, float]):
+  def __mul__(
+      self: ConcreteStructuredMetricValue,
+      other: Union[ConcreteStructuredMetricValue, float],
+  ):
     return self._apply_binary_op(other, operator.mul)
 
-  def __truediv__(self: ConcreteStructuredMetricValue,
-                  other: Union[ConcreteStructuredMetricValue, float]):
+  def __truediv__(
+      self: ConcreteStructuredMetricValue,
+      other: Union[ConcreteStructuredMetricValue, float],
+  ):
     return self._apply_binary_op(other, operator.truediv)
 
-  def __pow__(self: ConcreteStructuredMetricValue,
-              other: Union[ConcreteStructuredMetricValue, float]):
+  def __pow__(
+      self: ConcreteStructuredMetricValue,
+      other: Union[ConcreteStructuredMetricValue, float],
+  ):
     return self._apply_binary_op(other, operator.pow)
 
 
-MetricValueType = Union[PrimitiveMetricValueType, np.ndarray,
-                        StructuredMetricValue]
+MetricValueType = Union[
+    PrimitiveMetricValueType, np.ndarray, StructuredMetricValue
+]
 
 
 class ValueWithTDistribution(
-    NamedTuple('ValueWithTDistribution', [
-        ('sample_mean', MetricValueType),
-        ('sample_standard_deviation', MetricValueType),
-        ('sample_degrees_of_freedom', int),
-        ('unsampled_value', MetricValueType),
-    ])):
+    NamedTuple(
+        'ValueWithTDistribution',
+        [
+            ('sample_mean', MetricValueType),
+            ('sample_standard_deviation', MetricValueType),
+            ('sample_degrees_of_freedom', int),
+            ('unsampled_value', MetricValueType),
+        ],
+    )
+):
   r"""Represents the t-distribution value.
 
   It includes sample_mean, sample_standard_deviation,
@@ -338,9 +392,13 @@ class ValueWithTDistribution(
       sample_degrees_of_freedom: Optional[int] = None,
       unsampled_value: Optional[float] = None,
   ):
-    return super(ValueWithTDistribution,
-                 cls).__new__(cls, sample_mean, sample_standard_deviation,
-                              sample_degrees_of_freedom, unsampled_value)
+    return super(ValueWithTDistribution, cls).__new__(
+        cls,
+        sample_mean,
+        sample_standard_deviation,
+        sample_degrees_of_freedom,
+        unsampled_value,
+    )
 
   def __float__(self):
     # unsampled_value can be numpy.float which is a subclass of float, but here
@@ -372,10 +430,14 @@ FPLKeyType = Union[str, Tuple[str, ...]]
 DictOfFetchedTensorValues = Dict[FPLKeyType, Dict[str, TensorValue]]
 
 FeaturesPredictionsLabels = NamedTuple(
-    'FeaturesPredictionsLabels', [('input_ref', int),
-                                  ('features', DictOfFetchedTensorValues),
-                                  ('predictions', DictOfFetchedTensorValues),
-                                  ('labels', DictOfFetchedTensorValues)])
+    'FeaturesPredictionsLabels',
+    [
+        ('input_ref', int),
+        ('features', DictOfFetchedTensorValues),
+        ('predictions', DictOfFetchedTensorValues),
+        ('labels', DictOfFetchedTensorValues),
+    ],
+)
 
 # Used in building the model diagnostics table, a MaterializedColumn is a value
 # inside of Extracts that will be emitted to file. Note that for strings, the
@@ -383,8 +445,14 @@ FeaturesPredictionsLabels = NamedTuple(
 # features can have arbitrary bytes values.
 MaterializedColumn = NamedTuple(
     'MaterializedColumn',
-    [('name', str),
-     ('value', Union[List[bytes], List[int], List[float], bytes, int, float])])
+    [
+        ('name', str),
+        (
+            'value',
+            Union[List[bytes], List[int], List[float], bytes, int, float],
+        ),
+    ],
+)
 
 # Extracts represent data extracted during pipeline processing. In order to
 # provide a flexible API, these types are just dicts where the keys are defined
@@ -409,16 +477,16 @@ class ModelLoader:
 
   __slots__ = ['construct_fn', 'tags', '_shared_handle']
 
-  def __init__(self,
-               construct_fn: Callable[[], Any],
-               tags: Optional[List[str]] = None):
+  def __init__(
+      self, construct_fn: Callable[[], Any], tags: Optional[List[str]] = None
+  ):
     self.construct_fn = construct_fn
     self.tags = tags
     self._shared_handle = shared.Shared()
 
   def load(
-      self,
-      model_load_time_callback: Optional[Callable[[int], None]] = None) -> Any:
+      self, model_load_time_callback: Optional[Callable[[int], None]] = None
+  ) -> Any:
     """Returns loaded model.
 
     Args:
@@ -431,8 +499,8 @@ class ModelLoader:
     return self._shared_handle.acquire(construct_fn)
 
   def _construct_fn_with_load_time(
-      self, model_load_time_callback: Callable[[int],
-                                               None]) -> Callable[[], Any]:
+      self, model_load_time_callback: Callable[[int], None]
+  ) -> Callable[[], Any]:
     """Wraps actual construct fn to allow for load time metrics."""
 
     def with_load_times():
@@ -540,7 +608,8 @@ class EvalSharedModel(
       add_metrics_callbacks = []
     if model_loader and construct_fn:
       raise ValueError(
-          'only one of model_loader or construct_fn should be used')
+          'only one of model_loader or construct_fn should be used'
+      )
     if construct_fn:
       model_loader = ModelLoader(tags=None, construct_fn=construct_fn)
     if model_path is not None:
@@ -568,5 +637,6 @@ class EvalSharedModel(
 # model or a list of models.
 #
 # TODO(b/150416505): Deprecate support for dict.
-MaybeMultipleEvalSharedModels = Union[EvalSharedModel, List[EvalSharedModel],
-                                      Dict[str, EvalSharedModel]]
+MaybeMultipleEvalSharedModels = Union[
+    EvalSharedModel, List[EvalSharedModel], Dict[str, EvalSharedModel]
+]

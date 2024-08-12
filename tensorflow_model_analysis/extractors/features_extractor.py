@@ -19,7 +19,6 @@ from typing import Mapping, Optional, Text, Tuple
 import apache_beam as beam
 import numpy as np
 import pyarrow as pa
-
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.extractors import extractor
@@ -35,8 +34,10 @@ ARROW_RECORD_BATCH_KEY = 'arrow_record_batch'
 
 def FeaturesExtractor(  # pylint: disable=invalid-name
     eval_config: config_pb2.EvalConfig,
-    tensor_representations: Optional[Mapping[
-        Text, schema_pb2.TensorRepresentation]] = None) -> extractor.Extractor:
+    tensor_representations: Optional[
+        Mapping[Text, schema_pb2.TensorRepresentation]
+    ] = None,
+) -> extractor.Extractor:
   """Creates an extractor for extracting features.
 
   The extractor acts as follows depending on the existence of certain keys
@@ -74,7 +75,8 @@ def FeaturesExtractor(  # pylint: disable=invalid-name
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
       stage_name=_FEATURES_EXTRACTOR_STAGE_NAME,
-      ptransform=_ExtractFeatures(tensor_representations or {}))
+      ptransform=_ExtractFeatures(tensor_representations or {}),
+  )
 
 
 # TODO(b/214273030): Move to tfx-bsl.
@@ -84,20 +86,25 @@ def _is_list_like(arrow_type: pa.DataType) -> bool:
 
 # TODO(b/214273030): Move to tfx-bsl.
 def _is_binary_like(arrow_type: pa.DataType) -> bool:
-  return (pa.types.is_binary(arrow_type) or
-          pa.types.is_large_binary(arrow_type) or
-          pa.types.is_string(arrow_type) or
-          pa.types.is_large_string(arrow_type))
+  return (
+      pa.types.is_binary(arrow_type)
+      or pa.types.is_large_binary(arrow_type)
+      or pa.types.is_string(arrow_type)
+      or pa.types.is_large_string(arrow_type)
+  )
 
 
 # TODO(b/214273030): Move to tfx-bsl.
 def _is_supported_arrow_value_type(arrow_type: pa.DataType) -> bool:
-  return (pa.types.is_integer(arrow_type) or pa.types.is_floating(arrow_type) or
-          _is_binary_like(arrow_type))
+  return (
+      pa.types.is_integer(arrow_type)
+      or pa.types.is_floating(arrow_type)
+      or _is_binary_like(arrow_type)
+  )
 
 
 def _drop_unsupported_columns_and_fetch_raw_data_column(
-    record_batch: pa.RecordBatch
+    record_batch: pa.RecordBatch,
 ) -> Tuple[pa.RecordBatch, Optional[np.ndarray]]:
   """Drops unsupported columns and fetches the raw data column.
 
@@ -112,24 +119,29 @@ def _drop_unsupported_columns_and_fetch_raw_data_column(
   """
   column_names, column_arrays = [], []
   serialized_examples = None
-  for column_name, column_array in zip(record_batch.schema.names,
-                                       record_batch.columns):
+  for column_name, column_array in zip(
+      record_batch.schema.names, record_batch.columns
+  ):
     column_type = column_array.type
     if column_name == constants.ARROW_INPUT_COLUMN:
-      assert (_is_list_like(column_type) and
-              _is_binary_like(column_type.value_type)), (
-                  'Invalid type for batched input key: {}. '
-                  'Expected binary like.'.format(column_type))
+      assert _is_list_like(column_type) and _is_binary_like(
+          column_type.value_type
+      ), 'Invalid type for batched input key: {}. Expected binary like.'.format(
+          column_type
+      )
       serialized_examples = np.asarray(column_array.flatten())
     # Currently we only handle columns of type list<primitive|binary_like>.
     # We ignore other columns as we cannot efficiently convert them into an
     # instance dict format.
-    elif (_is_list_like(column_type) and
-          _is_supported_arrow_value_type(column_type.value_type)):
+    elif _is_list_like(column_type) and _is_supported_arrow_value_type(
+        column_type.value_type
+    ):
       column_names.append(column_name)
       column_arrays.append(column_array)
-  return (pa.RecordBatch.from_arrays(column_arrays,
-                                     column_names), serialized_examples)
+  return (
+      pa.RecordBatch.from_arrays(column_arrays, column_names),
+      serialized_examples,
+  )
 
 
 @beam.ptransform_fn
@@ -137,7 +149,7 @@ def _drop_unsupported_columns_and_fetch_raw_data_column(
 @beam.typehints.with_output_types(types.Extracts)
 def _ExtractFeatures(  # pylint: disable=invalid-name
     extracts: beam.pvalue.PCollection,
-    tensor_representations: Mapping[str, schema_pb2.TensorRepresentation]
+    tensor_representations: Mapping[str, schema_pb2.TensorRepresentation],
 ) -> beam.pvalue.PCollection:
   """Extracts features from extracts.
 

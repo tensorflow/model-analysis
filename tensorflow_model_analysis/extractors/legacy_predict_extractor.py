@@ -15,13 +15,11 @@
 
 import collections
 import copy
-
 from typing import Any, Dict, List, Optional, Sequence
 
 import apache_beam as beam
 import numpy as np
 import pyarrow as pa
-
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_saved_model_constants
@@ -43,7 +41,8 @@ def PredictExtractor(  # pylint: disable=invalid-name
     eval_shared_model: types.MaybeMultipleEvalSharedModels,
     desired_batch_size: Optional[int] = None,
     materialize: Optional[bool] = True,
-    eval_config: Optional[config_pb2.EvalConfig] = None) -> extractor.Extractor:
+    eval_config: Optional[config_pb2.EvalConfig] = None,
+) -> extractor.Extractor:
   """Creates an Extractor for TFMAPredict.
 
   The extractor's PTransform loads and runs the eval_saved_model against every
@@ -66,7 +65,8 @@ def PredictExtractor(  # pylint: disable=invalid-name
     during predict.
   """
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_model)
+      eval_shared_model
+  )
 
   # pylint: disable=no-value-for-parameter
   return extractor.Extractor(
@@ -75,7 +75,9 @@ def PredictExtractor(  # pylint: disable=invalid-name
           eval_shared_models={m.model_name: m for m in eval_shared_models},
           desired_batch_size=desired_batch_size,
           materialize=materialize,
-          eval_config=eval_config))
+          eval_config=eval_config,
+      ),
+  )
 
 
 @beam.typehints.with_input_types(beam.typehints.List[types.Extracts])
@@ -83,22 +85,27 @@ def PredictExtractor(  # pylint: disable=invalid-name
 class _TFMAPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
   """A DoFn that loads the model and predicts."""
 
-  def __init__(self, eval_shared_models: Dict[str, types.EvalSharedModel],
-               eval_config):
+  def __init__(
+      self, eval_shared_models: Dict[str, types.EvalSharedModel], eval_config
+  ):
     super().__init__({k: v.model_loader for k, v in eval_shared_models.items()})
     self._eval_config = eval_config
 
-  def _get_example_weights(self, model_name: str, features: Dict[str,
-                                                                 Any]) -> Any:
+  def _get_example_weights(
+      self, model_name: str, features: Dict[str, Any]
+  ) -> Any:
     spec = model_util.get_model_spec(self._eval_config, model_name)
     if not spec:
       raise ValueError(
-          'Missing model_spec for model_name "{}"'.format(model_name))
+          'Missing model_spec for model_name "{}"'.format(model_name)
+      )
     if spec.example_weight_key:
       if spec.example_weight_key not in features:
         raise ValueError(
             'Missing feature for example_weight_key "{}": features={}'.format(
-                spec.example_weight_key, features))
+                spec.example_weight_key, features
+            )
+        )
       return features[spec.example_weight_key]
     elif spec.example_weight_keys:
       example_weights = {}
@@ -106,43 +113,52 @@ class _TFMAPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
         if v not in features:
           raise ValueError(
               'Missing feature for example_weight_key "{}": features={}'.format(
-                  k, features))
+                  k, features
+              )
+          )
         example_weights[k] = features[v]
       return example_weights
     else:
       return np.array([1.0])
 
   def _batch_reducible_process(
-      self, elements: List[types.Extracts]) -> Sequence[types.Extracts]:
+      self, elements: List[types.Extracts]
+  ) -> Sequence[types.Extracts]:
     serialized_examples = [x[constants.INPUT_KEY] for x in elements]
 
     # Compute features, predictions, and labels for each serialized_example
     result = []
     for model_name, loaded_model in self._loaded_models.items():
       for i, fetched in enumerate(
-          loaded_model.predict_list(serialized_examples)):
+          loaded_model.predict_list(serialized_examples)
+      ):
         if i >= len(result):
           element_copy = copy.copy(elements[fetched.input_ref])
           for key in fetched.values:
             if key in _FEATURES_PREDICTIONS_LABELS_KEY_MAP:
               if self._eval_config:
                 element_copy[_FEATURES_PREDICTIONS_LABELS_KEY_MAP[key]] = (
-                    fetched.values[key])
+                    fetched.values[key]
+                )
               continue
             element_copy[key] = fetched.values[key]
           if self._eval_config:
             element_copy[constants.EXAMPLE_WEIGHTS_KEY] = (
-                self._get_example_weights(model_name,
-                                          element_copy[constants.FEATURES_KEY]))
+                self._get_example_weights(
+                    model_name, element_copy[constants.FEATURES_KEY]
+                )
+            )
           if len(self._loaded_models) == 1:
             if not self._eval_config:
               element_copy[constants.FEATURES_PREDICTIONS_LABELS_KEY] = (
-                  loaded_model.as_features_predictions_labels([fetched])[0])
+                  loaded_model.as_features_predictions_labels([fetched])[0]
+              )
           else:
             if not self._eval_config:
               raise ValueError(
                   'PredictExtractor can only be used with multi-output models '
-                  'if eval_config is passed.')
+                  'if eval_config is passed.'
+              )
             # If only one model, the predictions are stored without using a dict
             element_copy[constants.PREDICTIONS_KEY] = {
                 model_name: element_copy[constants.PREDICTIONS_KEY]
@@ -152,7 +168,8 @@ class _TFMAPredictionDoFn(model_util.BatchReducibleDoFnWithModels):
           element_copy = result[i]
           # Assume values except for predictions are same for all models.
           element_copy[constants.PREDICTIONS_KEY][model_name] = fetched.values[
-              eval_saved_model_constants.PREDICTIONS_NAME]
+              eval_saved_model_constants.PREDICTIONS_NAME
+          ]
     if self._eval_config:
       return [_wrap_as_batched_extract(result)]
     return result
@@ -180,16 +197,19 @@ def _fetch_raw_data_column(record_batch: pa.RecordBatch) -> np.ndarray:
     Raw data column.
   """
   column_index = record_batch.schema.get_field_index(
-      constants.ARROW_INPUT_COLUMN)
+      constants.ARROW_INPUT_COLUMN
+  )
   assert column_index >= 0, 'Arrow input column not found.'
   return np.asarray(record_batch.column(column_index).flatten())
 
 
 def _unwrap_batched_extract(
-    batched_extract: types.Extracts) -> List[types.Extracts]:
+    batched_extract: types.Extracts,
+) -> List[types.Extracts]:
   """Unwraps batched extract."""
   serialized_examples = _fetch_raw_data_column(
-      batched_extract[constants.ARROW_RECORD_BATCH_KEY])
+      batched_extract[constants.ARROW_RECORD_BATCH_KEY]
+  )
   return [{constants.INPUT_KEY: e} for e in serialized_examples]
 
 
@@ -201,8 +221,8 @@ def _TFMAPredict(  # pylint: disable=invalid-name
     eval_shared_models: Dict[str, types.EvalSharedModel],
     desired_batch_size: Optional[int] = None,
     materialize: Optional[bool] = True,
-    eval_config: Optional[
-        config_pb2.EvalConfig] = None) -> beam.pvalue.PCollection:
+    eval_config: Optional[config_pb2.EvalConfig] = None,
+) -> beam.pvalue.PCollection:
   """A PTransform that adds predictions to Extracts.
 
   Args:
@@ -225,31 +245,37 @@ def _TFMAPredict(  # pylint: disable=invalid-name
     # able to handle batch size selection.
     if desired_batch_size:
       batch_args = dict(
-          min_batch_size=desired_batch_size, max_batch_size=desired_batch_size)
+          min_batch_size=desired_batch_size, max_batch_size=desired_batch_size
+      )
 
-    extracts = (extracts | 'Batch' >> beam.BatchElements(**batch_args))
+    extracts = extracts | 'Batch' >> beam.BatchElements(**batch_args)
   else:
-    extracts = (
-        extracts
-        | 'UnwrapBatchedExtract' >> beam.Map(_unwrap_batched_extract))
+    extracts = extracts | 'UnwrapBatchedExtract' >> beam.Map(
+        _unwrap_batched_extract
+    )
 
   # We don't actually need to add the add_metrics_callbacks to do Predict,
   # but because if we want to share the model between Predict and subsequent
   # stages (i.e. we use same shared handle for this and subsequent stages),
   # then if we don't add the metrics callbacks here, they won't be present
   # in the model in the later stages if we reuse the model from this stage.
-  extracts = (
-      extracts
-      | 'Predict' >> beam.ParDo(
-          _TFMAPredictionDoFn(
-              eval_shared_models=eval_shared_models, eval_config=eval_config)))
+  extracts = extracts | 'Predict' >> beam.ParDo(
+      _TFMAPredictionDoFn(
+          eval_shared_models=eval_shared_models, eval_config=eval_config
+      )
+  )
 
   if materialize and not eval_config:
     additional_fetches = []
     for m in eval_shared_models.values():
       if m.additional_fetches:
         additional_fetches.extend(m.additional_fetches)
-    return extracts | 'ExtractFeatures' >> legacy_feature_extractor._ExtractFeatures(  # pylint: disable=protected-access
-        additional_extracts=additional_fetches or None)
+    return (
+        extracts
+        | 'ExtractFeatures'
+        >> legacy_feature_extractor._ExtractFeatures(  # pylint: disable=protected-access
+            additional_extracts=additional_fetches or None
+        )
+    )
 
   return extracts

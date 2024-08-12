@@ -45,11 +45,14 @@ def _get_feature_value(fpl: query_types.FPL, key: str) -> float:
   """
   feature = fpl['features'].get(key)
   if feature is None:
-    raise ValueError('feature %s not found in features %s' %
-                     (key, fpl['features']))
+    raise ValueError(
+        'feature %s not found in features %s' % (key, fpl['features'])
+    )
   if feature.size != 1:
-    raise ValueError('feature %s did not contain exactly 1 value. '
-                     'value was: %s' % (key, feature))
+    raise ValueError(
+        'feature %s did not contain exactly 1 value. value was: %s'
+        % (key, feature)
+    )
   return feature[0][0]
 
 
@@ -87,10 +90,12 @@ class MinLabelPositionCombineFn(beam.CombineFn):
   def _add_states(self, left: _State, right: _State) -> _State:
     return _State(
         min_pos_sum=left.min_pos_sum + right.min_pos_sum,
-        weight_sum=left.weight_sum + right.weight_sum)
+        weight_sum=left.weight_sum + right.weight_sum,
+    )
 
-  def add_input(self, accumulator: _State,
-                query_fpl: query_types.QueryFPL) -> _State:
+  def add_input(
+      self, accumulator: _State, query_fpl: query_types.QueryFPL
+  ) -> _State:
     weight = 1.0
     if self._weight_key:
       weights = [
@@ -99,9 +104,11 @@ class MinLabelPositionCombineFn(beam.CombineFn):
       ]
       if weights:
         if min(weights) != max(weights):
-          raise ValueError('weights were not identical for all examples in the '
-                           'query. query_id was: %s, weights were: %s' %
-                           (query_fpl.query_id, weights))
+          raise ValueError(
+              'weights were not identical for all examples in the '
+              'query. query_id was: %s, weights were: %s'
+              % (query_fpl.query_id, weights)
+          )
         weight = weights[0]
 
     min_label_pos = None
@@ -126,8 +133,8 @@ class MinLabelPositionCombineFn(beam.CombineFn):
   def extract_output(self, accumulator: _State) -> Dict[str, Any]:
     if accumulator.weight_sum > 0:
       return {
-          metric_keys.base_key('average_min_label_position/%s' %
-                               self._label_key):
-              accumulator.min_pos_sum / accumulator.weight_sum
+          metric_keys.base_key(
+              'average_min_label_position/%s' % self._label_key
+          ): (accumulator.min_pos_sum / accumulator.weight_sum)
       }
     return {}

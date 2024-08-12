@@ -27,7 +27,8 @@ from tensorflow_model_analysis.utils import size_estimator
 def metric_computations_using_eval_saved_model(
     model_name: str,
     model_loader: types.ModelLoader,
-    batch_size: Optional[int] = None) -> metric_types.MetricComputations:
+    batch_size: Optional[int] = None,
+) -> metric_types.MetricComputations:
   """Returns computations for computing metrics natively using EvalMetricsGraph.
 
   Note that unlike other computations, there is no direct key associated with
@@ -44,19 +45,23 @@ def metric_computations_using_eval_saved_model(
       metric_types.MetricComputation(
           keys=[],
           preprocessors=[metric_types.InputPreprocessor()],
-          combiner=_EvalSavedModelCombiner(model_name, model_loader,
-                                           batch_size))
+          combiner=_EvalSavedModelCombiner(
+              model_name, model_loader, batch_size
+          ),
+      )
   ]
 
 
 def _add_metric_variables(  # pylint: disable=invalid-name
-    left: types.MetricVariablesType,
-    right: types.MetricVariablesType) -> types.MetricVariablesType:
+    left: types.MetricVariablesType, right: types.MetricVariablesType
+) -> types.MetricVariablesType:
   """Returns left and right metric variables combined."""
   if left is not None and right is not None:
     if len(left) != len(right):
-      raise ValueError('metric variables lengths should match, but got '
-                       '%d and %d' % (len(left), len(right)))
+      raise ValueError(
+          'metric variables lengths should match, but got %d and %d'
+          % (len(left), len(right))
+      )
     return [x + y for x, y in zip(left, right)]
   elif left is not None:
     return left
@@ -65,7 +70,8 @@ def _add_metric_variables(  # pylint: disable=invalid-name
 
 
 def _metrics_by_output_name(
-    metrics: Dict[str, Any]) -> Dict[str, Dict[str, Any]]:
+    metrics: Dict[str, Any],
+) -> Dict[str, Dict[str, Any]]:
   """Returns metrics grouped by output name."""
   # If an output (head) name is used in an estimator, the metric names are of
   # the form "<metric_name>/<head>". This code checks for the existence of a '/'
@@ -78,7 +84,7 @@ def _metrics_by_output_name(
     index = name.rfind('/')
     if index == -1:
       return {'': metrics}
-    output_name = name[index + 1:]
+    output_name = name[index + 1 :]
     if output_name not in result:
       result[output_name] = {}
     result[output_name][name[:index]] = value
@@ -106,7 +112,10 @@ class _AggState:
   _DEFAULT_DESIRED_BATCH_SIZE = 1000
 
   __slots__ = [
-      'metric_variables', 'inputs', 'size_estimator', '_desired_batch_size'
+      'metric_variables',
+      'inputs',
+      'size_estimator',
+      '_desired_batch_size',
   ]
 
   # TODO(b/173811366): Consider removing the desired_batch_size knob and
@@ -115,15 +124,17 @@ class _AggState:
     self.metric_variables = None  # type: Optional[types.MetricVariablesType]
     self.inputs = []  # type: List[bytes]
     self.size_estimator = size_estimator.SizeEstimator(
-        size_threshold=self._TOTAL_INPUT_BYTE_SIZE_THRESHOLD, size_fn=len)
+        size_threshold=self._TOTAL_INPUT_BYTE_SIZE_THRESHOLD, size_fn=len
+    )
     if desired_batch_size and desired_batch_size > 0:
       self._desired_batch_size = desired_batch_size
     else:
       self._desired_batch_size = self._DEFAULT_DESIRED_BATCH_SIZE
 
   def __iadd__(self, other: '_AggState') -> '_AggState':
-    self.metric_variables = _add_metric_variables(self.metric_variables,
-                                                  other.metric_variables)
+    self.metric_variables = _add_metric_variables(
+        self.metric_variables, other.metric_variables
+    )
     self.inputs.extend(other.inputs)
     self.size_estimator += other.size_estimator
     return self
@@ -137,12 +148,15 @@ class _AggState:
     self.size_estimator.clear()
 
   def add_metrics_variables(self, metric_variables: types.MetricVariablesType):
-    self.metric_variables = _add_metric_variables(self.metric_variables,
-                                                  metric_variables)
+    self.metric_variables = _add_metric_variables(
+        self.metric_variables, metric_variables
+    )
 
   def should_flush(self) -> bool:
-    return (len(self.inputs) >= self._desired_batch_size or
-            self.size_estimator.should_flush())
+    return (
+        len(self.inputs) >= self._desired_batch_size
+        or self.size_estimator.should_flush()
+    )
 
 
 @beam.typehints.with_input_types(metric_types.StandardMetricInputs)
@@ -175,26 +189,31 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
   (https://issues.apache.org/jira/browse/BEAM-3737).
   """
 
-  def __init__(self,
-               model_name: str,
-               model_loader: types.ModelLoader,
-               desired_batch_size: Optional[int] = None):
+  def __init__(
+      self,
+      model_name: str,
+      model_loader: types.ModelLoader,
+      desired_batch_size: Optional[int] = None,
+  ):
     super().__init__({model_name: model_loader})
     self._model_name = model_name
     self._desired_batch_size = desired_batch_size
-    self._eval_metrics_graph: Optional[
-        eval_metrics_graph.EvalMetricsGraph] = None
+    self._eval_metrics_graph: Optional[eval_metrics_graph.EvalMetricsGraph] = (
+        None
+    )
     self._batch_size_beam_metric = beam.metrics.Metrics.distribution(
-        constants.METRICS_NAMESPACE, 'eval_saved_model_combine_batch_size')
+        constants.METRICS_NAMESPACE, 'eval_saved_model_combine_batch_size'
+    )
     self._total_input_byte_size_beam_metric = beam.metrics.Metrics.distribution(
-        constants.METRICS_NAMESPACE,
-        'eval_saved_model_combine_batch_bytes_size')
+        constants.METRICS_NAMESPACE, 'eval_saved_model_combine_batch_bytes_size'
+    )
     self._num_compacts = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_compacts')
+        constants.METRICS_NAMESPACE, 'num_compacts'
+    )
 
-  def _maybe_do_batch(self,
-                      accumulator: _AggState,
-                      force: bool = False) -> None:
+  def _maybe_do_batch(
+      self, accumulator: _AggState, force: bool = False
+  ) -> None:
     """Maybe intro metrics and update accumulator in place.
 
     Checks if accumulator has enough FPLs for a batch, and if so, does the
@@ -212,12 +231,15 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
       if accumulator.inputs:
         self._batch_size_beam_metric.update(len(accumulator.inputs))
         self._total_input_byte_size_beam_metric.update(
-            accumulator.size_estimator.get_estimate())
+            accumulator.size_estimator.get_estimate()
+        )
         inputs_for_metrics = accumulator.inputs
         if inputs_for_metrics:
           accumulator.add_metrics_variables(
               self._eval_metrics_graph.metrics_reset_update_get_list(
-                  inputs_for_metrics))
+                  inputs_for_metrics
+              )
+          )
         else:
           # Call to metrics_reset_update_get_list does a reset prior to the
           # metrics update, but does not handle empty updates. Explicitly
@@ -228,8 +250,9 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
   def create_accumulator(self) -> _AggState:
     return _AggState(desired_batch_size=self._desired_batch_size)
 
-  def add_input(self, accumulator: _AggState,
-                elem: metric_types.StandardMetricInputs) -> _AggState:
+  def add_input(
+      self, accumulator: _AggState, elem: metric_types.StandardMetricInputs
+  ) -> _AggState:
     accumulator.add_input(elem.inputs)
     self._maybe_do_batch(accumulator)
     return accumulator
@@ -257,7 +280,8 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
     return accumulator
 
   def extract_output(
-      self, accumulator: _AggState) -> Dict[metric_types.MetricKey, Any]:
+      self, accumulator: _AggState
+  ) -> Dict[metric_types.MetricKey, Any]:
     # It's possible that the accumulator has not been fully flushed, if it was
     # not produced by a call to compact (which is not guaranteed across all Beam
     # Runners), so we defensively flush it here again, before we extract data
@@ -268,13 +292,16 @@ class _EvalSavedModelCombiner(model_util.CombineFnWithModels):
       eval_saved_model = self._loaded_models[self._model_name]
       grouped_metrics = _metrics_by_output_name(
           eval_saved_model.metrics_set_variables_and_get_values(
-              accumulator.metric_variables))
+              accumulator.metric_variables
+          )
+      )
       for output_name, metrics in grouped_metrics.items():
         for name, value in metrics.items():
           key = metric_types.MetricKey(
               name=name,
               model_name=self._model_name,
               output_name=output_name,
-              example_weighted=None)
+              example_weighted=None,
+          )
           result[key] = value
     return result

@@ -31,54 +31,72 @@ from tensorflow_serving.apis import prediction_log_pb2
 
 def is_valid_config_for_bulk_inference(
     eval_config: config_pb2.EvalConfig,
-    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None
+    eval_shared_model: Optional[types.MaybeMultipleEvalSharedModels] = None,
 ) -> bool:
   """Validates config for use with Tfx-Bsl and ServoBeam Bulk Inference."""
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_model)
+      eval_shared_model
+  )
   if eval_shared_models is None:
-    logging.warning('Invalid Bulk Inference Config: There must be at least one '
-                    'eval_shared_model to run servo/tfx-bsl bulk inference.')
+    logging.warning(
+        'Invalid Bulk Inference Config: There must be at least one '
+        'eval_shared_model to run servo/tfx-bsl bulk inference.'
+    )
     return False
   for eval_shared_model in eval_shared_models:
-    if eval_shared_model.model_type not in (constants.TF_GENERIC,
-                                            constants.TF_ESTIMATOR):
-      logging.warning('Invalid Bulk Inference Config: Only TF2 and TF '
-                      'Estimator models are supported for servo/tfx-bsl bulk '
-                      'inference')
+    if eval_shared_model.model_type not in (
+        constants.TF_GENERIC,
+        constants.TF_ESTIMATOR,
+    ):
+      logging.warning(
+          'Invalid Bulk Inference Config: Only TF2 and TF '
+          'Estimator models are supported for servo/tfx-bsl bulk '
+          'inference'
+      )
       return False
   name_to_eval_shared_model = {m.model_name: m for m in eval_shared_models}
   for model_spec in eval_config.model_specs:
     eval_shared_model = model_util.get_eval_shared_model(
-        model_spec.name, name_to_eval_shared_model)
+        model_spec.name, name_to_eval_shared_model
+    )
     saved_model = loader_impl.parse_saved_model(eval_shared_model.model_path)
     if model_spec.signature_name:
       signature_name = model_spec.signature_name
     else:
       signature_name = (
           model_util.get_default_signature_name_from_saved_model_proto(
-              saved_model))
+              saved_model
+          )
+      )
     try:
       signature_def = model_util.get_signature_def_from_saved_model_proto(
-          signature_name, saved_model)
+          signature_name, saved_model
+      )
     except ValueError:
-      logging.warning('Invalid Bulk Inference Config: models must have a '
-                      'signature to run servo/tfx-bsl bulk inference. Consider '
-                      'setting the signature explicitly in the ModelSpec.')
+      logging.warning(
+          'Invalid Bulk Inference Config: models must have a '
+          'signature to run servo/tfx-bsl bulk inference. Consider '
+          'setting the signature explicitly in the ModelSpec.'
+      )
       return False
     if len(signature_def.inputs) != 1:
-      logging.warning('Invalid Bulk Inference Config: signature must accept '
-                      'only one input for servo/tfx-bsl bulk inference.')
+      logging.warning(
+          'Invalid Bulk Inference Config: signature must accept '
+          'only one input for servo/tfx-bsl bulk inference.'
+      )
       return False
     if list(signature_def.inputs.values())[0].dtype != tf.string:
-      logging.warning('Invalid Bulk Inference Config: signature must accept '
-                      'string input to run servo/tfx-bsl bulk inference.')
+      logging.warning(
+          'Invalid Bulk Inference Config: signature must accept '
+          'string input to run servo/tfx-bsl bulk inference.'
+      )
       return False
   return True
 
 
 def _create_inference_input_tuple(
-    extracts: types.Extracts) -> Tuple[types.Extracts, bytes]:
+    extracts: types.Extracts,
+) -> Tuple[types.Extracts, bytes]:
   """Creates a tuple containing the Extracts and input to the model."""
   try:
     # Note after split_extracts splits the Extracts batch, INPUT_KEY has a value
@@ -88,18 +106,20 @@ def _create_inference_input_tuple(
   except KeyError as e:
     raise ValueError(
         f'Extracts must contain the input keyed by "{constants.INPUT_KEY}" for '
-        'inference.') from e
+        'inference.'
+    ) from e
   if not isinstance(model_input, bytes):
     raise ValueError(
         f'Extracts value at key: "{constants.INPUT_KEY}" is not of '
         'type bytes. Only serialized tf.Examples and serialized '
         'tf.SequenceExamples are currently supported. The value '
-        f'is {model_input} and type {type(model_input)}.')
+        f'is {model_input} and type {type(model_input)}.'
+    )
   return (extracts, model_input)
 
 
 def _parse_prediction_log_to_tensor_value(
-    prediction_log: prediction_log_pb2.PredictionLog
+    prediction_log: prediction_log_pb2.PredictionLog,
 ) -> Union[np.ndarray, Dict[str, np.ndarray]]:
   """Parses the model inference values from a PredictionLog.
 
@@ -113,28 +133,40 @@ def _parse_prediction_log_to_tensor_value(
   """
   log_type = prediction_log.WhichOneof('log_type')
   if log_type == 'classify_log':
-    assert len(
-        prediction_log.classify_log.response.result.classifications) == 1, (
-            'We expecth the number of classifications per PredictionLog to be '
-            'one because TFX-BSL RunInference expects single input/output and '
-            'handles batching entirely internally.')
-    classes = np.array([
-        c.label for c in
-        prediction_log.classify_log.response.result.classifications[0].classes
-    ],
-                       dtype=object)
-    scores = np.array([
-        c.score for c in
-        prediction_log.classify_log.response.result.classifications[0].classes
-    ],
-                      dtype=np.float32)
+    assert (
+        len(prediction_log.classify_log.response.result.classifications) == 1
+    ), (
+        'We expecth the number of classifications per PredictionLog to be '
+        'one because TFX-BSL RunInference expects single input/output and '
+        'handles batching entirely internally.'
+    )
+    classes = np.array(
+        [
+            c.label
+            for c in prediction_log.classify_log.response.result.classifications[
+                0
+            ].classes
+        ],
+        dtype=object,
+    )
+    scores = np.array(
+        [
+            c.score
+            for c in prediction_log.classify_log.response.result.classifications[
+                0
+            ].classes
+        ],
+        dtype=np.float32,
+    )
     return {'classes': classes, 'scores': scores}
   elif log_type == 'regress_log':
-    return np.array([
-        regression.value
-        for regression in prediction_log.regress_log.response.result.regressions
-    ],
-                    dtype=float)
+    return np.array(
+        [
+            regression.value
+            for regression in prediction_log.regress_log.response.result.regressions
+        ],
+        dtype=float,
+    )
   elif log_type == 'predict_log':
     output_tensor_name_to_tensor = {}
     for k, v in prediction_log.predict_log.response.outputs.items():
@@ -147,7 +179,8 @@ def _parse_prediction_log_to_tensor_value(
     return output_tensor_name_to_tensor
   elif log_type == 'multi_inference_log':
     raise NotImplementedError(
-        'MultiInferenceLog processing not implemented yet.')
+        'MultiInferenceLog processing not implemented yet.'
+    )
   elif log_type == 'session_log':
     raise ValueError('SessionLog processing is not supported.')
   else:
@@ -277,12 +310,14 @@ def RunInference(  # pylint: disable=invalid-name
   if output_batch_size is not None:
     batch_kwargs = {
         'min_batch_size': output_batch_size,
-        'max_batch_size': output_batch_size
+        'max_batch_size': output_batch_size,
     }
   else:
     # Default batch parameters.
     batch_kwargs = {}
-  return (extracts
-          | 'BatchSingleExampleExtracts' >> beam.BatchElements(**batch_kwargs)
-          | 'MergeExtracts' >> beam.Map(
-              util.merge_extracts, squeeze_two_dim_vector=False))
+  return (
+      extracts
+      | 'BatchSingleExampleExtracts' >> beam.BatchElements(**batch_kwargs)
+      | 'MergeExtracts'
+      >> beam.Map(util.merge_extracts, squeeze_two_dim_vector=False)
+  )
