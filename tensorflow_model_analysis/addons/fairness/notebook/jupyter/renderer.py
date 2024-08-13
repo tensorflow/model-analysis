@@ -30,9 +30,7 @@ def render_fairness_indicator(
   Returns:
     FairnessIndicatorViewer object
   """
-  if (slicing_metrics and multi_slicing_metrics) or (
-      not slicing_metrics and not multi_slicing_metrics
-  ):
+  if bool(slicing_metrics) == bool(multi_slicing_metrics):
     raise ValueError(
         'Exactly one of the "slicing_metrics" and "multi_slicing_metrics" '
         'parameters must be set.'
