@@ -32,6 +32,7 @@ try:
   # Allow api module types to be imported at the top-level since they are the
   # main public interface to using TFMA.
   from tensorflow_model_analysis.api import tfma_unit as test
+  from tensorflow_model_analysis.api import dataframe
   from tensorflow_model_analysis.api.model_eval_lib import AttributionsForSlice
   from tensorflow_model_analysis.api.model_eval_lib import analyze_raw_data
   from tensorflow_model_analysis.api.model_eval_lib import BatchedInputsToExtracts

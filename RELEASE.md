@@ -8,6 +8,7 @@
 *   Adds `RecallAtFalsePositiveRate` metrics.
 *   Adds 'NegToNegFlipRate', 'NegToPosFlipRate', 'PosToNegFlipRate',
     'PosToPosFlipRate', and 'SymmetricFlipRate' metrics.
+*   Graduates dataframe module to core library as tfma.dataframe.
 
 ## Bug fixes and other Changes
 

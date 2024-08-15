@@ -64,9 +64,7 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
              }
            }
          }
-         """,
-            metrics_for_slice_pb2.MetricsForSlice(),
-        ),
+         """, metrics_for_slice_pb2.MetricsForSlice()),
         text_format.Parse(
             """
          slice_key {}
@@ -80,9 +78,7 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
              }
            }
          }
-         """,
-            metrics_for_slice_pb2.MetricsForSlice(),
-        ),
+         """, metrics_for_slice_pb2.MetricsForSlice())
     ]
 
     self.metrics_overall_slice_only = [
@@ -109,9 +105,7 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
              }
            }
          }
-         """,
-            metrics_for_slice_pb2.MetricsForSlice(),
-        )
+         """, metrics_for_slice_pb2.MetricsForSlice())
     ]
 
   def testLoadMetricsAsDataFrame_DoubleValueOnly(self):
@@ -122,9 +116,8 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         ('slices', 'sex'): [b'Female', b'Female', None],
         ('slices', 'Overall'): [None, None, ''],
         ('metric_keys', 'name'): [
-            'mean_absolute_error',
-            'mean_squared_logarithmic_error',
-            'mean_absolute_error',
+            'mean_absolute_error', 'mean_squared_logarithmic_error',
+            'mean_absolute_error'
         ],
         ('metric_keys', 'model_name'): ['', '', ''],
         ('metric_keys', 'output_name'): ['', '', ''],
@@ -136,16 +129,14 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
 
   def testLoadMetricsAsDataFrame_DoubleValueIncludeEmptyColumn(self):
     dfs = dataframe.metrics_as_dataframes(
-        self.metrics_for_slices, include_empty_columns=True
-    )
+        self.metrics_for_slices, include_empty_columns=True)
     expected = pd.DataFrame({
         ('slices', 'age'): [38.0, 38.0, None],
         ('slices', 'sex'): [b'Female', b'Female', None],
         ('slices', 'Overall'): [None, None, ''],
         ('metric_keys', 'name'): [
-            'mean_absolute_error',
-            'mean_squared_logarithmic_error',
-            'mean_absolute_error',
+            'mean_absolute_error', 'mean_squared_logarithmic_error',
+            'mean_absolute_error'
         ],
         ('metric_keys', 'model_name'): ['', '', ''],
         ('metric_keys', 'output_name'): ['', '', ''],
@@ -159,8 +150,7 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
 
   def testLoadMetricsAsDataFrame_DoubleValueOverallSliceOnly(self):
     dfs = dataframe.metrics_as_dataframes(
-        self.metrics_overall_slice_only, include_empty_columns=False
-    )
+        self.metrics_overall_slice_only, include_empty_columns=False)
     expected = pd.DataFrame({
         ('slices', 'Overall'): ['', ''],
         ('metric_keys', 'name'): ['mean_absolute_error', 'example_count'],
@@ -185,9 +175,7 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
              bytes_value: "Female"
            }
          }
-         """,
-            metrics_for_slice_pb2.MetricsForSlice(),
-        ),
+         """, metrics_for_slice_pb2.MetricsForSlice()),
     ]
     dfs = dataframe.metrics_as_dataframes(metrics_for_slices)
     self.assertTrue(all(d is None for d in dataclasses.astuple(dfs)))
@@ -197,9 +185,8 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         ('slices', 'age'): [38.0, 38.0, None],
         ('slices', 'sex'): [b'Female', b'Female', None],
         ('metric_keys', 'name'): [
-            'mean_absolute_error',
-            'mean_squared_logarithmic_error',
-            'mean_absolute_error',
+            'mean_absolute_error', 'mean_squared_logarithmic_error',
+            'mean_absolute_error'
         ],
         ('metric_keys', 'model_name'): ['', '', ''],
         ('metric_keys', 'output_name'): ['', '', ''],
@@ -208,8 +195,7 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         ('metric_values', 'double_value'): [0.1, 0.02, 0.3],
     })
     df = dataframe.auto_pivot(
-        df, stringify_slices=False, collapse_column_names=False
-    )
+        df, stringify_slices=False, collapse_column_names=False)
     mux = pd.MultiIndex.from_tuples(
         [
             (('metric_values', 'double_value'), False, 'mean_absolute_error'),
@@ -242,9 +228,8 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         ('slices', 'age'): [38.0, 38.0, None],
         ('slices', 'sex'): [b'Female', b'Female', None],
         ('metric_keys', 'name'): [
-            'mean_absolute_error',
-            'mean_squared_logarithmic_error',
-            'mean_absolute_error',
+            'mean_absolute_error', 'mean_squared_logarithmic_error',
+            'mean_absolute_error'
         ],
         ('metric_keys', 'model_name'): ['', '', ''],
         ('metric_keys', 'output_name'): ['', '', ''],
@@ -253,8 +238,7 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         ('metric_values', 'double_value'): [0.1, 0.02, 0.3],
     })
     df = dataframe.auto_pivot(
-        df, stringify_slices=True, collapse_column_names=False
-    )
+        df, stringify_slices=True, collapse_column_names=False)
     mux = pd.MultiIndex.from_tuples(
         [
             (('metric_values', 'double_value'), np.nan, 'mean_absolute_error'),
@@ -297,8 +281,7 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
         ('metric_values', 'double_value'): [0.1, 0.02, 0.3],
     })
     df = dataframe.auto_pivot(
-        df, stringify_slices=False, collapse_column_names=True
-    )
+        df, stringify_slices=False, collapse_column_names=True)
     mux = pd.MultiIndex.from_tuples(
         [
             (False, 'mean_absolute_error'),
@@ -320,19 +303,16 @@ class MetricsAsDataFrameTest(tf.test.TestCase):
 
   def testAutoPivot_MetricsDataFrameOverallSliceOnly(self):
     dfs = dataframe.metrics_as_dataframes(
-        self.metrics_overall_slice_only, include_empty_columns=False
-    )
+        self.metrics_overall_slice_only, include_empty_columns=False)
     df = dfs.double_value
     expected = df.pivot(
         index=[
             ('slices', 'Overall'),
         ],
         columns=[('metric_keys', 'name')],
-        values=[('metric_values', 'double_value')],
-    )
+        values=[('metric_values', 'double_value')])
     df = dataframe.auto_pivot(
-        df, stringify_slices=False, collapse_column_names=False
-    )
+        df, stringify_slices=False, collapse_column_names=False)
     pd.testing.assert_frame_equal(expected, df, check_column_type=False)
 
 
@@ -381,9 +361,7 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
              }
            }
          }
-         """,
-            metrics_for_slice_pb2.PlotsForSlice(),
-        )
+         """, metrics_for_slice_pb2.PlotsForSlice())
     ]
 
   def testLoadPlotsAsDataFrame(self):
@@ -411,8 +389,7 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
 
   def testLoadPlotsAsDataFrame_IncludeEmptyColumn(self):
     dfs = dataframe.plots_as_dataframes(
-        self.plots_for_slice, include_empty_columns=True
-    )
+        self.plots_for_slice, include_empty_columns=True)
     expected = pd.DataFrame({
         ('slices', 'age'): [38.0, 38.0],
         ('slices', 'sex'): [b'Female', b'Female'],
@@ -449,9 +426,7 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
              bytes_value: "Female"
            }
          }
-         """,
-            metrics_for_slice_pb2.PlotsForSlice(),
-        )
+         """, metrics_for_slice_pb2.PlotsForSlice())
     ]
 
     dfs = dataframe.plots_as_dataframes(plots_for_slice)
@@ -460,8 +435,7 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
   def testAutoPivot_PlotsDataFrame(self):
     dfs = dataframe.plots_as_dataframes(self.plots_for_slice)
     df = dataframe.auto_pivot(
-        dfs.confusion_matrix_at_thresholds, stringify_slices=False
-    )
+        dfs.confusion_matrix_at_thresholds, stringify_slices=False)
     expected = pd.DataFrame({
         ('slices', 'age'): [38.0, 38.0],
         ('slices', 'sex'): [b'Female', b'Female'],
@@ -504,8 +478,7 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
     df = dataframe.auto_pivot(
         dfs.confusion_matrix_at_thresholds,
         stringify_slices=False,
-        collapse_column_names=True,
-    )
+        collapse_column_names=True)
     expected = pd.DataFrame({
         ('slices', 'age'): [38.0, 38.0],
         ('slices', 'sex'): [b'Female', b'Female'],
@@ -542,7 +515,6 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
         ],
     )
     pd.testing.assert_frame_equal(expected, df, check_column_type=False)
-
 
 if __name__ == '__main__':
   tf.test.main()
