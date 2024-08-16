@@ -1,0 +1,44 @@
+# Github action definitions for unit-tests with PRs.
+
+name: tfma-unit-tests
+on:
+  pull_request:
+    branches: [ master ]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+  workflow_dispatch:
+
+jobs:
+  unit-tests:
+    if: github.actor != 'copybara-service[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    strategy:
+      matrix:
+        # Would like to add 3.11, but it causes errors
+        python-version: ['3.9', '3.10']
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ matrix.python-version }}
+        cache: 'pip'
+        cache-dependency-path: |
+          setup.py
+
+    - name: Install dependencies
+      run: |
+        sudo apt update
+        sudo apt install protobuf-compiler -y
+        pip install .[all] tensorflow
+
+    - name: Run unit tests
+      shell: bash
+      run: |
+        pytest 
