@@ -70,19 +70,22 @@ Install the protoc as per the link mentioned:
 Create a virtual environment by running the commands
 
 ```
-python3 -m venv <virtualenv_name>
+python -m venv <virtualenv_name>
 source <virtualenv_name>/bin/activate
-pip3 install setuptools wheel
 git clone https://github.com/tensorflow/model-analysis.git
 cd model-analysis
-python3 setup.py bdist_wheel
+pip install .
 ```
-This will build the TFMA wheel in the dist directory. To install the wheel from
-dist directory run the commands
+If you are doing development on the repo, then replace
 
 ```
-cd dist
-pip3 install tensorflow_model_analysis-<version>-py3-none-any.whl
+pip install .
+```
+
+with
+
+```
+pip install -e .[all]
 ```
 
 ### Jupyter Lab
