@@ -42,12 +42,15 @@ class InvertBinaryLogarithmPreprocessor(metric_types.Preprocessor):
       self,
       name: Optional[str] = None,
       model_name: str = '',
+      prediction_winsorisation_limit_max: Optional[float] = None,
   ):
     """Initialize the preprocessor for binary logarithm inversion.
 
     Args:
       name: (Optional) name for the preprocessor.
       model_name: (Optional) model name (if multi-model evaluation).
+      prediction_winsorisation_limit_max: should the winsorisation max limit be
+        applied to the predictions.
     """
     if not name:
       name = metric_util.generate_private_name_from_arguments(
@@ -55,6 +58,9 @@ class InvertBinaryLogarithmPreprocessor(metric_types.Preprocessor):
       )
     super().__init__(name=name)
     self._model_name = model_name
+    self._prediction_winsorisation_limit_max = (
+        prediction_winsorisation_limit_max
+    )
 
   def _read_label_or_prediction_in_multiple_dicts(
       self,
@@ -93,12 +99,18 @@ class InvertBinaryLogarithmPreprocessor(metric_types.Preprocessor):
         )
     )
 
-    extracts[constants.PREDICTIONS_KEY] = (
-        self._read_label_or_prediction_in_multiple_dicts(
-            constants.PREDICTIONS_KEY,
-            extracts,
-        )
+    predictions = self._read_label_or_prediction_in_multiple_dicts(
+        constants.PREDICTIONS_KEY,
+        extracts,
     )
+    if self._prediction_winsorisation_limit_max is not None:
+      np.clip(
+          predictions,
+          0.0,
+          self._prediction_winsorisation_limit_max,
+          out=predictions,
+      )
+    extracts[constants.PREDICTIONS_KEY] = predictions
 
     if (
         extracts[constants.LABELS_KEY].shape
