@@ -742,10 +742,60 @@ def _example_count(
   ]
 
 
+class ExampleCountTest(tfma.test.testutil.TensorflowModelAnalysisTest):
+
+  def testExampleCount(self):
+    metric = ExampleCount()
+    computations = metric.computations(example_weighted=False)
+    computation = computations[0]
+
+    with beam.Pipeline() as pipeline:
+      result = (
+          pipeline
+          | 'Create' >> beam.Create([...])  # Add inputs
+          | 'PreProcess' >> beam.ParDo(computation.preprocessors[0])
+          | 'Process' >> beam.Map(tfma.metrics.to_standard_metric_inputs)
+          | 'AddSlice' >> beam.Map(lambda x: ((), x))
+          | 'ComputeMetric' >> beam.CombinePerKey(computation.combiner)
+      )
+
+      def check_result(got):
+        try:
+          self.assertLen(got, 1)
+          got_slice_key, got_metrics = got[0]
+          self.assertEqual(got_slice_key, ())
+          key = computation.keys[0]
+          self.assertIn(key, got_metrics)
+          self.assertAlmostEqual(got_metrics[key], expected_value, places=5)
+        except AssertionError as err:
+          raise util.BeamAssertException(err)
+
+      util.assert_that(result, check_result, label='result')
+
 class _ExampleCountPreprocessor(beam.DoFn):
 
   def process(self, extracts: tfma.Extracts) -> Iterable[int]:
     yield 1
+
+
+class _ExampleCountPreprocessorTest(unittest.TestCase):
+
+  def testExampleCountPreprocessor(self):
+    ...  # Init the test case here
+    with beam.Pipeline() as pipeline:
+      updated_pcoll = (
+          pipeline
+          | 'Create' >> beam.Create([...])  # Add inputs
+          | 'Preprocess'
+          >> beam.ParDo(
+              _ExampleCountPreprocessor()
+          )
+      )
+
+      beam_testing_util.assert_that(
+          updated_pcoll,
+          lambda result: ...,  # Assert the test case
+      )
 
 
 class _ExampleCountCombiner(beam.CombineFn):
