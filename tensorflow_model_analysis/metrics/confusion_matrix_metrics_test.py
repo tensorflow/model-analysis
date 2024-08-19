@@ -28,6 +28,7 @@ from tensorflow_model_analysis.metrics import test_util as metric_test_util
 from tensorflow_model_analysis.utils import test_util
 
 
+
 _TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
 _TRUE_POISITIVE = (1, 1)
 _TRUE_NEGATIVE = (0, 0)
@@ -1174,6 +1175,3 @@ class ConfusionMatrixMetricsTest(
     )
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

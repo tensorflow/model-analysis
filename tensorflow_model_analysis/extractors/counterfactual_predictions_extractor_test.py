@@ -36,6 +36,7 @@ from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
+
 class IdentityParsingLayer(tf_keras.layers.Layer):
   """A Kears layer which performs parsing and returns a single tensor."""
 
@@ -49,7 +50,6 @@ class IdentityParsingLayer(tf_keras.layers.Layer):
         {self._feature_key: tf.io.FixedLenFeature(shape=[], dtype=tf.int64)},
     )
     return parsed[self._feature_key]
-
 
 class CounterfactualPredictionsExtactorTest(
     test_util.TensorflowModelAnalysisTest, parameterized.TestCase
@@ -273,6 +273,3 @@ class CounterfactualPredictionsExtactorTest(
       util.assert_that(result, check_result, label='result')
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

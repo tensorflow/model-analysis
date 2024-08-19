@@ -26,6 +26,7 @@ from tensorflow_model_analysis.utils import util
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
+
 class UtilTest(tf.test.TestCase, parameterized.TestCase):
 
   def testToTensorValueFromTFSparseTensor(self):
@@ -1451,6 +1452,3 @@ class UtilTest(tf.test.TestCase, parameterized.TestCase):
     np.testing.assert_equal(remerged_got, expected_extract)
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

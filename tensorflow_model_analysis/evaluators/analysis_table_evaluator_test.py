@@ -93,5 +93,3 @@ class AnalysisTableEvaulatorTest(test_util.TensorflowModelAnalysisTest):
       util.assert_that(got[constants.ANALYSIS_KEY], check_result)
 
 
-if __name__ == '__main__':
-  tf.test.main()

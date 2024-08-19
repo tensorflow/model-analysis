@@ -32,6 +32,7 @@ from google.protobuf import text_format
 from tensorflow.core.protobuf import saved_model_pb2  # pylint: disable=g-direct-tensorflow-import
 from tensorflow_metadata.proto.v0 import schema_pb2
 
+
 _TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
 
 
@@ -1216,6 +1217,3 @@ class ModelUtilTest(
           'non_existing_signature_name', saved_model_proto)
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

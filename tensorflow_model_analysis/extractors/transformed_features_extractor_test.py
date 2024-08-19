@@ -33,8 +33,8 @@ from tfx_bsl.tfxio import test_util
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
-_TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
 
+_TF_MAJOR_VERSION = int(tf.version.VERSION.split('.')[0])
 
 class TransformedFeaturesExtractorTest(
     testutil.TensorflowModelAnalysisTest, parameterized.TestCase
@@ -307,6 +307,3 @@ class TransformedFeaturesExtractorTest(
       util.assert_that(result, check_result, label='result')
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

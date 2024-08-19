@@ -240,5 +240,3 @@ class MetricTypesTest(tf.test.TestCase):
         })
 
 
-if __name__ == '__main__':
-  tf.test.main()

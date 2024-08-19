@@ -329,5 +329,3 @@ class ObjectDetectionPreprocessorTest(parameterized.TestCase):
       beam_testing_util.assert_that(updated_pcoll, check_result)
 
 
-if __name__ == '__main__':
-  absltest.main()

@@ -34,6 +34,7 @@ from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
+
 class PredictionsExtractorTest(
     test_util.TensorflowModelAnalysisTest, parameterized.TestCase
 ):
@@ -509,6 +510,3 @@ class PredictionsExtractorTest(
       util.assert_that(result, check_result)
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

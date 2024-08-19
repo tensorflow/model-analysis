@@ -26,6 +26,7 @@ from tensorflow_model_analysis.utils import test_util
 from tensorflow_model_analysis.utils.keras_lib import tf_keras
 
 
+
 class _CustomMetric(tf_keras.metrics.Mean):
 
   def __init__(self, name='custom', dtype=None, update_y_pred=True):
@@ -487,7 +488,6 @@ class ConfusionMatrixMetricsTest(
           raise util.BeamAssertException(err)
 
       util.assert_that(result, check_result, label='result')
-
 
 class NonConfusionMatrixMetricsTest(
     test_util.TensorflowModelAnalysisTest, parameterized.TestCase
@@ -1039,7 +1039,6 @@ class NonConfusionMatrixMetricsTest(
     mse_key = metric_types.MetricKey(name='mse', example_weighted=True)
     self.assertDictElementsAlmostEqual(got_metrics, {mse_key: 0.1875})
 
-
 class MixedMetricsTest(test_util.TensorflowModelAnalysisTest):
 
   def testWithMixedMetrics(self):
@@ -1141,6 +1140,3 @@ class MixedMetricsTest(test_util.TensorflowModelAnalysisTest):
       )
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

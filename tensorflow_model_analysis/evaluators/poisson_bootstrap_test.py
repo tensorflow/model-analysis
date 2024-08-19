@@ -345,5 +345,3 @@ class PoissonBootstrapTest(absltest.TestCase):
       util.assert_that(result, check_result)
 
 
-if __name__ == '__main__':
-  absltest.main()

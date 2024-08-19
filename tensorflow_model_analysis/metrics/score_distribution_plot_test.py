@@ -149,5 +149,3 @@ class ScoreDistributionPlotTest(test_util.TensorflowModelAnalysisTest):
       util.assert_that(result['plots'], check_result, label='result')
 
 
-if __name__ == '__main__':
-  tf.test.main()

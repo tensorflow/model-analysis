@@ -48,6 +48,7 @@ from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
+
 def _make_slice_key(*args):
   if len(args) % 2 != 0:
     raise ValueError('number of arguments should be even')
@@ -1538,6 +1539,3 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                            attribution_records[0])
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

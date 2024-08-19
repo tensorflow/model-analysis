@@ -46,6 +46,7 @@ from google.protobuf import wrappers_pb2
 from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
+
 try:
   import tensorflow_ranking as tfr  # pylint: disable=g-import-not-at-top
 
@@ -1579,6 +1580,3 @@ class EvaluateTest(
     self.assertEqual(actual_counter[0].committed, expected_num_bytes)
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

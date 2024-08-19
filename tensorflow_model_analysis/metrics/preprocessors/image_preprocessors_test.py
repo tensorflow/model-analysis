@@ -161,5 +161,3 @@ class ImageDecodeTest(parameterized.TestCase):
       )
 
 
-if __name__ == '__main__':
-  absltest.main()

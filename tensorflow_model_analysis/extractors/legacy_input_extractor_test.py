@@ -23,7 +23,9 @@ from tensorflow_model_analysis.extractors import legacy_input_extractor as input
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import test_util
 
+import pytest
 
+@pytest.mark.usefixtures("v2_behavior")
 class InputExtractorTest(test_util.TensorflowModelAnalysisTest):
 
   def testInputExtractor(self):
@@ -388,6 +390,3 @@ class InputExtractorTest(test_util.TensorflowModelAnalysisTest):
       util.assert_that(result, check_result, label='result')
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

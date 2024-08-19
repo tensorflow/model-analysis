@@ -30,6 +30,7 @@ from google.protobuf import text_format
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 
+
 class MaterializedPredictionsExtractorTest(
     testutil.TensorflowModelAnalysisTest
 ):
@@ -151,6 +152,3 @@ class MaterializedPredictionsExtractorTest(
       util.assert_that(result, check_result, label='result')
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()
