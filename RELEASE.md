@@ -16,6 +16,7 @@
     like flip rate metrics (e.g. `SymmetricFlipRate`) and
     `ModelCosineSimilarity`.
 *   Fixes a bug by ensuring feature values are always numpy arrays.
+*   Modifies a ROUGE Test to be compatible with NumPy v2.0.1.
 
 ## Breaking Changes
 

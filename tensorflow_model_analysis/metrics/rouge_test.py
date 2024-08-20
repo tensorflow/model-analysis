@@ -380,11 +380,13 @@ class RogueTest(test_util.TensorflowModelAnalysisTest, parameterized.TestCase):
         try:
           got_metrics = self._check_got(got, rouge_computation)
           self.assertAlmostEqual(
-              expected_precision, got_metrics[rouge_key].precision
+              expected_precision, got_metrics[rouge_key].precision, places=6
           )
-          self.assertAlmostEqual(expected_recall, got_metrics[rouge_key].recall)
           self.assertAlmostEqual(
-              expected_fmeasure, got_metrics[rouge_key].fmeasure
+              expected_recall, got_metrics[rouge_key].recall, places=6
+          )
+          self.assertAlmostEqual(
+              expected_fmeasure, got_metrics[rouge_key].fmeasure, places=6
           )
 
         except AssertionError as err:
