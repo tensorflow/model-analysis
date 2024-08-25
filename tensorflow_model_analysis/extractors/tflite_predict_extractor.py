@@ -198,7 +198,7 @@ class TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
         outputs[o['name']] = self._post_process_result(dequantized_tensor)
 
       for v in outputs.values():
-        if len(v) != batch_size:
+        if util.batch_size(v) != batch_size:
           raise ValueError('Did not get the expected number of results.')
 
       if len(outputs) == 1:
