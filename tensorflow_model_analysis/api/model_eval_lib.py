@@ -28,7 +28,6 @@ from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.evaluators import evaluator
-from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.extractors import example_weights_extractor
 from tensorflow_model_analysis.extractors import extractor
@@ -800,33 +799,15 @@ def default_evaluators(  # pylint: disable=invalid-name
       and constants.ATTRIBUTIONS_KEY in disabled_outputs
   ):
     return []
-  if _is_legacy_eval(config_version, eval_shared_models, eval_config):
-    # Backwards compatibility for previous add_metrics_callbacks implementation.
-    if eval_config is not None:
-      if eval_config.options.HasField('compute_confidence_intervals'):
-        compute_confidence_intervals = (
-            eval_config.options.compute_confidence_intervals.value
-        )
-      if eval_config.options.HasField('min_slice_size'):
-        min_slice_size = eval_config.options.min_slice_size.value
-    return [
-        legacy_metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
-            eval_shared_model,
-            compute_confidence_intervals=compute_confidence_intervals,
-            min_slice_size=min_slice_size,
-            serialize=serialize,
-            random_seed_for_testing=random_seed_for_testing,
-        )
-    ]
-  else:
-    return [
-        metrics_plots_and_validations_evaluator.MetricsPlotsAndValidationsEvaluator(
-            eval_config=eval_config,
-            eval_shared_model=eval_shared_model,
-            schema=schema,
-            random_seed_for_testing=random_seed_for_testing,
-        )
-    ]
+
+  return [
+      metrics_plots_and_validations_evaluator.MetricsPlotsAndValidationsEvaluator(
+          eval_config=eval_config,
+          eval_shared_model=eval_shared_model,
+          schema=schema,
+          random_seed_for_testing=random_seed_for_testing,
+      )
+  ]
 
 
 def default_writers(

@@ -19,7 +19,7 @@
 *   Modifies a ROUGE Test to be compatible with NumPy v2.0.1.
 
 ## Breaking Changes
-
+*   Removing legacy_metrics_and_plots_evaluator in model_eval_lib.py.
 *   Removing eval_saved_model related API in model_util.py, estimator related
 functions are no longer supported.
 
