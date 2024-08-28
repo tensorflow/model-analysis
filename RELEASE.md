@@ -20,6 +20,8 @@
 
 ## Breaking Changes
 *   Removing legacy_metrics_and_plots_evaluator in model_eval_lib.py.
+*   Removes legacy_metrics_and_plots_evaluator from the public API of TFMA
+evaluator.
 *   Removing eval_saved_model related API in model_util.py, estimator related
 functions are no longer supported.
 
