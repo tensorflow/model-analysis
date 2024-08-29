@@ -16,11 +16,11 @@
 from absl.testing import parameterized
 import tensorflow as tf
 from tensorflow_model_analysis.contrib.aggregates import binary_confusion_matrices
-from tensorflow_model_analysis.eval_saved_model import testutil
+from tensorflow_model_analysis.utils import test_util
 
 
 class BinaryConfusionMatricesTest(
-    testutil.TensorflowModelAnalysisTest, parameterized.TestCase
+    test_util.TensorflowModelAnalysisTest, parameterized.TestCase
 ):
 
   @parameterized.parameters(
