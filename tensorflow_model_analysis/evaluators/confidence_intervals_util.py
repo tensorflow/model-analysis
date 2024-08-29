@@ -21,7 +21,6 @@ import numpy as np
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.metrics import metric_types
-from tensorflow_model_analysis.post_export_metrics import metric_keys
 
 SampleMetrics = NamedTuple(
     'SampleMetrics', [('metrics', metric_types.MetricsDict), ('sample_id', int)]
@@ -158,7 +157,7 @@ class SampleCombineFn(beam.CombineFn):
       self, accumulator: 'SampleCombineFn.SampleAccumulator'
   ) -> 'SampleCombineFn.SampleAccumulator':
     self._num_slices_counter.inc(1)
-    error_metric_key = metric_types.MetricKey(metric_keys.ERROR_METRIC)
+    error_metric_key = metric_types.MetricKey(constants.ERROR_METRIC_NAME)
     if accumulator.num_samples < self._num_samples:
       self._missing_samples_counter.inc(1)
       accumulator.point_estimates[error_metric_key] = (

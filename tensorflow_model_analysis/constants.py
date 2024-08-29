@@ -109,3 +109,6 @@ MATERIALIZE_COLUMNS = 'materialize'
 
 # Key used to save and store prediction logs.
 PREDICTION_LOG_KEY = 'prediction_log'
+
+# Not actually for any metric, just used for communicating errors.
+ERROR_METRIC_NAME = '__ERROR__'
