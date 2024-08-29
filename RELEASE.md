@@ -19,11 +19,14 @@
 *   Modifies a ROUGE Test to be compatible with NumPy v2.0.1.
 
 ## Breaking Changes
+
+*   Removing eval saved model related API in
+    metrics_plots_and_validations_evaluator.py
 *   Removing legacy_metrics_and_plots_evaluator in model_eval_lib.py.
 *   Removes legacy_metrics_and_plots_evaluator from the public API of TFMA
 evaluator.
 *   Removing eval_saved_model related API in model_util.py, estimator related
-functions are no longer supported.
+    functions are no longer supported.
 
 ## Deprecations
 *   Migrate common utils in eval_saved_model testutils to utils/test_util.py.
