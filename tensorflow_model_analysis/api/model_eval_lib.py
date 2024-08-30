@@ -33,7 +33,6 @@ from tensorflow_model_analysis.extractors import example_weights_extractor
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import labels_extractor
-from tensorflow_model_analysis.extractors import legacy_predict_extractor
 from tensorflow_model_analysis.extractors import materialized_predictions_extractor
 from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
@@ -591,21 +590,6 @@ def default_extractors(  # pylint: disable=invalid-name
   eval_shared_models = model_util.verify_and_update_eval_shared_models(
       eval_shared_model
   )
-  if _is_legacy_eval(config_version, eval_shared_models, eval_config):
-    # Backwards compatibility for previous add_metrics_callbacks implementation.
-    if not eval_config and slice_spec:
-      eval_config = config_pb2.EvalConfig(
-          slicing_specs=[s.to_proto() for s in slice_spec]
-      )
-    return [
-        custom_predict_extractor
-        or legacy_predict_extractor.PredictExtractor(
-            eval_shared_model, materialize=materialize
-        ),
-        slice_key_extractor.SliceKeyExtractor(
-            eval_config=eval_config, materialize=materialize
-        ),
-    ]
   slicing_extractors = []
   if _has_sql_slices(eval_config):
     slicing_extractors.append(
@@ -644,6 +628,7 @@ def default_extractors(  # pylint: disable=invalid-name
               str(constants.VALID_TF_MODEL_TYPES), eval_config
           )
       )
+
     if model_types == {constants.MATERIALIZED_PREDICTION}:
       return [
           extract_features,
@@ -673,8 +658,7 @@ def default_extractors(  # pylint: disable=invalid-name
           'support for mixing tf_lite and non-tf_lite models is not '
           'implemented: eval_config={}'.format(eval_config)
       )
-
-    if model_types == {constants.TF_JS}:
+    elif model_types == {constants.TF_JS}:
       return [
           extract_features,
           extract_labels,
@@ -689,34 +673,6 @@ def default_extractors(  # pylint: disable=invalid-name
     elif constants.TF_JS in model_types:
       raise NotImplementedError(
           'support for mixing tf_js and non-tf_js models is not '
-          'implemented: eval_config={}'.format(eval_config)
-      )
-    elif (
-        eval_config
-        and model_types == {constants.TFMA_EVAL}
-        and all(
-            eval_constants.EVAL_TAG in m.model_loader.tags
-            for m in eval_shared_models
-        )
-    ):
-      return [
-          custom_predict_extractor
-          or legacy_predict_extractor.PredictExtractor(
-              eval_shared_model,
-              materialize=materialize,
-              eval_config=eval_config,
-          )
-      ] + slicing_extractors
-    elif (
-        eval_config
-        and constants.TFMA_EVAL in model_types
-        and any(
-            eval_constants.EVAL_TAG in m.model_loader.tags
-            for m in eval_shared_models
-        )
-    ):
-      raise NotImplementedError(
-          'support for mixing tfma_eval and non-tfma_eval models is not '
           'implemented: eval_config={}'.format(eval_config)
       )
     else:
