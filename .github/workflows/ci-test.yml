@@ -35,7 +35,7 @@ jobs:
       run: |
         sudo apt update
         sudo apt install protobuf-compiler -y
-        pip install .[all] tensorflow
+        pip install .[test]
 
     - name: Run unit tests
       shell: bash

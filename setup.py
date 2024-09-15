@@ -344,6 +344,7 @@ setup_args = {
     ],
     'extras_require': {
         'all': _make_extra_packages_all(),
+        'test': _make_extra_packages_test(),
     },
     'python_requires': '>=3.9,<4',
     'packages': find_packages(),
