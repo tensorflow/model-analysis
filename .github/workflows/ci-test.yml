@@ -16,7 +16,6 @@ jobs:
 
     strategy:
       matrix:
-        # Would like to add 3.11, but it causes errors
         python-version: ['3.9', '3.10']
 
     steps:
