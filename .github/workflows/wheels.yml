@@ -1,0 +1,67 @@
+name: Build Wheels & Publish to PyPI
+
+on:
+  pull_request:
+  workflow_dispatch:
+  release:
+    types: [published]
+
+jobs:
+  build_wheels:
+    name: Build wheels
+    runs-on: ubuntu-latest
+    steps:
+    - name: Check out the repo
+      uses: actions/checkout@v4
+
+    - name: Set up python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.10'
+
+    - name: Install Protoc
+      uses: arduino/setup-protoc@v3
+
+    - name: install python dependencies
+      run: pip install build twine setuptools
+
+    - name: build sdist
+      run: |
+        python -m build -o wheelhouse
+
+    - name: List and check sdist
+      run: |
+        ls -lh wheelhouse/
+        twine check wheelhouse/*
+
+    - name: Upload sdist
+      uses: actions/upload-artifact@v4
+      with:
+        name: wheels
+        path: ./wheelhouse/*.tar.gz
+
+  upload_to_pypi:
+    name: Upload to PyPI
+    runs-on: ubuntu-latest
+    if: (github.event_name == 'release' && startsWith(github.ref, 'refs/tags')) || (github.event_name == 'workflow_dispatch')
+    needs: [build_wheels]
+    environment:
+      name: pypi
+      url: https://pypi.org/p/tensorflow-model-analysis
+    permissions:
+      id-token: write
+    steps:
+      - name: Retrieve wheels and sdist
+        uses: actions/download-artifact@v4
+        with:
+          merge-multiple: true
+          path: wheels/
+
+      - name: List the build artifacts
+        run: |
+          ls -lAs wheels/
+
+      - name: Upload to PyPI
+        uses: pypa/gh-action-pypi-publish@release/v1.9
+        with:
+          packages_dir: wheels/
