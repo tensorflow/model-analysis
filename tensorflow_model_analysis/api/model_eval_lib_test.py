@@ -1212,7 +1212,6 @@ class EvaluateTest(
         eval_result.config.slicing_specs[0],
         config_pb2.SlicingSpec(feature_keys=['language']),
     )
-    # raise ValueError(eval_result.slicing_metrics)
     self.assertMetricsAlmostEqual(eval_result.slicing_metrics, expected)
     for _, plot in eval_result.plots:
       self.assertFalse(plot)

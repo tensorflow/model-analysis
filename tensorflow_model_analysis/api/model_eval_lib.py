@@ -41,7 +41,6 @@ from tensorflow_model_analysis.extractors import tfjs_predict_extractor
 from tensorflow_model_analysis.extractors import tflite_predict_extractor
 from tensorflow_model_analysis.extractors import transformed_features_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
-from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
@@ -474,33 +473,6 @@ def default_eval_shared_model(
       include_default_metrics = (
           eval_config.options.include_default_metrics.value
       )
-
-  # Backwards compatibility for legacy add_metrics_callbacks implementation.
-  if model_type == constants.TFMA_EVAL and eval_constants.EVAL_TAG in tags:
-    # PyType doesn't know about the magic exports we do in post_export_metrics.
-    # Additionally, the lines seem to get reordered in compilation, so we can't
-    # just put the disable-attr on the add_metrics_callbacks lines.
-    # pytype: disable=module-attr
-    if not add_metrics_callbacks:
-      add_metrics_callbacks = []
-    if include_default_metrics:
-      # Always compute example weight and example count if default metrics are
-      # enabled.
-      example_count_callback = post_export_metrics.example_count()
-      add_metrics_callbacks.append(example_count_callback)
-      if example_weight_key:
-        if isinstance(example_weight_key, dict):
-          for output_name, key in example_weight_key.items():
-            example_weight_callback = post_export_metrics.example_weight(
-                key, metric_tag=output_name
-            )
-            add_metrics_callbacks.append(example_weight_callback)
-        else:
-          example_weight_callback = post_export_metrics.example_weight(
-              example_weight_key
-          )
-          add_metrics_callbacks.append(example_weight_callback)
-    # pytype: enable=module-attr
 
   model_loader = custom_model_loader
   if not model_loader and model_type in constants.VALID_TF_MODEL_TYPES:

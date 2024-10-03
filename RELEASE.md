@@ -21,7 +21,7 @@
 ## Breaking Changes
 
 *   Removing legacy_predict_extractor in model_eval_lib.py.
-
+*   Removing post_export_metrics support in model_eval_lib.py.
 *   Removing eval saved model related API in
     metrics_plots_and_validations_evaluator.py
 *   Removing legacy_metrics_and_plots_evaluator in model_eval_lib.py.
