@@ -30,10 +30,17 @@ from tensorflow_model_analysis.slicer import slicer_lib as slicer
 from tensorflow_model_analysis.utils import math_util
 from tensorflow_model_analysis.utils import util
 
-from tensorflow.python.estimator.canned import prediction_keys  # pylint: disable=g-direct-tensorflow-import
 from tensorflow.python.ops import metrics_impl  # pylint: disable=g-direct-tensorflow-import
 
 _HAS_DYNAMIC_ATTRIBUTES = True
+
+
+PREDICTION_KEYS_LOGISTIC = 'logistic'
+PREDICTION_KEYS_PREDICTIONS = 'predictions'
+PREDICTION_KEYS_PROBABILITIES = 'probabilities'
+PREDICTION_KEYS_LOGITS = 'logits'
+PREDICTION_KEY_ALL_CLASSES = 'all_classes'
+PREDICTION_KEY_CLASSES = 'classes'
 
 
 # TODO(b/111754250): revisit it and determine whether to simplify the 4-level
@@ -102,10 +109,10 @@ def _export(name: str):
 
 # This must be a tuple to avoid mutation (see b/129368983).
 DEFAULT_KEY_PREFERENCE = (
-    prediction_keys.PredictionKeys.LOGISTIC,
-    prediction_keys.PredictionKeys.PREDICTIONS,
-    prediction_keys.PredictionKeys.PROBABILITIES,
-    prediction_keys.PredictionKeys.LOGITS,
+    PREDICTION_KEYS_LOGISTIC,
+    PREDICTION_KEYS_PREDICTIONS,
+    PREDICTION_KEYS_PROBABILITIES,
+    PREDICTION_KEYS_LOGITS,
 )
 
 
@@ -438,7 +445,8 @@ class _PostExportMetric(object, metaclass=abc.ABCMeta):
     # Convert string labels
     if labels_tensor.dtype == tf.string:
       classes_tensor = _get_target_tensor(
-          predictions_dict, [prediction_keys.PredictionKeys.ALL_CLASSES])
+          predictions_dict, [PREDICTION_KEY_ALL_CLASSES]
+      )
       if classes_tensor is not None:
         labels_tensor = _string_labels_to_class_ids(labels_tensor,
                                                     classes_tensor)
@@ -1539,14 +1547,13 @@ class _PrecisionRecallAtK(_PostExportMetric):
     self._example_weight_key = example_weight_key
     if probabilities_key is None and target_prediction_keys:
       probabilities_key = target_prediction_keys[0]
-    probabilities_key = (
-        probabilities_key or prediction_keys.PredictionKeys.PROBABILITIES)
+    probabilities_key = probabilities_key or PREDICTION_KEYS_PROBABILITIES
     if classes_key:
       self._classes_keys = [classes_key]
     else:
       self._classes_keys = [
-          prediction_keys.PredictionKeys.ALL_CLASSES,
-          prediction_keys.PredictionKeys.CLASSES
+          PREDICTION_KEY_ALL_CLASSES,
+          PREDICTION_KEY_CLASSES,
       ]
     self._probabilities_keys = [probabilities_key]
     if metric_tag:
@@ -1564,8 +1571,10 @@ class _PrecisionRecallAtK(_PostExportMetric):
     if not isinstance(predictions_dict, dict):
       raise TypeError('predictions_dict should be a dict. predictions_dict '
                       'was: %s' % predictions_dict)
-    if (_get_target_tensor(predictions_dict, self._classes_keys) is None and
-        prediction_keys.PredictionKeys.ALL_CLASSES not in self._classes_keys):
+    if (
+        _get_target_tensor(predictions_dict, self._classes_keys) is None
+        and PREDICTION_KEY_ALL_CLASSES not in self._classes_keys
+    ):
       raise KeyError('predictions_dict should contain one of %s. '
                      'predictions_dict was: %s' %
                      (self._classes_keys, predictions_dict))
@@ -1608,8 +1617,7 @@ class _PrecisionRecallAtK(_PostExportMetric):
 
     scores = _get_target_tensor(predictions_dict, self._probabilities_keys)
     classes = _get_target_tensor(predictions_dict, self._classes_keys)
-    if (classes is None and
-        prediction_keys.PredictionKeys.ALL_CLASSES in self._classes_keys):
+    if classes is None and PREDICTION_KEY_ALL_CLASSES in self._classes_keys:
       # If no classes were found and ALL_CLASSES is used in the classes_keys
       # then default to using class IDs as the classes. The intended use case is
       # keras model_to_estimator which does not output any classes.
