@@ -198,5 +198,3 @@ class GraphRefTest(tf.test.TestCase):
           apple, graph_ref.get_node_in_graph(meta_graph_def, 'fruit_node', g))
 
 
-if __name__ == '__main__':
-  tf.test.main()

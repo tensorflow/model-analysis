@@ -158,5 +158,3 @@ class ModelAgnosticPredictTest(test_util.TensorflowModelAnalysisTest):
       self.assertEqual(expected_labels[i], fpl.labels['label']['node'])
 
 
-if __name__ == '__main__':
-  tf.test.main()

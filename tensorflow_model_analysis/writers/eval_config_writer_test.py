@@ -122,5 +122,3 @@ class EvalConfigWriterTest(testutil.TensorflowModelAnalysisTest):
     self.assertEqual({'': model_location}, got_model_locations)
 
 
-if __name__ == '__main__':
-  tf.test.main()

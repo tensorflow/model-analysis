@@ -72,5 +72,3 @@ class BeamUtilsTest(absltest.TestCase):
                                                      **teardown_kwargs)
 
 
-if __name__ == '__main__':
-  absltest.main()

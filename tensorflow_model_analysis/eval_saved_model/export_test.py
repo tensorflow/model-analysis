@@ -90,5 +90,3 @@ class ExportTest(testutil.TensorflowModelAnalysisTest):
           1, len(tf.compat.v1.get_collection(encoding.TFMA_VERSION_COLLECTION)))
 
 
-if __name__ == '__main__':
-  tf.test.main()

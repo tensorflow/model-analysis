@@ -168,5 +168,3 @@ class WidgetViewTest(testutil.TensorflowModelAnalysisTest):
       )
 
 
-if __name__ == '__main__':
-  tf.test.main()

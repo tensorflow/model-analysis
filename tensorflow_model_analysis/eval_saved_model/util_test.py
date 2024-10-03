@@ -290,5 +290,3 @@ class UtilTest(testutil.TensorflowModelAnalysisTest):
             dense_shape=np.array([3, 3, 5])), merged_tensor_values)
 
 
-if __name__ == '__main__':
-  tf.test.main()

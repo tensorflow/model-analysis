@@ -169,5 +169,3 @@ class ExporterTest(testutil.TensorflowModelAnalysisTest):
       self.assertAllClose(predictions['outputs'], np.array([[0.9]]))
 
 
-if __name__ == '__main__':
-  tf.test.main()

@@ -238,5 +238,3 @@ class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
     self.assertNotIn('features__s', result)
 
 
-if __name__ == '__main__':
-  tf.test.main()

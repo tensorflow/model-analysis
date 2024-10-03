@@ -89,5 +89,3 @@ class CounterUtilTest(tf.test.TestCase):
       self.assertEqual(actual_metrics_count, 1)
 
 
-if __name__ == '__main__':
-  tf.test.main()

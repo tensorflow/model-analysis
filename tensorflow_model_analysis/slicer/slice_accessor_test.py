@@ -102,5 +102,3 @@ class SliceAccessorTest(tf.test.TestCase, parameterized.TestCase):
       self.assertEqual([2.0], accessor.get('squeeze_needed'))
 
 
-if __name__ == '__main__':
-  tf.test.main()

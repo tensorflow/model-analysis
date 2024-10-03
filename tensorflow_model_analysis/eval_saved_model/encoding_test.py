@@ -75,5 +75,3 @@ class EncodingTest(tf.test.TestCase):
           self.assertEqual(tensor, got_tensor)
 
 
-if __name__ == '__main__':
-  tf.test.main()
