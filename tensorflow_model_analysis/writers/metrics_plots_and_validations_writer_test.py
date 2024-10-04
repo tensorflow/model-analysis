@@ -25,14 +25,10 @@ import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import testutil
-from tensorflow_model_analysis.eval_saved_model.example_trainers import fixed_prediction_estimator
-from tensorflow_model_analysis.evaluators import legacy_metrics_and_plots_evaluator
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.extractors import example_weights_extractor
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import labels_extractor
-from tensorflow_model_analysis.extractors import legacy_predict_extractor
 from tensorflow_model_analysis.extractors import predictions_extractor
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.extractors import unbatch_extractor
@@ -45,9 +41,9 @@ from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.proto import metrics_for_slice_pb2
 from tensorflow_model_analysis.proto import validation_result_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import test_util as testutil
 from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tensorflow_model_analysis.writers import metrics_plots_and_validations_writer
-from tfx_bsl.tfxio import raw_tf_record
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
 
@@ -97,7 +93,8 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     model.fit(x=[[0], [1]], y=[[0], [1]], steps_per_epoch=1)
     model.save(model_dir, save_format='tf')
     return self.createTestEvalSharedModel(
-        eval_saved_model_path=model_dir, tags=[tf.saved_model.SERVING])
+        model_path=model_dir, tags=[tf.saved_model.SERVING]
+    )
 
   def testConvertSlicePlotsToProto(self):
     slice_key = _make_slice_key('fruit', 'apple')
@@ -188,70 +185,6 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
             plot_key: calibration_plot
         }), None)
     self.assertProtoEquals(expected_plots_for_slice, got)
-
-  def testConvertSlicePlotsToProtoLegacyStringKeys(self):
-    slice_key = _make_slice_key('fruit', 'apple')
-    tfma_plots = {
-        metric_keys.CALIBRATION_PLOT_MATRICES:
-            np.array([
-                [0.0, 0.0, 0.0],
-                [0.3, 1.0, 1.0],
-                [0.7, 0.0, 1.0],
-                [0.0, 0.0, 0.0],
-            ]),
-        metric_keys.CALIBRATION_PLOT_BOUNDARIES:
-            np.array([0.0, 0.5, 1.0]),
-    }
-    expected_plot_data = """
-      slice_key {
-        single_slice_keys {
-          column: 'fruit'
-          bytes_value: 'apple'
-        }
-      }
-      plots {
-        key: "post_export_metrics"
-        value {
-          calibration_histogram_buckets {
-            buckets {
-              lower_threshold_inclusive: -inf
-              upper_threshold_exclusive: 0.0
-              num_weighted_examples { value: 0.0 }
-              total_weighted_label { value: 0.0 }
-              total_weighted_refined_prediction { value: 0.0 }
-            }
-            buckets {
-              lower_threshold_inclusive: 0.0
-              upper_threshold_exclusive: 0.5
-              num_weighted_examples { value: 1.0 }
-              total_weighted_label { value: 1.0 }
-              total_weighted_refined_prediction { value: 0.3 }
-            }
-            buckets {
-              lower_threshold_inclusive: 0.5
-              upper_threshold_exclusive: 1.0
-              num_weighted_examples { value: 1.0 }
-              total_weighted_label { value: 0.0 }
-              total_weighted_refined_prediction { value: 0.7 }
-            }
-            buckets {
-              lower_threshold_inclusive: 1.0
-              upper_threshold_exclusive: inf
-              num_weighted_examples { value: 0.0 }
-              total_weighted_label { value: 0.0 }
-              total_weighted_refined_prediction { value: 0.0 }
-            }
-          }
-        }
-      }
-    """
-    calibration_plot = (
-        post_export_metrics.calibration_plot_and_prediction_histogram()
-    )
-    got = metrics_plots_and_validations_writer.convert_slice_plots_to_proto(
-        (slice_key, tfma_plots), [calibration_plot]
-    )
-    self.assertProtoEquals(expected_plot_data, got)
 
   def testConvertSlicePlotsToProtoEmptyPlot(self):
     slice_key = _make_slice_key('fruit', 'apple')
@@ -1821,155 +1754,6 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
     self.assertEmpty(validation_result.metric_validations_per_slice)
     self.assertTrue(validation_result.rubber_stamp)
 
-  @parameterized.named_parameters(_OUTPUT_FORMAT_PARAMS)
-  def testWriteMetricsAndPlots(self, output_file_format):
-    metrics_file = os.path.join(self._getTempDir(), 'metrics')
-    plots_file = os.path.join(self._getTempDir(), 'plots')
-    temp_eval_export_dir = os.path.join(self._getTempDir(), 'eval_export_dir')
-
-    _, eval_export_dir = (
-        fixed_prediction_estimator.simple_fixed_prediction_estimator(
-            None, temp_eval_export_dir))
-    eval_config = config_pb2.EvalConfig(
-        model_specs=[config_pb2.ModelSpec()],
-        options=config_pb2.Options(
-            disabled_outputs={'values': ['eval_config_pb2.json']}))
-    eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=eval_export_dir,
-        add_metrics_callbacks=[
-            post_export_metrics.example_count(),
-            post_export_metrics.calibration_plot_and_prediction_histogram(
-                num_buckets=2)
-        ])
-    extractors = [
-        legacy_predict_extractor.PredictExtractor(
-            eval_shared_model, eval_config=eval_config),
-        unbatch_extractor.UnbatchExtractor(),
-        slice_key_extractor.SliceKeyExtractor()
-    ]
-    evaluators = [
-        legacy_metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
-            eval_shared_model)
-    ]
-    output_paths = {
-        constants.METRICS_KEY: metrics_file,
-        constants.PLOTS_KEY: plots_file
-    }
-    writers = [
-        metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
-            output_paths,
-            eval_config=eval_config,
-            add_metrics_callbacks=eval_shared_model.add_metrics_callbacks,
-            output_file_format=output_file_format)
-    ]
-
-    tfx_io = raw_tf_record.RawBeamRecordTFXIO(
-        physical_format='inmemory',
-        raw_record_column_name=constants.ARROW_INPUT_COLUMN,
-        telemetry_descriptors=['TFMATest'])
-    with beam.Pipeline() as pipeline:
-      example1 = self._makeExample(prediction=0.0, label=1.0)
-      example2 = self._makeExample(prediction=1.0, label=1.0)
-
-      # pylint: disable=no-value-for-parameter
-      _ = (
-          pipeline
-          | 'Create' >> beam.Create([
-              example1.SerializeToString(),
-              example2.SerializeToString(),
-          ])
-          | 'BatchExamples' >> tfx_io.BeamSource()
-          | 'ExtractEvaluateAndWriteResults' >>
-          model_eval_lib.ExtractEvaluateAndWriteResults(
-              eval_config=eval_config,
-              eval_shared_model=eval_shared_model,
-              extractors=extractors,
-              evaluators=evaluators,
-              writers=writers))
-      # pylint: enable=no-value-for-parameter
-
-    expected_metrics_for_slice = text_format.Parse(
-        """
-        slice_key {}
-        metrics {
-          key: "average_loss"
-          value {
-            double_value {
-              value: 0.5
-            }
-          }
-        }
-        metrics {
-          key: "post_export_metrics/example_count"
-          value {
-            double_value {
-              value: 2.0
-            }
-          }
-        }
-        """, metrics_for_slice_pb2.MetricsForSlice())
-
-    metric_records = list(
-        metrics_plots_and_validations_writer.load_and_deserialize_metrics(
-            metrics_file, output_file_format))
-    self.assertLen(metric_records, 1, 'metrics: %s' % metric_records)
-    self.assertProtoEquals(expected_metrics_for_slice, metric_records[0])
-
-    expected_plots_for_slice = text_format.Parse(
-        """
-      slice_key {}
-      plots {
-        key: "post_export_metrics"
-        value {
-          calibration_histogram_buckets {
-            buckets {
-              lower_threshold_inclusive: -inf
-              num_weighted_examples {}
-              total_weighted_label {}
-              total_weighted_refined_prediction {}
-            }
-            buckets {
-              upper_threshold_exclusive: 0.5
-              num_weighted_examples {
-                value: 1.0
-              }
-              total_weighted_label {
-                value: 1.0
-              }
-              total_weighted_refined_prediction {}
-            }
-            buckets {
-              lower_threshold_inclusive: 0.5
-              upper_threshold_exclusive: 1.0
-              num_weighted_examples {
-              }
-              total_weighted_label {}
-              total_weighted_refined_prediction {}
-            }
-            buckets {
-              lower_threshold_inclusive: 1.0
-              upper_threshold_exclusive: inf
-              num_weighted_examples {
-                value: 1.0
-              }
-              total_weighted_label {
-                value: 1.0
-              }
-              total_weighted_refined_prediction {
-                value: 1.0
-              }
-            }
-         }
-        }
-      }
-    """, metrics_for_slice_pb2.PlotsForSlice())
-
-    plot_records = list(
-        metrics_plots_and_validations_writer.load_and_deserialize_plots(
-            plots_file, output_file_format))
-    self.assertLen(plot_records, 1, 'plots: %s' % plot_records)
-    self.assertProtoEquals(expected_plots_for_slice, plot_records[0])
-
   @parameterized.named_parameters(('load_from_dir', ''),
                                   ('load_metrics', 'metrics'))
   def testLoadAndDeserializeMetricsNoSuffix(self, load_path_suffix):
@@ -2079,173 +1863,6 @@ class MetricsPlotsAndValidationsWriterTest(testutil.TensorflowModelAnalysisTest,
                    'attributions: %s' % attribution_records)
     # verify proto roud trips unchanged.
     self.assertProtoEquals(attributions_for_slice, attribution_records[0])
-
-  @parameterized.named_parameters(('parquet_file_format', 'parquet'))
-  def testLoadAndDeserializeFilteredMetricsAndPlots(self, output_file_format):
-    metrics_file = os.path.join(self._getTempDir(), 'metrics')
-    plots_file = os.path.join(self._getTempDir(), 'plots')
-    temp_eval_export_dir = os.path.join(self._getTempDir(), 'eval_export_dir')
-
-    _, eval_export_dir = (
-        fixed_prediction_estimator.simple_fixed_prediction_estimator(
-            None, temp_eval_export_dir))
-    eval_config = config_pb2.EvalConfig(
-        model_specs=[config_pb2.ModelSpec()],
-        slicing_specs=[
-            config_pb2.SlicingSpec(),
-            config_pb2.SlicingSpec(feature_keys=['prediction'])
-        ],
-        options=config_pb2.Options(
-            disabled_outputs={'values': ['eval_config_pb2.json']}))
-    eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=eval_export_dir,
-        add_metrics_callbacks=[
-            post_export_metrics.example_count(),
-            post_export_metrics.calibration_plot_and_prediction_histogram(
-                num_buckets=2)
-        ])
-    extractors = [
-        legacy_predict_extractor.PredictExtractor(
-            eval_shared_model, eval_config=eval_config),
-        unbatch_extractor.UnbatchExtractor(),
-        slice_key_extractor.SliceKeyExtractor(
-            eval_config=eval_config, materialize=False)
-    ]
-    evaluators = [
-        legacy_metrics_and_plots_evaluator.MetricsAndPlotsEvaluator(
-            eval_shared_model)
-    ]
-    output_paths = {
-        constants.METRICS_KEY: metrics_file,
-        constants.PLOTS_KEY: plots_file
-    }
-    writers = [
-        metrics_plots_and_validations_writer.MetricsPlotsAndValidationsWriter(
-            output_paths,
-            eval_config=eval_config,
-            add_metrics_callbacks=eval_shared_model.add_metrics_callbacks,
-            output_file_format=output_file_format)
-    ]
-
-    tfx_io = raw_tf_record.RawBeamRecordTFXIO(
-        physical_format='inmemory',
-        raw_record_column_name=constants.ARROW_INPUT_COLUMN,
-        telemetry_descriptors=['TFMATest'])
-    with beam.Pipeline() as pipeline:
-      example1 = self._makeExample(prediction=0.0, label=1.0, country='US')
-      example2 = self._makeExample(prediction=1.0, label=1.0, country='CA')
-
-      # pylint: disable=no-value-for-parameter
-      _ = (
-          pipeline
-          | 'Create' >> beam.Create([
-              example1.SerializeToString(),
-              example2.SerializeToString(),
-          ])
-          | 'BatchExamples' >> tfx_io.BeamSource()
-          | 'ExtractEvaluateAndWriteResults' >>
-          model_eval_lib.ExtractEvaluateAndWriteResults(
-              eval_config=eval_config,
-              eval_shared_model=eval_shared_model,
-              extractors=extractors,
-              evaluators=evaluators,
-              writers=writers))
-      # pylint: enable=no-value-for-parameter
-
-    # only read the metrics with slice keys that match the following spec
-    slice_keys_filter = [slicer.SingleSliceSpec(features=[('prediction', 0)])]
-
-    expected_metrics_for_slice = text_format.Parse(
-        """
-        slice_key {
-          single_slice_keys {
-            column: "prediction"
-            float_value: 0
-          }
-        }
-        metrics {
-          key: "average_loss"
-          value {
-            double_value {
-              value: 1.0
-            }
-          }
-        }
-        metrics {
-          key: "post_export_metrics/example_count"
-          value {
-            double_value {
-              value: 1.0
-            }
-          }
-        }
-        """, metrics_for_slice_pb2.MetricsForSlice())
-
-    metric_records = list(
-        metrics_plots_and_validations_writer.load_and_deserialize_metrics(
-            metrics_file, output_file_format, slice_keys_filter))
-    self.assertLen(metric_records, 1, 'metrics: %s' % metric_records)
-    self.assertProtoEquals(expected_metrics_for_slice, metric_records[0])
-
-    expected_plots_for_slice = text_format.Parse(
-        """
-      slice_key {
-        single_slice_keys {
-          column: "prediction"
-          float_value: 0
-        }
-      }
-      plots {
-        key: "post_export_metrics"
-        value {
-          calibration_histogram_buckets {
-            buckets {
-              lower_threshold_inclusive: -inf
-              num_weighted_examples {}
-              total_weighted_label {}
-              total_weighted_refined_prediction {}
-            }
-            buckets {
-              upper_threshold_exclusive: 0.5
-              num_weighted_examples {
-                value: 1.0
-              }
-              total_weighted_label {
-                value: 1.0
-              }
-              total_weighted_refined_prediction {}
-            }
-            buckets {
-              lower_threshold_inclusive: 0.5
-              upper_threshold_exclusive: 1.0
-              num_weighted_examples {
-              }
-              total_weighted_label {}
-              total_weighted_refined_prediction {}
-            }
-            buckets {
-              lower_threshold_inclusive: 1.0
-              upper_threshold_exclusive: inf
-              num_weighted_examples {
-                value: 0.0
-              }
-              total_weighted_label {
-                value: 0.0
-              }
-              total_weighted_refined_prediction {
-                value: 0.0
-              }
-            }
-         }
-        }
-      }
-    """, metrics_for_slice_pb2.PlotsForSlice())
-
-    plot_records = list(
-        metrics_plots_and_validations_writer.load_and_deserialize_plots(
-            plots_file, output_file_format, slice_keys_filter))
-    self.assertLen(plot_records, 1, 'plots: %s' % plot_records)
-    self.assertProtoEquals(expected_plots_for_slice, plot_records[0])
 
   @parameterized.named_parameters(_OUTPUT_FORMAT_PARAMS)
   def testWriteAttributions(self, output_file_format):
