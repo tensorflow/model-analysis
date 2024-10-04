@@ -22,11 +22,11 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.utils import util
 
 _FEATURE_EXTRACTOR_STAGE_NAME = 'ExtractFeatures'
+_ENCODING_NODE_SUFFIX = 'node'
 
 
 def FeatureExtractor(
@@ -71,8 +71,8 @@ def _AugmentExtracts(
       continue
     # If data originated from FeaturesPredictionsLabels, then the value will be
     # stored under a 'node' key.
-    if isinstance(val, dict) and encoding.NODE_SUFFIX in val:
-      val = val.get(encoding.NODE_SUFFIX)
+    if isinstance(val, dict) and _ENCODING_NODE_SUFFIX in val:
+      val = val.get(_ENCODING_NODE_SUFFIX)
 
     if name in (prefix, util.KEY_SEPARATOR + prefix):
       col_name = prefix
@@ -128,7 +128,7 @@ def _ParseExample(
       if materialize_columns:
         extracts[key] = types.MaterializedColumn(name=key, value=values)
       if name not in features:
-        features[name] = {encoding.NODE_SUFFIX: np.array([values])}
+        features[name] = {_ENCODING_NODE_SUFFIX: np.array([values])}
 
 
 def _MaterializeFeatures(

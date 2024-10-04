@@ -24,14 +24,16 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import encoding
+
+
+_ENCODING_NODE_SUFFIX = 'node'
 
 
 def get_feature_value(
     fpl: types.FeaturesPredictionsLabels, feature_key: str
 ) -> Any:
   """Helper to get value from FPL dict."""
-  node_value = fpl.features[feature_key][encoding.NODE_SUFFIX]
+  node_value = fpl.features[feature_key][_ENCODING_NODE_SUFFIX]
   if isinstance(node_value, tf.compat.v1.SparseTensorValue):
     return node_value.values
   return node_value
@@ -47,7 +49,7 @@ def _set_feature_value(
       feature_value, tf.compat.v1.SparseTensorValue
   ):
     feature_value = np.array([feature_value])
-  features[feature_key] = {encoding.NODE_SUFFIX: feature_value}
+  features[feature_key] = {_ENCODING_NODE_SUFFIX: feature_value}
   return features  # pytype: disable=bad-return-type
 
 
