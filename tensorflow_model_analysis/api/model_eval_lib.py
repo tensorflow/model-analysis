@@ -26,7 +26,6 @@ import pyarrow as pa
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import constants as eval_constants
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.extractors import example_weights_extractor
@@ -62,6 +61,9 @@ from tfx_bsl.tfxio import tf_example_record
 from tensorflow_metadata.proto.v0 import schema_pb2
 
 tfx_bsl_beam.fix_code_type_pickling()
+
+# This is a legacy eval tag used to report failure with estimators correctly.
+_LEGACY_EVAL_TAG = 'eval'
 
 
 def _assert_tensorflow_version():
@@ -440,14 +442,14 @@ def default_eval_shared_model(
   if not eval_config:
     # Default to tfma eval model unless eval
     is_baseline = False
-    if tags and eval_constants.EVAL_TAG in tags:
+    if tags and _LEGACY_EVAL_TAG in tags:
       model_type = constants.TFMA_EVAL
     elif tags and tf.saved_model.SERVING in tags:
       model_type = constants.TF_ESTIMATOR
     else:
       model_type = constants.TFMA_EVAL
     if tags is None:
-      tags = [eval_constants.EVAL_TAG]
+      tags = [_LEGACY_EVAL_TAG]
   else:
     model_spec = model_util.get_model_spec(eval_config, model_name)
     if not model_spec:
@@ -462,7 +464,7 @@ def default_eval_shared_model(
     if tags is None:
       # Default to serving unless tfma_eval is used.
       if model_type == constants.TFMA_EVAL:
-        tags = [eval_constants.EVAL_TAG]
+        tags = [_LEGACY_EVAL_TAG]
       else:
         tags = [tf.saved_model.SERVING]
     if model_spec.example_weight_key or model_spec.example_weight_keys:
@@ -1020,8 +1022,7 @@ def is_legacy_estimator(
       model_types is not None
       and model_types == {constants.TFMA_EVAL}
       and all(
-          eval_constants.EVAL_TAG in m.model_loader.tags
-          for m in eval_shared_models
+          _LEGACY_EVAL_TAG in m.model_loader.tags for m in eval_shared_models
       )
   )
 
