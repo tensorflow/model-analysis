@@ -30,6 +30,7 @@
 *   Removing eval_saved_model related API in model_util.py, estimator related
     functions are no longer supported.
 *   Removing legacy_metrics_and_plots_evaluator in TFMA OSS.
+*   Removing legacy_aggregate in TFMA.
 
 ## Deprecations
 *   Migrate common utils in eval_saved_model testutils to utils/test_util.py.
