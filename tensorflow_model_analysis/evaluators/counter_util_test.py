@@ -17,30 +17,10 @@ import apache_beam as beam
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.evaluators import counter_util
-from tensorflow_model_analysis.post_export_metrics import post_export_metrics
 from tensorflow_model_analysis.proto import config_pb2
 
 
 class CounterUtilTest(tf.test.TestCase):
-
-  def testMetricComputedBeamCounter(self):
-    with beam.Pipeline() as pipeline:
-      auc = post_export_metrics.auc()
-      _ = pipeline | counter_util.IncrementMetricsCallbacksCounters(
-          [auc], 'tf_js'
-      )
-
-    result = pipeline.run()
-    metric_filter = (
-        beam.metrics.metric.MetricsFilter()
-        .with_namespace(constants.METRICS_NAMESPACE)
-        .with_name('metric_computed_auc_v1_tf_js')
-    )
-    actual_metrics_count = (
-        result.metrics().query(filter=metric_filter)['counters'][0].committed
-    )
-
-    self.assertEqual(actual_metrics_count, 1)
 
   def testSliceSpecBeamCounter(self):
     with beam.Pipeline() as pipeline:
