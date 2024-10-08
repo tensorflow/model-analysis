@@ -22,10 +22,10 @@ from apache_beam.testing import util
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import transformed_features_extractor
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import test_util as testutil
 from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
@@ -245,8 +245,8 @@ class TransformedFeaturesExtractorTest(
             )
         ]
     )
-    eval_shared_model = self.createTestEvalSharedModel(
-        eval_saved_model_path=export_path, tags=[tf.saved_model.SERVING]
+    eval_shared_model = self.createKerasTestEvalSharedModel(
+        eval_saved_model_path=export_path, eval_config=eval_config
     )
     schema = self.createDenseInputsSchema()
     tfx_io = test_util.InMemoryTFExampleRecord(
