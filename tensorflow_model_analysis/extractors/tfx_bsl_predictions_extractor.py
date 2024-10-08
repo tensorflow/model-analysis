@@ -38,6 +38,7 @@ MapModelNameToOutput = Dict[str, prediction_log_pb2.PredictionLog]
 KeyAndOutputMap = Tuple[_K, MapModelNameToOutput]
 
 
+# TODO(b/372308995) Add new tests based on Keras models.
 class TfxBslInferenceWrapper(beam.PTransform):
   """Wrapper for TFX-BSL bulk inference implementation."""
 
