@@ -18,15 +18,15 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis.addons.fairness.metrics.counterfactual_fairness import flip_count
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import test_util
 
 from google.protobuf import text_format
 
 
-class FlipCountTest(testutil.TensorflowModelAnalysisTest):
+class FlipCountTest(test_util.TensorflowModelAnalysisTest):
 
   def testFlipCount(self):
     computations = flip_count.FlipCount(
