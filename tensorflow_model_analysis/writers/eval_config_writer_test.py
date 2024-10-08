@@ -15,15 +15,15 @@
 
 import os
 import pickle
-
 from typing import Dict, List, NamedTuple, Optional, Union
 
 import tensorflow as tf
 from tensorflow_model_analysis import version as tfma_version
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import test_util
 from tensorflow_model_analysis.writers import eval_config_writer
+
 
 LegacyConfig = NamedTuple(
     'LegacyConfig', [('model_location', str), ('data_location', str),
@@ -34,7 +34,7 @@ LegacyConfig = NamedTuple(
                      ('k_anonymization_count', int)])
 
 
-class EvalConfigWriterTest(testutil.TensorflowModelAnalysisTest):
+class EvalConfigWriterTest(test_util.TensorflowModelAnalysisTest):
 
   def testSerializeDeserializeLegacyEvalConfig(self):
     output_path = self._getTempDir()
