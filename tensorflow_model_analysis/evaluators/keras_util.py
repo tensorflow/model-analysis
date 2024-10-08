@@ -31,6 +31,7 @@ from tensorflow_model_analysis.utils import util
 from tensorflow_model_analysis.utils.keras_lib import tf_keras
 
 
+# TODO(b/372272489) Add new tests for this file based on keras models.
 def metric_computations_using_keras_saved_model(
     model_name: str,
     model_loader: types.ModelLoader,
