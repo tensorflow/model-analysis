@@ -60,14 +60,6 @@ try:
   from tensorflow_model_analysis.api.model_eval_lib import ValidationResult
   from tensorflow_model_analysis.api.verifier_lib import Validate
 
-  # TODO(b/171992041): Remove these imports in the future.
-  # For backwards compatibility allow eval_metrics_graph and exporter to be
-  # accessed from top-level model. These will be deprecated in the future.
-  from tensorflow_model_analysis.eval_metrics_graph import eval_metrics_graph
-  from tensorflow_model_analysis.eval_saved_model import export
-  from tensorflow_model_analysis.eval_saved_model import exporter
-  from tensorflow_model_analysis.post_export_metrics import post_export_metrics
-
   # TODO(b/73882264): The orders should be kept in order to make benchmark on
   # DataFlow work. We need to look into why the import orders matters for the
   # DataFlow benchmark.
@@ -80,7 +72,6 @@ try:
   from tensorflow_model_analysis import utils
   from tensorflow_model_analysis import writers
   from tensorflow_model_analysis import view
-  from tensorflow_model_analysis import model_agnostic_eval
   # TODO(b/228406044): Stop exposing tfma.types and migrate all internal users
   # to use the top-level symbols exported below (e.g. tfma.Extracts).
   from tensorflow_model_analysis.api import types

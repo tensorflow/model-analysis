@@ -15,6 +15,9 @@
 
 These keys defines the name of the post export metrics that are supported by
 TFMA.
+
+This module is deprecated and will be removed in a future release. This file is
+only kept around for the sake of OSS users who still depend on it.
 """
 
 from typing import Optional

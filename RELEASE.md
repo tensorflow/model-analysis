@@ -33,6 +33,7 @@
 *   Removing legacy_metrics_and_plots_evaluator in TFMA OSS.
 *   Removing legacy_aggregate in TFMA.
 *   Remove legacy_query_based_metrics_evaluator.py and its test.
+*   Remove model_agnostic_eval, export, exporter, and post_export_metrics which are based on estimators.
 *   Remove eval_saved_model_util.py and its test.
 *   Remove contrib model_eval_lib and export and their tests.
 
