@@ -23,7 +23,6 @@ from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.proto import config_pb2
 
-
 from rouge_score import rouge_scorer
 from rouge_score import scoring
 from rouge_score import tokenizers

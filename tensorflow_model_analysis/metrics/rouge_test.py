@@ -596,9 +596,7 @@ class RogueTest(test_util.TensorflowModelAnalysisTest, parameterized.TestCase):
     rouge_computation = rouge.Rouge(
         rouge_type, use_stemmer=True, split_summaries=True
     ).computations()[0]
-    check_logs = False
-    if not check_logs:
-      check_split_summaries_result()
+    check_split_summaries_result()
 
   def testRougeTokenizer(self):
     rouge_type = 'rouge1'
