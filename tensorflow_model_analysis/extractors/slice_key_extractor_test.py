@@ -20,10 +20,10 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import slice_key_extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.slicer import slicer_lib as slicer
+from tensorflow_model_analysis.utils import test_util
 
 
 def make_features_dict(features_dict):
@@ -64,7 +64,7 @@ def wrap_fpl(fpl):
   }
 
 
-class SliceTest(testutil.TensorflowModelAnalysisTest, parameterized.TestCase):
+class SliceTest(test_util.TensorflowModelAnalysisTest, parameterized.TestCase):
 
   @parameterized.named_parameters(
       (
