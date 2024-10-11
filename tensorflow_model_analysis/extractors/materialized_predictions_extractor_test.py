@@ -19,10 +19,10 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import materialized_predictions_extractor
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import test_util as testutil
 from tfx_bsl.tfxio import tensor_adapter
 from tfx_bsl.tfxio import test_util
 
