@@ -20,11 +20,11 @@ import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.eval_saved_model import encoding
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import legacy_feature_extractor as feature_extractor
+from tensorflow_model_analysis.utils import test_util
 
 
-class BuildDiagnosticsTableTest(testutil.TensorflowModelAnalysisTest):
+class BuildDiagnosticsTableTest(test_util.TensorflowModelAnalysisTest):
 
   def _getTempDir(self):
     return tempfile.mkdtemp()
