@@ -19,12 +19,12 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import legacy_input_extractor as input_extractor
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import test_util
 
 
-class InputExtractorTest(testutil.TensorflowModelAnalysisTest):
+class InputExtractorTest(test_util.TensorflowModelAnalysisTest):
 
   def testInputExtractor(self):
     model_spec = config_pb2.ModelSpec(
