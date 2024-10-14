@@ -28,6 +28,7 @@ from tensorflow_model_analysis.extractors import legacy_feature_extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
 
+# TODO(b/372967361): Add new tests for this file based on new Keras model.
 _PREDICT_EXTRACTOR_STAGE_NAME = 'Predict'
 
 _FEATURES_PREDICTIONS_LABELS_KEY_MAP = {
