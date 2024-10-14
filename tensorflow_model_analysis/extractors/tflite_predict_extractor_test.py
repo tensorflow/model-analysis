@@ -23,10 +23,10 @@ from apache_beam.testing import util
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import model_eval_lib
-from tensorflow_model_analysis.eval_saved_model import testutil
 from tensorflow_model_analysis.extractors import features_extractor
 from tensorflow_model_analysis.extractors import tflite_predict_extractor
 from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import test_util as testutil
 from tensorflow_model_analysis.utils.keras_lib import tf_keras
 from tfx_bsl.tfxio import test_util
 
@@ -138,7 +138,7 @@ class TFLitePredictExtractorTest(
     eval_shared_models = [
         self.createTestEvalSharedModel(
             model_name='model1',
-            eval_saved_model_path=tflite_model_dir,
+            model_path=tflite_model_dir,
             model_type='tf_lite',
         )
     ]
@@ -146,7 +146,7 @@ class TFLitePredictExtractorTest(
       eval_shared_models.append(
           self.createTestEvalSharedModel(
               model_name='model2',
-              eval_saved_model_path=tflite_model_dir,
+              model_path=tflite_model_dir,
               model_type='tf_lite',
           )
       )
