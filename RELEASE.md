@@ -37,6 +37,7 @@
 *   Remove model_agnostic_eval, export, exporter, and post_export_metrics which are based on estimators.
 *   Remove eval_saved_model_util.py and its test.
 *   Remove contrib model_eval_lib and export and their tests.
+*   Remove all eval_saved_model files.
 
 ## Deprecations
 *   Migrate common utils in eval_saved_model testutils to utils/test_util.py.
