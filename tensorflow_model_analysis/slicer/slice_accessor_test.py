@@ -18,8 +18,9 @@ import numpy as np
 import pyarrow as pa
 import tensorflow as tf
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.slicer import slice_accessor
+
+_ENCODING_NODE_SUFFIX = 'node'
 
 
 class SliceAccessorTest(tf.test.TestCase, parameterized.TestCase):
@@ -78,21 +79,11 @@ class SliceAccessorTest(tf.test.TestCase, parameterized.TestCase):
       ) = sess.run(
           fetches=[sparse, dense, dense_single, dense_multidim, squeeze_needed])
       features_dict = {
-          'sparse': {
-              encoding.NODE_SUFFIX: sparse_value
-          },
-          'dense': {
-              encoding.NODE_SUFFIX: dense_value
-          },
-          'dense_single': {
-              encoding.NODE_SUFFIX: dense_single_value
-          },
-          'squeeze_needed': {
-              encoding.NODE_SUFFIX: squeeze_needed_value
-          },
-          'dense_multidim': {
-              encoding.NODE_SUFFIX: dense_multidim_value
-          },
+          'sparse': {_ENCODING_NODE_SUFFIX: sparse_value},
+          'dense': {_ENCODING_NODE_SUFFIX: dense_value},
+          'dense_single': {_ENCODING_NODE_SUFFIX: dense_single_value},
+          'squeeze_needed': {_ENCODING_NODE_SUFFIX: squeeze_needed_value},
+          'dense_multidim': {_ENCODING_NODE_SUFFIX: dense_multidim_value},
       }
       accessor = slice_accessor.SliceAccessor([features_dict])
       self.assertEqual([b'apple', b'banana'], accessor.get('sparse'))

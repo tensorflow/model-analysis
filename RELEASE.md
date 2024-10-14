@@ -18,6 +18,7 @@
 *   Fixes a bug by ensuring feature values are always numpy arrays.
 *   Modifies a ROUGE Test to be compatible with NumPy v2.0.1.
 *   Remove keras_util_test.py which is based on estimator models.
+*   Remove dependency on eval_saved_model encodings.
 
 ## Breaking Changes
 
