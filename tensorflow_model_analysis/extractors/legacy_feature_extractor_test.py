@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Tests for feature_extractor."""
+"""Tests for feature_extractor library."""
 
 import os
 import tempfile
@@ -19,9 +19,10 @@ import numpy as np
 import tensorflow as tf
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.eval_saved_model import encoding
 from tensorflow_model_analysis.extractors import legacy_feature_extractor as feature_extractor
 from tensorflow_model_analysis.utils import test_util
+
+_ENCODING_NODE_SUFFIX = 'node'
 
 
 class BuildDiagnosticsTableTest(test_util.TensorflowModelAnalysisTest):
@@ -63,17 +64,17 @@ class BuildDiagnosticsTableTest(test_util.TensorflowModelAnalysisTest):
     )
 
     features = {
-        'f': {encoding.NODE_SUFFIX: np.array([1])},
+        'f': {_ENCODING_NODE_SUFFIX: np.array([1])},
         's': {
-            encoding.NODE_SUFFIX: tf.compat.v1.SparseTensorValue(
+            _ENCODING_NODE_SUFFIX: tf.compat.v1.SparseTensorValue(
                 indices=[[0, 5], [1, 2], [3, 6]],
                 values=[100.0, 200.0, 300.0],
                 dense_shape=[4, 10],
             )
         },
     }
-    predictions = {'p': {encoding.NODE_SUFFIX: np.array([2])}}
-    labels = {'l': {encoding.NODE_SUFFIX: np.array([3])}}
+    predictions = {'p': {_ENCODING_NODE_SUFFIX: np.array([2])}}
+    labels = {'l': {_ENCODING_NODE_SUFFIX: np.array([3])}}
 
     extracts = {
         constants.INPUT_KEY: example1.SerializeToString(),
@@ -117,17 +118,17 @@ class BuildDiagnosticsTableTest(test_util.TensorflowModelAnalysisTest):
     )
 
     features = {
-        'f': {encoding.NODE_SUFFIX: np.array([1])},
+        'f': {_ENCODING_NODE_SUFFIX: np.array([1])},
         's': {
-            encoding.NODE_SUFFIX: tf.compat.v1.SparseTensorValue(
+            _ENCODING_NODE_SUFFIX: tf.compat.v1.SparseTensorValue(
                 indices=[[0, 5], [1, 2], [3, 6]],
                 values=[100.0, 200.0, 300.0],
                 dense_shape=[4, 10],
             )
         },
     }
-    predictions = {'p': {encoding.NODE_SUFFIX: np.array([2])}}
-    labels = {'l': {encoding.NODE_SUFFIX: np.array([3])}}
+    predictions = {'p': {_ENCODING_NODE_SUFFIX: np.array([2])}}
+    labels = {'l': {_ENCODING_NODE_SUFFIX: np.array([3])}}
 
     extracts = {
         constants.INPUT_KEY: example1.SerializeToString(),
@@ -152,7 +153,7 @@ class BuildDiagnosticsTableTest(test_util.TensorflowModelAnalysisTest):
     # But that tf.Example features not present in FPL are.
     result_fpl = result[constants.FEATURES_PREDICTIONS_LABELS_KEY]
     self.assertEqual(
-        result_fpl.features['age'], {encoding.NODE_SUFFIX: np.array([3.0])}
+        result_fpl.features['age'], {_ENCODING_NODE_SUFFIX: np.array([3.0])}
     )
     self.assertEqual(
         result_fpl.features['language'],
@@ -164,7 +165,7 @@ class BuildDiagnosticsTableTest(test_util.TensorflowModelAnalysisTest):
     )
     # And that features present in both are not overwritten by tf.Example value.
     self.assertEqual(
-        result_fpl.features['f'], {encoding.NODE_SUFFIX: np.array([1])}
+        result_fpl.features['f'], {_ENCODING_NODE_SUFFIX: np.array([1])}
     )
 
   def testMaterializeFeaturesFromTfExample(self):
@@ -211,17 +212,17 @@ class BuildDiagnosticsTableTest(test_util.TensorflowModelAnalysisTest):
     )
 
     features = {
-        'f': {encoding.NODE_SUFFIX: np.array([1])},
+        'f': {_ENCODING_NODE_SUFFIX: np.array([1])},
         's': {
-            encoding.NODE_SUFFIX: tf.compat.v1.SparseTensorValue(
+            _ENCODING_NODE_SUFFIX: tf.compat.v1.SparseTensorValue(
                 indices=[[0, 5], [1, 2], [3, 6]],
                 values=[100.0, 200.0, 300.0],
                 dense_shape=[4, 10],
             )
         },
     }
-    predictions = {'p': {encoding.NODE_SUFFIX: np.array([2])}}
-    labels = {'l': {encoding.NODE_SUFFIX: np.array([3])}}
+    predictions = {'p': {_ENCODING_NODE_SUFFIX: np.array([2])}}
+    labels = {'l': {_ENCODING_NODE_SUFFIX: np.array([3])}}
 
     extracts = {
         constants.INPUT_KEY: example1.SerializeToString(),
