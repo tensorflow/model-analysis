@@ -200,7 +200,7 @@ class MetricSpecsTest(tf.test.TestCase):
               metrics=[
                   config_pb2.MetricConfig(
                       class_name='RootMeanSquaredError',
-                      module='keras.src.metrics.regression_metrics',
+                      module='tf_keras.src.metrics.regression_metrics',
                       config=json.dumps(
                           {'name': 'rmse', 'dtype': 'float32'}, sort_keys=True
                       ),
