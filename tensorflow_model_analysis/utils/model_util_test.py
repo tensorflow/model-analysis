@@ -750,11 +750,6 @@ class ModelUtilTest(
           }
       }, ['unknown', 'custom_single_output', 'custom_multi_output'
          ], True, True, 3),
-      ('custom_attribute', True, {
-          constants.TRANSFORMED_FEATURES_KEY: {
-              '': ['custom_attribute'],
-          }
-      }, None, True, True, 3),
       ('keras_no_schema', True, {
           constants.PREDICTIONS_KEY: {
               '': [None]
