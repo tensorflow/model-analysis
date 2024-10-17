@@ -210,6 +210,7 @@ class EvaluateTest(
             e.features.feature[example_keras_model.LABEL].float_list.value[:][0]
             for e in examples
         ]),
+        batch_size=1,
     )
     model_location = self._exportKerasModel(classifier)
     data_location = self._writeTFExamplesToTFRecords(examples)
@@ -1138,6 +1139,7 @@ class EvaluateTest(
             e.features.feature[example_keras_model.LABEL].float_list.value[:][0]
             for e in examples
         ]),
+        batch_size=1,
     )
     eval_config = config_pb2.EvalConfig(
         model_specs=[
@@ -1234,6 +1236,7 @@ class EvaluateTest(
             e.features.feature[example_keras_model.LABEL].float_list.value[:][0]
             for e in examples
         ]),
+        batch_size=1,
     )
     model_location = self._exportKerasModel(classifier)
     data_location = self._writeTFExamplesToTFRecords(examples)
@@ -1340,6 +1343,7 @@ class EvaluateTest(
             e.features.feature[example_keras_model.LABEL].float_list.value[:][0]
             for e in examples
         ]),
+        batch_size=1,
     )
     model_location = self._exportKerasModel(classifier)
     eval_config = config_pb2.EvalConfig(

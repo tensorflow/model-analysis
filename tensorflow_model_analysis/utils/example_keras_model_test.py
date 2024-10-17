@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 # ==============================================================================
-"""Tests for example_keras_model."""
+"""Tests for example_keras_model library."""
 
 from __future__ import absolute_import
 from __future__ import division
@@ -43,8 +43,13 @@ class ExampleModelTest(tf.test.TestCase):
 
     self._model_dir = os.path.join(
         self._base_dir,
-        'train',
+        'train_model',
         datetime.datetime.now().strftime('%Y%m%d-%H%M%S'),
+    )
+
+    self._result_dir = os.path.join(
+        self._base_dir,
+        'result',
     )
 
   def _create_example(self, language, label, age, slice_value):
@@ -88,18 +93,19 @@ class ExampleModelTest(tf.test.TestCase):
 
   def test_example_keras_model(self):
     data = self._create_data()
-    classifier = example_keras_model.ExampleClassifierModel(
-        example_keras_model.LANGUAGE
-    )
+    classifier = example_keras_model.get_example_classifier_model()
     classifier.compile(optimizer=keras.optimizers.Adam(), loss='mse')
     classifier.fit(
-        tf.constant([e.SerializeToString() for e in data]),
+        tf.constant([e.SerializeToString() for e in data], tf.string),
         np.array([
             e.features.feature[example_keras_model.LABEL].float_list.value[:][0]
             for e in data
         ]),
+        batch_size=1,
     )
-    classifier.save(self._model_dir, save_format='tf')
+    classifier.export(
+        self._model_dir,
+    )
 
     eval_config = text_format.Parse(
         """
@@ -125,7 +131,7 @@ class ExampleModelTest(tf.test.TestCase):
     )
 
     validate_tf_file_path = self._write_tf_records(data)
-    tfma_eval_result_path = os.path.join(self._model_dir, 'tfma_eval_result')
+    tfma_eval_result_path = os.path.join(self._result_dir, 'tfma_eval_result')
     example_keras_model.evaluate_model(
         self._model_dir,
         validate_tf_file_path,

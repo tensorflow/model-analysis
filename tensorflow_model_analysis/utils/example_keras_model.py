@@ -13,6 +13,8 @@
 # limitations under the License.
 """Example Keras model classes for testing and demonstration purposes."""
 
+from typing import Any
+
 from tensorflow import keras
 import tensorflow.compat.v1 as tf
 import tensorflow_model_analysis as tfma
@@ -35,7 +37,11 @@ class ExampleCLassifierParser(keras.layers.Layer):
 
   def __init__(self, input_feature_key):
     self._input_feature_key = input_feature_key
+    self.input_spec = keras.layers.InputSpec(shape=(1,), dtype=tf.string)
     super().__init__()
+
+  def compute_output_shape(self, input_shape: Any):
+    return [1, 1]
 
   def call(self, serialized_examples):
     def get_feature(serialized_example):
@@ -43,8 +49,45 @@ class ExampleCLassifierParser(keras.layers.Layer):
           serialized_example, features=FEATURE_MAP
       )
       return parsed_example[self._input_feature_key]
-
+    serialized_examples = tf.cast(serialized_examples, tf.string)
     return tf.map_fn(get_feature, serialized_examples)
+
+
+class Reshaper(keras.layers.Layer):
+  """A Keras layer that reshapes the input."""
+
+  def call(self, inputs):
+    return tf.reshape(inputs, (1, 32))
+
+
+def get_example_classifier_model(input_feature_key: str = LANGUAGE):
+  """Returns a Keras model for testing."""
+  parser = ExampleCLassifierParser(input_feature_key)
+  text_vectorization = keras.layers.TextVectorization(
+      max_tokens=32,
+      output_mode='int',
+      output_sequence_length=32,
+  )
+  text_vectorization.adapt([
+      'nontoxic',
+      'toxic comment',
+      'japanese',
+      'hindi',
+      'english',
+      'chinese',
+      'abcdef',
+      'random',
+  ])
+  dense1 = keras.layers.Dense(32, activation='relu')
+  dense2 = keras.layers.Dense(1)
+
+  inputs = tf.keras.Input(shape=(), dtype=tf.string)
+  parsed_example = parser(inputs)
+  text_vector = text_vectorization(parsed_example)
+  text_vector = Reshaper()(text_vector)
+  output1 = dense1(text_vector)
+  output2 = dense2(output1)
+  return tf.keras.Model(inputs=inputs, outputs=output2)
 
 
 class ExampleClassifierModel(keras.Model):
@@ -71,10 +114,12 @@ class ExampleClassifierModel(keras.Model):
     self.dense1 = keras.layers.Dense(32, activation='relu')
     self.dense2 = keras.layers.Dense(1)
 
-  def call(self, inputs, training=True, mask=None):
+  @tf.function(input_signature=[tf.TensorSpec(shape=(1,), dtype=tf.string)])
+  def call(self, inputs):
     parsed_example = self.parser(inputs)
     text_vector = self.text_vectorization(parsed_example)
-    output1 = self.dense1(tf.cast(text_vector, tf.float32))
+    text_vector = tf.reshape(text_vector, (1, 32))
+    output1 = self.dense1(text_vector)
     output2 = self.dense2(output1)
     return output2
 
