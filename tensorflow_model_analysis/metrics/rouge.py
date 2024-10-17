@@ -93,6 +93,7 @@ class RougeCombiner(beam.CombineFn):
       if not tokenizer_installed:
         logging.info(_LOGGING_MESSAGE_TOKENIZER_PREPARER)
         nltk.download('punkt')
+        nltk.download('punkt_tab')
 
   def create_accumulator(self) -> _Accumulator:
     return _Accumulator()
