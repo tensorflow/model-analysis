@@ -78,5 +78,3 @@ class MathUtilTest(tf.test.TestCase):
     np.testing.assert_almost_equal(ub.fn, expected_ub.fn)
 
 
-if __name__ == '__main__':
-  tf.test.main()

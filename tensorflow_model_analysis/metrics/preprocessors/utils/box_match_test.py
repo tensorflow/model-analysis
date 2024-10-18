@@ -192,5 +192,3 @@ class BoundingBoxTest(parameterized.TestCase):
     np.testing.assert_allclose(result[2], expected_result['example_weights'])
 
 
-if __name__ == '__main__':
-  absltest.main()
