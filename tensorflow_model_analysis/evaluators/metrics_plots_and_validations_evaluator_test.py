@@ -926,6 +926,3 @@ class MetricsPlotsAndValidationsEvaluatorTest(
     self.assertEqual(actual_metrics_count, 1)
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

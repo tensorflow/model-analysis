@@ -63,5 +63,3 @@ class SizeEstimatorTest(tf.test.TestCase):
     self.assertEqual(estimator1.get_estimate(), expected_size_estimate)
 
 
-if __name__ == '__main__':
-  tf.test.main()

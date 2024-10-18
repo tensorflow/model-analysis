@@ -317,5 +317,3 @@ class SetMatchConfusionMatrixMetricsTest(parameterized.TestCase):
       util.assert_that(result['metrics'], check_result, label='result')
 
 
-if __name__ == '__main__':
-  absltest.main()

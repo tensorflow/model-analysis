@@ -182,5 +182,3 @@ class ViewTypesTest(parameterized.TestCase):
             top_k=top_k), attributions_male)
 
 
-if __name__ == '__main__':
-  tf.test.main()

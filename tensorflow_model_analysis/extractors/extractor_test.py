@@ -112,5 +112,3 @@ class ExtractorTest(test_util.TensorflowModelAnalysisTest):
       util.assert_that(got, check_result)
 
 
-if __name__ == '__main__':
-  tf.test.main()

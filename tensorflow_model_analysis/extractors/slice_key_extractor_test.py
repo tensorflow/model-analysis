@@ -318,5 +318,3 @@ class SliceTest(test_util.TensorflowModelAnalysisTest, parameterized.TestCase):
       util.assert_that(slice_keys_extracts, check_result)
 
 
-if __name__ == '__main__':
-  tf.test.main()

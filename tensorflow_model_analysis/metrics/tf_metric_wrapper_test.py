@@ -1141,6 +1141,3 @@ class MixedMetricsTest(test_util.TensorflowModelAnalysisTest):
       )
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

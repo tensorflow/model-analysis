@@ -184,5 +184,3 @@ class MetaFeatureExtractorTest(test_util.TensorflowModelAnalysisTest):
     )
 
 
-if __name__ == '__main__':
-  tf.test.main()

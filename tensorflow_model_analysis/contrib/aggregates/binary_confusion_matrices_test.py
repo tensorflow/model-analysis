@@ -300,5 +300,3 @@ class BinaryConfusionMatricesTest(
     self.assertDictEqual(actual, expected_result)
 
 
-if __name__ == '__main__':
-  tf.test.main()

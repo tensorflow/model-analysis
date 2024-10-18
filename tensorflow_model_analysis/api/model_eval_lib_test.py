@@ -1579,6 +1579,3 @@ class EvaluateTest(
     self.assertEqual(actual_counter[0].committed, expected_num_bytes)
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

@@ -28,5 +28,3 @@ class WriterTest(test_util.TensorflowModelAnalysisTest):
       _ = {'test': test} | writer.Write('key-does-not-exist', None)
 
 
-if __name__ == '__main__':
-  tf.test.main()

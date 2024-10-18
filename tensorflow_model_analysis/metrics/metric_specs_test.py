@@ -690,5 +690,3 @@ class MetricSpecsTest(tf.test.TestCase):
     self.assertLen(computations, 3)
 
 
-if __name__ == '__main__':
-  tf.test.main()

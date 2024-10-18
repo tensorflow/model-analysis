@@ -741,5 +741,3 @@ class SlicerTest(test_util.TensorflowModelAnalysisTest, parameterized.TestCase):
         slicer.slice_key_matches_slice_specs(slice_key, slice_specs))
 
 
-if __name__ == '__main__':
-  tf.test.main()

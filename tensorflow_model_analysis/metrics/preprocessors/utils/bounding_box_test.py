@@ -85,5 +85,3 @@ class BoundingBoxTest(parameterized.TestCase):
                            np.array([20, 60, 290]))
 
 
-if __name__ == '__main__':
-  absltest.main()

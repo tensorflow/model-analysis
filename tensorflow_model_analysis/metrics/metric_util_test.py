@@ -908,5 +908,3 @@ class UtilTest(tf.test.TestCase):
     self.assertAllClose(scores[got], np.array([0.8]))
 
 
-if __name__ == '__main__':
-  tf.test.main()

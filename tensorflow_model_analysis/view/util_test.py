@@ -538,5 +538,3 @@ class UtilTest(test_util.TensorflowModelAnalysisTest):
     self.assertEqual(got, expected)
 
 
-if __name__ == '__main__':
-  tf.test.main()

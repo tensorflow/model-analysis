@@ -418,5 +418,3 @@ class CalibrationHistogramTest(test_util.TensorflowModelAnalysisTest):
           dataclasses.astuple(got[i]), dataclasses.astuple(expected[i]))
 
 
-if __name__ == '__main__':
-  tf.test.main()

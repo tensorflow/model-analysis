@@ -59,5 +59,3 @@ class ObjectDetectionFormatTest(parameterized.TestCase):
     np.testing.assert_allclose(result, _STACK_RESULT[:1])
 
 
-if __name__ == '__main__':
-  absltest.main()
