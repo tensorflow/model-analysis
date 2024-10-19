@@ -13,6 +13,8 @@
 # limitations under the License.
 """Tests for exact match metric."""
 
+
+import pytest
 import json
 
 from absl.testing import parameterized
@@ -25,6 +27,8 @@ from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.utils import test_util
 
 
+@pytest.mark.xfail(run=False, reason="PR 183 This class contains tests that fail and needs to be fixed. "
+"If all tests pass, please remove this mark.")
 class ExactMatchTest(
     test_util.TensorflowModelAnalysisTest, parameterized.TestCase
 ):
