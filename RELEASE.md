@@ -20,6 +20,7 @@
 *   Remove keras_util_test.py which is based on estimator models.
 *   Remove dependency on eval_saved_model encodings.
 *   Downloads `punkt_tab` in Rouge metric.
+*   Depends on `tensorflow 2.16`
 
 ## Breaking Changes
 
