@@ -4,6 +4,16 @@
 
 ## Major Features and Improvements
 
+## Bug fixes and other Changes
+
+## Breaking Changes
+
+## Deprecations
+
+# Version 0.47.0
+
+## Major Features and Improvements
+
 *   Adds `False{Negative,Positive}FeatureSampler` metrics.
 *   Adds `RecallAtFalsePositiveRate` metrics.
 *   Adds 'NegToNegFlipRate', 'NegToPosFlipRate', 'PosToNegFlipRate',
@@ -21,6 +31,7 @@
 *   Remove dependency on eval_saved_model encodings.
 *   Downloads `punkt_tab` in Rouge metric.
 *   Depends on `tensorflow 2.16`
+*   Relax dependency on Protobuf to include version 5.x
 
 ## Breaking Changes
 
