@@ -63,7 +63,6 @@ try:
   # TODO(b/73882264): The orders should be kept in order to make benchmark on
   # DataFlow work. We need to look into why the import orders matters for the
   # DataFlow benchmark.
-  from tensorflow_model_analysis import addons
   from tensorflow_model_analysis import extractors
   from tensorflow_model_analysis import slicer
   from tensorflow_model_analysis import validators
