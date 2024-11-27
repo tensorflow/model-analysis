@@ -15,4 +15,4 @@
 
 # Version string for this release of TFMA.
 # Note that setup.py reads and uses this version.
-VERSION = '0.47.0'
+VERSION = '0.47.1'
