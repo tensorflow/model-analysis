@@ -210,6 +210,7 @@ combinations may also work.
 |tensorflow-model-analysis                                                            |apache-beam[gcp]|pyarrow   |tensorflow         |tensorflow-metadata |tfx-bsl   |
 |------------------------------------------------------------------------------------ |----------------|----------|-------------------|--------------------|----------|
 |[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md) | 2.60.0         | 10.0.1   | nightly (2.x)     | 1.16.1             | 1.16.1   |
+|[0.47.1](https://github.com/tensorflow/model-analysis/blob/v0.47.1/RELEASE.md)       | 2.60.0         | 10.0.1   | 2.16              | 1.16.1             | 1.16.1   |
 |[0.47.0](https://github.com/tensorflow/model-analysis/blob/v0.47.0/RELEASE.md)       | 2.60.0         | 10.0.1   | 2.16              | 1.16.1             | 1.16.1   |
 |[0.46.0](https://github.com/tensorflow/model-analysis/blob/v0.46.0/RELEASE.md)       | 2.47.0         | 10.0.0   | 2.15              | 1.15.0             | 1.15.1   |
 |[0.45.0](https://github.com/tensorflow/model-analysis/blob/v0.45.0/RELEASE.md)       | 2.47.0         | 10.0.0   | 2.13              | 1.14.0             | 1.14.0   |

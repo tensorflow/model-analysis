@@ -10,6 +10,24 @@
 
 ## Deprecations
 
+# Version 0.47.1
+
+## Major Features and Improvements
+
+*   N/A
+
+## Bug fixes and other Changes
+
+*   Removing addons from __init__.py as it's deprecated with Eval Saved Model.
+
+## Breaking Changes
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
 # Version 0.47.0
 
 ## Major Features and Improvements
