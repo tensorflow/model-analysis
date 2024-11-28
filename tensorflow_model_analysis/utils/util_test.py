@@ -1451,6 +1451,3 @@ class UtilTest(tf.test.TestCase, parameterized.TestCase):
     np.testing.assert_equal(remerged_got, expected_extract)
 
 
-if __name__ == '__main__':
-  tf.compat.v1.enable_v2_behavior()
-  tf.test.main()

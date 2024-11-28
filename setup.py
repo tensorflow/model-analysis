@@ -256,6 +256,17 @@ def _make_extra_packages_tfjs():
       'tensorflowjs>=4.5.0,<5',
   ]
 
+def _make_extra_packages_test():
+  # Packages needed for tests
+  return [
+    'pytest>=8.0',
+  ]
+
+def _make_extra_packages_all():
+  # All optional packages
+  return [
+    *_make_extra_packages_tfjs(),
+  ]
 
 def select_constraint(default, nightly=None, git_master=None):
   """Select dependency constraint based on TFX_DEPENDENCY_SELECTOR env var."""
@@ -327,7 +338,8 @@ setup_args = {
         ),
     ],
     'extras_require': {
-        'all': _make_extra_packages_tfjs(),
+        'all': _make_extra_packages_all(),
+        'test': _make_extra_packages_test(),
     },
     'python_requires': '>=3.9,<4',
     'packages': find_packages(),
