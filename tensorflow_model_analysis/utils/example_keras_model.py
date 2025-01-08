@@ -60,6 +60,13 @@ class Reshaper(keras.layers.Layer):
     return tf.reshape(inputs, (1, 32))
 
 
+class Caster(keras.layers.Layer):
+  """A Keras layer that reshapes the input."""
+
+  def call(self, inputs):
+    return tf.cast(inputs, tf.float32)
+
+
 def get_example_classifier_model(input_feature_key: str = LANGUAGE):
   """Returns a Keras model for testing."""
   parser = ExampleCLassifierParser(input_feature_key)
@@ -85,6 +92,8 @@ def get_example_classifier_model(input_feature_key: str = LANGUAGE):
   parsed_example = parser(inputs)
   text_vector = text_vectorization(parsed_example)
   text_vector = Reshaper()(text_vector)
+  # Cast to float32 so that data type is consistent for the dense layers.
+  text_vector = Caster()(text_vector)
   output1 = dense1(text_vector)
   output2 = dense2(output1)
   return tf.keras.Model(inputs=inputs, outputs=output2)
