@@ -571,7 +571,7 @@ Below are the supported metric value types:
 
 *   [`double_value`](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/double-value) -
     A wrapper for a double type.
-*   [`bytes_value`](https://developers.google.com/protocol-buffers/docs/proto3) -
+*   [`bytes_value`](https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/bytes-value) -
     A bytes value.
 *   `bounded_value` - Represents a real value which could be a pointwise
     estimate, optionally with approximate bounds of some sort. Has properties
