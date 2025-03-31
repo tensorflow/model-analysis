@@ -253,7 +253,7 @@ class NPM(Command):
 def _make_extra_packages_tfjs():
   # Packages needed for tfjs.
   return [
-      'tensorflowjs>=4.5.0,<5',
+      'tensorflowjs>=4.22.0,<5',
   ]
 
 
@@ -304,14 +304,14 @@ setup_args = {
         'numpy>=1.23.5',
         'pandas>=1.0,<2',
         'pillow>=9.4.0',
-        'protobuf>=4.25.2,<6;python_version>="3.11"',
-        'protobuf>=3.20.3,<5;python_version<"3.11"',
+        'protobuf>=4.25.2,<6.0.0;python_version>="3.11"',
+        'protobuf>=4.21.6,<6.0.0;python_version<"3.11"',
         'pyarrow>=10,<11',
         'rouge-score>=0.1.2,<2',
         'sacrebleu>=2.3,<4',
         'scipy>=1.4.1,<2',
         'six>=1.12,<2',
-        'tensorflow>=2.16,<2.17',
+        'tensorflow>=2.17,<2.18',
         'tensorflow-estimator>=2.10',
         'tensorflow-metadata'
         + select_constraint(
