@@ -4,6 +4,38 @@
 
 ## Major Features and Improvements
 
+## Bug fixes and other Changes
+
+## Breaking Changes
+
+*   Depends on `tensorflow>=2.17,<2.18`.
+*   Depends on `protobuf>=4.25.2,<5` for Python 3.11 and on
+    `protobuf>=4.21.6,<6.0.0` for 3.9 and 3.10.
+
+## Deprecations
+
+# Version 0.47.1
+
+## Major Features and Improvements
+
+*   N/A
+
+## Bug fixes and other Changes
+
+*   Removing addons from __init__.py as it's deprecated with Eval Saved Model.
+
+## Breaking Changes
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+# Version 0.47.0
+
+## Major Features and Improvements
+
 *   Adds `False{Negative,Positive}FeatureSampler` metrics.
 *   Adds `RecallAtFalsePositiveRate` metrics.
 *   Adds 'NegToNegFlipRate', 'NegToPosFlipRate', 'PosToNegFlipRate',
@@ -20,6 +52,8 @@
 *   Remove keras_util_test.py which is based on estimator models.
 *   Remove dependency on eval_saved_model encodings.
 *   Downloads `punkt_tab` in Rouge metric.
+*   Depends on `tensorflow 2.16`
+*   Relax dependency on Protobuf to include version 5.x
 
 ## Breaking Changes
 

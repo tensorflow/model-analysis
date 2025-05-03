@@ -278,9 +278,8 @@ def get_feature_values_for_model_spec_field(
         batched_extracts[constants.TRANSFORMED_FEATURES_KEY]):
       transformed_features = batched_extracts[
           constants.TRANSFORMED_FEATURES_KEY]
-      if len(model_specs) > 1 and transformed_features:
-        if spec.name in transformed_features:
-          transformed_features = transformed_features[spec.name]
+      if transformed_features and spec.name in transformed_features:
+        transformed_features = transformed_features[spec.name]
       transformed_features = transformed_features or {}
     else:
       transformed_features = {}
