@@ -85,6 +85,16 @@ cd dist
 pip3 install tensorflow_model_analysis-<version>-py3-none-any.whl
 ```
 
+### Running tests
+
+To run tests, run 
+
+```
+python -m unittest discover -p *_test.py
+```
+
+from the root project directory.
+
 ### Jupyter Lab
 
 As of writing, because of https://github.com/pypa/pip/issues/9187, `pip install`
