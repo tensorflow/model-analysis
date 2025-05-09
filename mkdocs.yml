@@ -75,4 +75,15 @@ watch:
   - tensorflow_model_analysis
 
 nav:
-  - Overview: index.md
+  - Guide:
+    - Improving Model Quality: index.md
+    - Install: install.md
+    - Get Started: get_started.md
+    - Setup: setup.md
+    - Metrics and Plots: metrics.md
+    - Visualizations: visualizations.md
+    - Model Validations: model_validations.md
+    - Using Fairness Indicators
+    - Using Fairness Indicators with Pandas DataFrames
+    - Architecture: architecture.md
+    - FAQ: faq.md
