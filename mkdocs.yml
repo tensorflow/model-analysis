@@ -124,4 +124,21 @@ nav:
     - FAQ: faq.md
   - API:
     - tfma: api_docs/python/tfma
+    # - tfma.addons: api_docs/python/tfma-addons
     - tfma.constants: api_docs/python/tfma-constants
+    - tfma.contrib: api_docs/python/tfma-contrib
+    - tfma.evaluators: api_docs/python/tfma-evaluators
+    - tfma.experimental: api_docs/python/tfma-experimental
+    # - tfma.export: api_docs/python/tfma-export
+    # - tfma.exporter: api_docs/python/tfma-exporter
+    - tfma.extractors: api_docs/python/tfma-extractors
+    - tfma.metrics: api_docs/python/tfma-metrics
+    # - tfma.model_agnostic_eval: api_docs/python/tfma-model_agnostic_eval
+    - tfma.post_export_metrics: api_docs/python/tfma-post_export_metrics
+    - tfma.sdk: api_docs/python/tfma-sdk
+    - tfma.types: api_docs/python/tfma-types
+    - tfma.utils: api_docs/python/tfma-utils
+    - tfma.validators: api_docs/python/tfma-validators
+    - tfma.version: api_docs/python/tfma-version
+    - tfma.view: api_docs/python/tfma-view
+    - tfma.writers: api_docs/python/tfma-writers
