@@ -18,3 +18,23 @@ under active development.
 """
 
 from tensorflow_model_analysis.post_export_metrics import metric_keys
+from tensorflow_model_analysis.post_export_metrics import *
+
+__all__ = [
+  "auc",
+  "auc_plots",
+  "calibration",
+  "calibration_plot_and_prediction_histogram",
+  "confusion_matrix_at_thresholds",
+  "DEFAULT_KEY_PREFERENCE",
+  "example_count",
+  "example_weight",
+  "fairness_auc",
+  "fairness_indicators",
+  "mean_absolute_error",
+  "mean_squared_error",
+  "precision_at_k",
+  "recall_at_k",
+  "root_mean_squared_error",
+  "squared_pearson_correlation",
+]
