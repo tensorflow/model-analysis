@@ -124,3 +124,4 @@ nav:
     - FAQ: faq.md
   - API:
     - tfma: api_docs/python/tfma
+    - tfma.constants: api_docs/python/tfma-constants
