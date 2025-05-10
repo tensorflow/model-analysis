@@ -19,3 +19,12 @@ from tensorflow_model_analysis.evaluators.evaluator import Evaluation
 from tensorflow_model_analysis.evaluators.evaluator import Evaluator
 from tensorflow_model_analysis.evaluators.evaluator import verify_evaluator
 from tensorflow_model_analysis.evaluators.metrics_plots_and_validations_evaluator import MetricsPlotsAndValidationsEvaluator
+
+__all__ = [
+  "AnalysisTableEvaluator",
+  "Evaluation",
+  "Evaluator"
+  "MetricsAndPlotsEvaluator",
+  "MetricsPlotsAndValidationsEvaluator",
+  "verify_evaluator",
+]
