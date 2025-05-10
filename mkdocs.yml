@@ -128,7 +128,7 @@ nav:
     - tfma.constants: api_docs/python/tfma-constants
     - tfma.contrib: api_docs/python/tfma-contrib
     - tfma.evaluators: api_docs/python/tfma-evaluators
-    - tfma.experimental: api_docs/python/tfma-experimental
+    - tfma.experimental 🧪: api_docs/python/tfma-experimental
     # - tfma.export: api_docs/python/tfma-export
     # - tfma.exporter: api_docs/python/tfma-exporter
     - tfma.extractors: api_docs/python/tfma-extractors
