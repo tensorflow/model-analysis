@@ -118,8 +118,8 @@ nav:
     - Metrics and Plots: metrics.md
     - Visualizations: visualizations.md
     - Model Validations: model_validations.md
-    - Using Fairness Indicators
-    - Using Fairness Indicators with Pandas DataFrames
+    - Using Fairness Indicators: https://tensorflow.github.io/tfx/guide/fairness_indicators/
+    - Using Fairness Indicators with Pandas DataFrames: https://tensorflow.github.io/fairness-indicators/tutorials/Fairness_Indicators_Pandas_Case_Study/
     - Architecture: architecture.md
     - FAQ: faq.md
   - API:
