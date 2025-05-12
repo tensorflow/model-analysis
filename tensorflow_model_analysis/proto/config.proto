@@ -70,13 +70,20 @@ message ModelSpec {
   map<string, string> label_keys = 6;  // oneof not allowed with maps
   // Optional prediction key (single_output model). The prediction key is used
   // to distinguish between different values when the output from the predict
-  // call is a dict instead of a single tensor as is the case with
-  // tf.Estimators. If not set and the prediction is a dict, the keys 'scores',
-  // 'logistic', 'predictions', or 'probabilities' are tried (in that order).
+  // call is a dict instead of a single tensor. For estimator models, this is
+  // always the case and the prediction key is automatically inferred -- the
+  // keys 'scores', 'logistic', 'predictions', and 'probabilities' are tried
+  // (in that order). For Keras models, outputs are typically not dicts but if
+  // they are, then prediction key is not inferred and so MUST be specified.
+  //
+  // Note: For multi-class predictions, a prediction key needs to be specified
+  // so that the metrics can be computed correctly per class.
+  // TODO(b/399156775): Remove once the bug is fixed.
+  //
   // The prediction key is also used in cases where the predictions are
-  // pre-calculated and stored along side the features. In this case the
-  // prediction key refers to a key in the features dictionary. Use one of
-  // prediction_key or prediction_keys.
+  // pre-calculated and stored along side the features (a model is not used).
+  // In this case the prediction key refering to a key in the features
+  // dictionary must be provided. Use one of prediction_key or prediction_keys.
   //
   // Note that prediction_key is NOT the same as the output_name used in the
   // MetricsSpec. The output_name refers to the name of an output for a
@@ -105,11 +112,6 @@ message ModelSpec {
   // Here 'head1' or 'head2' would be the output_name, whereas 'probabilities'
   // would be the prediction_key.
   //
-  // If a model is not being used (i.e. the predictions are stored in the
-  // inputs), then a prediction_key is required. However, if a model is being
-  // used to compute the predictions a prediction_key typically is not needed
-  // since all the default tf.Estimator values for the keys are handled by TFMA
-  // and keras does not return multiple tensors for a given output.
   string prediction_key = 7;
   // Optional prediction keys (multi-output model) keyed by output_name. Use one
   // of prediction_key or prediction_keys. See comment under prediction_key on

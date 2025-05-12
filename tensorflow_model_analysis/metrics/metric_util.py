@@ -909,7 +909,7 @@ def _string_labels_to_class_ids(label_vocabulary: Union[np.ndarray, List[str]],
   return np.array([lookup(l) for l in labels.flatten()]).reshape(labels.shape)
 
 
-def select_class_id(
+def select_class_id(  # pytype: disable=annotation-type-mismatch
     class_id: int,
     labels: Any,
     predictions: Any,
@@ -983,9 +983,11 @@ def select_class_id(
           predictions.reshape(predictions_out_shape))
 
 
-def _verify_sparse_labels(labels: np.ndarray,
-                          predictions: np.ndarray,
-                          sparse_labels: bool = None) -> bool:
+def _verify_sparse_labels(
+    labels: np.ndarray,  # pytype: disable=annotation-type-mismatch
+    predictions: np.ndarray,
+    sparse_labels: bool = None,
+) -> bool:
   """Checks if labels are sparse or not.
 
   Args:
