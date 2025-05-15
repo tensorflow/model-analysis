@@ -1,17 +1,17 @@
 # TensorFlow Model Analysis Visualizations
 
 The output of running an evaluation is a
-[`tfma.EvalResult`](https://tensorflow.github.io/model-analysis/api_docs/python/tfma/#tensorflow_model_analysis.EvalResult)
+[`tfma.EvalResult`](../api_docs/python/tfma/#tensorflow_model_analysis.EvalResult)
 which can be visualized in a Jupyter notebook by calling
-[`tfma.view.render_slicing_metrics`](https://tensorflow.github.io/model-analysis/api_docs/python/tfma/view/render_slicing_metrics)
+[`tfma.view.render_slicing_metrics`](../api_docs/python/tfma/view/render_slicing_metrics)
 (or
-[`tfma.view.render_plot`](https://tensorflow.github.io/model-analysis/api_docs/python/tfma-view#tensorflow_model_analysis.view.render_plot)
+[`tfma.view.render_plot`](../api_docs/python/tfma-view#tensorflow_model_analysis.view.render_plot)
 for plots).
 
 ### Metrics View
 
 To view metrics, use the
-[`tfma.view.render_slicing_metrics`](https://tensorflow.github.io/model-analysis/api_docs/python/tfma-view/#tensorflow_model_analysis.view.render_slicing_metrics)
+[`tfma.view.render_slicing_metrics`](../api_docs/python/tfma-view/#tensorflow_model_analysis.view.render_slicing_metrics)
 API passing the `tfma.EvalResult` that was output from the evaluation run. The
 metrics view is composed of three parts:
 
@@ -76,9 +76,9 @@ metrics view is composed of three parts:
 
 Each plot has it own visualization that is unique to the plot. For more
 information, see the relevant API documentation for the plot class. Note that
-in TFMA, plots and metrics are both defined under [`tfma.metrics.*`](https://tensorflow.github.io/model-analysis/api_docs/python/tfma-metrics)
+in TFMA, plots and metrics are both defined under [`tfma.metrics.*`](../api_docs/python/tfma-metrics)
 By convention the classes related to plots end in `Plot`. To view plots, use the
-[`tfma.view.render_plot`](https://tensorflow.github.io/model-analysis/api_docs/python/tfma-view/#tensorflow_model_analysis.view.render_plot)
+[`tfma.view.render_plot`](../api_docs/python/tfma-view/#tensorflow_model_analysis.view.render_plot)
 API passing the `tfma.EvalResult` that was output from the evaluation run.
 
 ### Time Series Graphs
@@ -87,9 +87,9 @@ Time series graphs make it easy to spot trends of a specific metric over data
 spans or model runs. To create a time series graph, perform multiple evaluations
 (saving the output to different directories), and then load them into a
 `tfma.EvalResults` object by calling
-[`tfma.load_eval_results`](https://tensorflow.github.io/model-analysis/api_docs/python/tfma/#tensorflow_model_analysis.load_eval_results).
+[`tfma.load_eval_results`](../api_docs/python/tfma/#tensorflow_model_analysis.load_eval_results).
 The results can then be displayed using
-[`tfma.view.render_time_series`](https://tensorflow.github.io/model-analysis/api_docs/python/tfma-view#tensorflow_model_analysis.view.render_time_series)
+[`tfma.view.render_time_series`](../api_docs/python/tfma-view#tensorflow_model_analysis.view.render_time_series)
 
 To display the graph for a specific metric, simply click on it from the dropdown
 list. To dismiss a graph, click on the X on the upper right corner.
