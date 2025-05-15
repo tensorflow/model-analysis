@@ -61,7 +61,7 @@ assumptions:
     (this can be changed using `model_specs[0].signature_name`).
 *   Built in metrics from `model.compile(...)` should be evaluated (this can be
     disabled via `options.include_default_metric` within the
-    [tfma.EvalConfig](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/EvalConfig)).
+    [tfma.EvalConfig](https://tensorflow.github.io/model-analysis/api_docs/python/tfma/EvalConfig)).
 
 ```python
 from google.protobuf import text_format

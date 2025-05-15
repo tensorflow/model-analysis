@@ -25,7 +25,7 @@ If you just want to jump in and get started, check out our
 notebook.
 
 This page can also be viewed from
-[tensorflow.org](https://www.tensorflow.org/tfx/model_analysis/get_started).
+[tensorflow.org](https://tensorflow.github.io/model-analysis/get_started).
 
 ## Model Types Supported
 
@@ -75,14 +75,14 @@ different model types.
 ## Setup
 
 Before running an evaluation, a small amount of setup is required. First, a
-[`tfma.EvalConfig`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/EvalConfig)
+[`tfma.EvalConfig`](https://tensorflow.github.io/model-analysis/api_docs/python/tfma#EvalConfig)
 object must be defined that provides specifications for the model, metrics, and
 slices that are to be evaluated. Second a
-[`tfma.EvalSharedModel`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/default_eval_shared_model)
+[`tfma.EvalSharedModel`](https://tensorflow.github.io/model-analysis/api_docs/python/tfma#default_eval_shared_model)
 needs to be created that points to the actual model (or models) to be used
 during the evaluation. Once these have been defined, evaluation is performed by
 calling
-[`tfma.run_model_analysis`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/run_model_analysis)
+[`tfma.run_model_analysis`](https://tensorflow.github.io/model-analysis/api_docs/python/tfma#run_model_analysis)
 with an appropriate dataset. For more details, see the [setup](setup.md) guide.
 
 If running within a TFX pipeline, see the TFX
@@ -296,4 +296,4 @@ frontend components included in TFMA. For example:
 *   [Visualizations](visualizations.md)
 *   [Architecture](architecture.md)
 *   [FAQ](faq.md)
-*   [API Reference](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma)
+*   [API Reference](https://tensorflow.github.io/model-analysis/api_docs/python/tfma)
