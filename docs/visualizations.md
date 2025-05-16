@@ -3,7 +3,7 @@
 The output of running an evaluation is a
 [`tfma.EvalResult`](../api_docs/python/tfma/#tensorflow_model_analysis.EvalResult)
 which can be visualized in a Jupyter notebook by calling
-[`tfma.view.render_slicing_metrics`](../api_docs/python/tfma/view/render_slicing_metrics)
+[`tfma.view.render_slicing_metrics`](../api_docs/python/tfma-view#tensorflow_model_analysis.view.render_slicing_metrics)
 (or
 [`tfma.view.render_plot`](../api_docs/python/tfma-view#tensorflow_model_analysis.view.render_plot)
 for plots).

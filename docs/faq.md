@@ -49,7 +49,7 @@ TFMA supports keras models, models based on generic TF2 signature APIs, as well
 TF estimator based models (although depending on the use case the estimator
 based models may require an `EvalSavedModel` to be used).
 
-See [get_started](get_started.md) guide for the full list of model types
+See [get started](get_started.md) guide for the full list of model types
 supported and any restrictions.
 
 ### How do I setup TFMA to work with a native keras based model?
@@ -61,7 +61,7 @@ assumptions:
     (this can be changed using `model_specs[0].signature_name`).
 *   Built in metrics from `model.compile(...)` should be evaluated (this can be
     disabled via `options.include_default_metric` within the
-    [tfma.EvalConfig](../api_docs/python/tfma/EvalConfig)).
+    [tfma.EvalConfig](../api_docs/python/tfma#tensorflow_model_analysis.EvalConfig)).
 
 ```python
 from google.protobuf import text_format

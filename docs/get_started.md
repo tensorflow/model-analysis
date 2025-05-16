@@ -75,14 +75,14 @@ different model types.
 ## Setup
 
 Before running an evaluation, a small amount of setup is required. First, a
-[`tfma.EvalConfig`](../api_docs/python/tfma#EvalConfig)
+[`tfma.EvalConfig`](../api_docs/python/tfma#tensorflow_model_analysis.EvalConfig)
 object must be defined that provides specifications for the model, metrics, and
 slices that are to be evaluated. Second a
-[`tfma.EvalSharedModel`](../api_docs/python/tfma#default_eval_shared_model)
+[`tfma.EvalSharedModel`](../api_docs/python/tfma#tensorflow_model_analysis.default_eval_shared_model)
 needs to be created that points to the actual model (or models) to be used
 during the evaluation. Once these have been defined, evaluation is performed by
 calling
-[`tfma.run_model_analysis`](../api_docs/python/tfma#run_model_analysis)
+[`tfma.run_model_analysis`](../api_docs/python/tfma#tensorflow_model_analysis.run_model_analysis)
 with an appropriate dataset. For more details, see the [setup](setup.md) guide.
 
 If running within a TFX pipeline, see the TFX
