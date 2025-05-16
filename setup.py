@@ -19,6 +19,7 @@ widget-cookiecutter.
 from distutils import log
 from distutils import spawn
 import os
+from pathlib import Path
 import platform
 import subprocess
 import sys
@@ -249,6 +250,15 @@ class NPM(Command):
     # update package data in case this created new files
     update_package_data(self.distribution)
 
+def _make_docs_packages():
+  return [
+    req for req in Path("./requirements-docs.txt")
+    .expanduser()
+    .resolve()
+    .read_text()
+    .splitlines()
+    if req
+  ]
 
 def _make_extra_packages_tfjs():
   # Packages needed for tfjs.
@@ -327,7 +337,8 @@ setup_args = {
         ),
     ],
     'extras_require': {
-        'all': _make_extra_packages_tfjs(),
+        'all': [*_make_extra_packages_tfjs(), *_make_docs_packages()],
+        'docs': _make_docs_packages(),
     },
     'python_requires': '>=3.9,<4',
     'packages': find_packages(),

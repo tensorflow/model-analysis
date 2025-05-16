@@ -27,3 +27,19 @@ from tensorflow_model_analysis.extractors.slice_key_extractor import SLICE_KEY_E
 from tensorflow_model_analysis.extractors.slice_key_extractor import SliceKeyExtractor
 from tensorflow_model_analysis.extractors.transformed_features_extractor import TransformedFeaturesExtractor
 from tensorflow_model_analysis.extractors.unbatch_extractor import UnbatchExtractor
+
+__all__ = [
+  "ExampleWeightsExtractor",
+  "Extractor",
+  "FeatureExtractor",
+  "FeaturesExtractor",
+  "Filter",
+  "InputExtractor",
+  "LabelsExtractor",
+  "PredictExtractor",
+  "PredictionsExtractor",
+  "SliceKeyExtractor",
+  "SLICE_KEY_EXTRACTOR_STAGE_NAME",
+  "TransformedFeaturesExtractor",
+  "UnbatchExtractor",
+]

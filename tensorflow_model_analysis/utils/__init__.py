@@ -32,3 +32,24 @@ from tensorflow_model_analysis.utils.util import create_values_key
 from tensorflow_model_analysis.utils.util import get_by_keys
 from tensorflow_model_analysis.utils.util import merge_extracts
 from tensorflow_model_analysis.utils.util import unique_key
+
+__all__ = [
+  "calculate_confidence_interval",
+  "CombineFnWithModels",
+  "compound_key",
+  "create_keys_key",
+  "create_values_key",
+  "DoFnWithModels",
+  "get_baseline_model_spec",
+  "get_by_keys",
+  "get_model_spec",
+  "get_model_type",
+  "get_non_baseline_model_specs",
+  "has_change_threshold",
+  "merge_extracts",
+  "model_construct_fn",
+  "unique_key",
+  "update_eval_config_with_defaults",
+  "verify_and_update_eval_shared_models",
+  "verify_eval_config",
+]

@@ -640,3 +640,39 @@ class EvalSharedModel(
 MaybeMultipleEvalSharedModels = Union[
     EvalSharedModel, List[EvalSharedModel], Dict[str, EvalSharedModel]
 ]
+
+__all__ = [
+  'AddMetricsCallbackType',
+  'ConcreteStructuredMetricValue',
+  'DictOfFetchedTensorValues',
+  'DictOfTensorType',
+  'DictOfTensorTypeMaybeDict',
+  'DictOfTensorValue',
+  'DictOfTensorValueMaybeDict',
+  'DictOfTypeSpec',
+  'DictOfTypeSpecMaybeDict',
+  'EvalSharedModel',
+  'Extracts',
+  'FeaturesPredictionsLabels',
+  'FPLKeyType',
+  'MaterializedColumn',
+  'MaybeMultipleEvalSharedModels',
+  'MetricValueType',
+  'MetricVariablesType',
+  'ModelLoader',
+  'PrimitiveMetricValueType',
+  'RaggedTensorValue',
+  'SparseTensorValue',
+  'StructuredMetricValue',
+  'TensorOrOperationType',
+  'TensorType',
+  'TensorTypeMaybeDict',
+  'TensorTypeMaybeMultiLevelDict',
+  'TensorValue',
+  'TensorValueMaybeDict',
+  'TensorValueMaybeMultiLevelDict',
+  'TypeSpecMaybeDict',
+  'TypeSpecMaybeMultiLevelDict',
+  'ValueWithTDistribution',
+  'VarLenTensorValue'
+]
