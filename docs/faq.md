@@ -425,7 +425,7 @@ single label per example, not for multi-label.
 This is most likely caused because the metrics are configured for a binary
 classification problem, but the model is outputing probabilities for both of the
 classes instead of just one. This is common when
-[tensorflow's classification API](https://www.tensorflow.org/tfx/serving/signature_defs#classification_signaturedef)
+[tensorflow's classification API](https://tensorflow.github.io/serving/guide/signature_defs/#classification-signaturedef)
 is used. The solution is to choose the class that you would like the predictions
 to be based on and then binarize on that class. For example:
 

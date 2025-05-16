@@ -86,8 +86,8 @@ calling
 with an appropriate dataset. For more details, see the [setup](setup.md) guide.
 
 If running within a TFX pipeline, see the TFX
-[guide](https://www.tensorflow.org/tfx/guide) for how to configure TFMA to run
-as a TFX [Evaluator](https://www.tensorflow.org/tfx/guide/evaluator) component.
+[guide](https://tensorflow.github.io/tfx/guide) for how to configure TFMA to run
+as a TFX [Evaluator](https://tensorflow.github.io/tfx/guide/evaluator) component.
 
 ## Examples
 

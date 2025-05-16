@@ -24,7 +24,7 @@ Jupyter notebook. Specifically, it can provide:
 
 ## Next Steps
 
-Try our [TFMA tutorial](https://www.tensorflow.org/tfx/tutorials/model_analysis/tfma_basic).
+Try our [TFMA tutorial](https://tensorflow.github.io/tfx/tutorials/model_analysis/tfma_basic).
 
 Check out our [github](https://github.com/tensorflow/model-analysis) page for
 details on the supported
