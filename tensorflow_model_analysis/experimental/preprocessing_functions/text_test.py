@@ -12,31 +12,32 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Tests for text_util."""
-from absl.testing import parameterized
+
 import tensorflow as tf
+from absl.testing import parameterized
+
 from tensorflow_model_analysis.experimental.preprocessing_functions import text
 
 
 class TextTest(tf.test.TestCase, parameterized.TestCase):
+    @parameterized.named_parameters(
+        ("EmptyString", [""], [[]]),
+        ("SingleString", ["Test foo Bar"], [["test", "foo", "bar"]]),
+        (
+            "BatchedString",
+            ["app dog", "test foo bar"],
+            [["app", "dog", ""], ["test", "foo", "bar"]],
+        ),
+    )
+    def testWhitespaceTokenization(self, input_text, expected_output):
+        # TODO(b/194508683) Delete the check when TF1 is deprecated.
+        if tf.__version__ < "2":
+            return
 
-  @parameterized.named_parameters(
-      ('EmptyString', [''], [[]]),
-      ('SingleString', ['Test foo Bar'], [['test', 'foo', 'bar']]),
-      (
-          'BatchedString',
-          ['app dog', 'test foo bar'],
-          [['app', 'dog', ''], ['test', 'foo', 'bar']],
-      ),
-  )
-  def testWhitespaceTokenization(self, input_text, expected_output):
-    # TODO(b/194508683) Delete the check when TF1 is deprecated.
-    if tf.__version__ < '2':
-      return
-
-    actual = text.whitespace_tokenization(input_text).to_tensor()
-    expected = tf.constant(expected_output, dtype=tf.string)
-    self.assertAllEqual(actual, expected)
+        actual = text.whitespace_tokenization(input_text).to_tensor()
+        expected = tf.constant(expected_output, dtype=tf.string)
+        self.assertAllEqual(actual, expected)
 
 
-if __name__ == '__main__':
-  tf.test.main()
+if __name__ == "__main__":
+    tf.test.main()

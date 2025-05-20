@@ -13,24 +13,23 @@
 # limitations under the License.
 """Weighted example count metric."""
 
-from tensorflow_model_analysis.metrics import example_count
-from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.metrics import example_count, metric_types
 
-WEIGHTED_EXAMPLE_COUNT_NAME = 'weighted_example_count'
+WEIGHTED_EXAMPLE_COUNT_NAME = "weighted_example_count"
 
 
 # TODO(b/143180976): Remove.
 class WeightedExampleCount(example_count.ExampleCount):
-  """Weighted example count (deprecated - use ExampleCount)."""
+    """Weighted example count (deprecated - use ExampleCount)."""
 
-  def __init__(self, name: str = WEIGHTED_EXAMPLE_COUNT_NAME):
-    """Initializes weighted example count.
+    def __init__(self, name: str = WEIGHTED_EXAMPLE_COUNT_NAME):
+        """Initializes weighted example count.
 
-    Args:
-      name: Metric name.
-    """
-
-    super().__init__(name=name)
+        Args:
+        ----
+          name: Metric name.
+        """
+        super().__init__(name=name)
 
 
 metric_types.register_metric(WeightedExampleCount)

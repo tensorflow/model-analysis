@@ -13,12 +13,14 @@
 # limitations under the License.
 """Init module for TensorFlow Model Analysis slicer."""
 
-from tensorflow_model_analysis.slicer.slicer_lib import CrossSliceKeyType
-from tensorflow_model_analysis.slicer.slicer_lib import deserialize_slice_key
-from tensorflow_model_analysis.slicer.slicer_lib import FanoutSlices
-from tensorflow_model_analysis.slicer.slicer_lib import OVERALL_SLICE_KEY
-from tensorflow_model_analysis.slicer.slicer_lib import serialize_slice_key
-from tensorflow_model_analysis.slicer.slicer_lib import SingleSliceSpec
-from tensorflow_model_analysis.slicer.slicer_lib import SliceKeyOrCrossSliceKeyType
-from tensorflow_model_analysis.slicer.slicer_lib import SliceKeyType
-from tensorflow_model_analysis.slicer.slicer_lib import stringify_slice_key
+from tensorflow_model_analysis.slicer.slicer_lib import (
+    OVERALL_SLICE_KEY,
+    CrossSliceKeyType,
+    FanoutSlices,
+    SingleSliceSpec,
+    SliceKeyOrCrossSliceKeyType,
+    SliceKeyType,
+    deserialize_slice_key,
+    serialize_slice_key,
+    stringify_slice_key,
+)

@@ -16,37 +16,40 @@
 import copy
 
 import apache_beam as beam
+
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
 
-_EXAMPLE_WEIGHTS_EXTRACTOR_STAGE_NAME = 'ExtractExampleWeights'
+_EXAMPLE_WEIGHTS_EXTRACTOR_STAGE_NAME = "ExtractExampleWeights"
 
 
 def ExampleWeightsExtractor(
     eval_config: config_pb2.EvalConfig,
 ) -> extractor.Extractor:
-  """Creates an extractor for extracting example weights.
+    """Creates an extractor for extracting example weights.
 
-  The extractor's PTransform uses the config's ModelSpec.example_weight_key(s)
-  to lookup the associated example weight values stored as features under the
-  tfma.FEATURES_KEY (and optionally tfma.TRANSFORMED_FEATURES_KEY) in extracts.
-  The resulting values are then added to the extracts under the key
-  tfma.EXAMPLE_WEIGHTS_KEY.
+    The extractor's PTransform uses the config's ModelSpec.example_weight_key(s)
+    to lookup the associated example weight values stored as features under the
+    tfma.FEATURES_KEY (and optionally tfma.TRANSFORMED_FEATURES_KEY) in extracts.
+    The resulting values are then added to the extracts under the key
+    tfma.EXAMPLE_WEIGHTS_KEY.
 
-  Args:
-    eval_config: Eval config.
+    Args:
+    ----
+      eval_config: Eval config.
 
-  Returns:
-    Extractor for extracting example weights.
-  """
-  # pylint: disable=no-value-for-parameter
-  return extractor.Extractor(
-      stage_name=_EXAMPLE_WEIGHTS_EXTRACTOR_STAGE_NAME,
-      ptransform=_ExtractExampleWeights(eval_config=eval_config),
-  )
+    Returns:
+    -------
+      Extractor for extracting example weights.
+    """
+    # pylint: disable=no-value-for-parameter
+    return extractor.Extractor(
+        stage_name=_EXAMPLE_WEIGHTS_EXTRACTOR_STAGE_NAME,
+        ptransform=_ExtractExampleWeights(eval_config=eval_config),
+    )
 
 
 @beam.ptransform_fn
@@ -55,30 +58,32 @@ def ExampleWeightsExtractor(
 def _ExtractExampleWeights(
     extracts: beam.pvalue.PCollection, eval_config: config_pb2.EvalConfig
 ) -> beam.pvalue.PCollection:
-  """Extracts example weights from features extracts.
+    """Extracts example weights from features extracts.
 
-  Args:
-    extracts: PCollection containing features under tfma.FEATURES_KEY.
-    eval_config: Eval config.
+    Args:
+    ----
+      extracts: PCollection containing features under tfma.FEATURES_KEY.
+      eval_config: Eval config.
 
-  Returns:
-    PCollection of extracts with additional example weights added under the key
-    tfma.EXAMPLE_WEIGHTS_KEY.
-  """
+    Returns:
+    -------
+      PCollection of extracts with additional example weights added under the key
+      tfma.EXAMPLE_WEIGHTS_KEY.
+    """
 
-  def extract_example_weights(  # pylint: disable=invalid-name
-      batched_extracts: types.Extracts,
-  ) -> types.Extracts:
-    """Extract example weights from extracts containing features."""
-    result = copy.copy(batched_extracts)
-    example_weights = model_util.get_feature_values_for_model_spec_field(
-        list(eval_config.model_specs),
-        'example_weight_key',
-        'example_weight_keys',
-        result,
-    )
-    if example_weights is not None:
-      result[constants.EXAMPLE_WEIGHTS_KEY] = example_weights
-    return result
+    def extract_example_weights(  # pylint: disable=invalid-name
+        batched_extracts: types.Extracts,
+    ) -> types.Extracts:
+        """Extract example weights from extracts containing features."""
+        result = copy.copy(batched_extracts)
+        example_weights = model_util.get_feature_values_for_model_spec_field(
+            list(eval_config.model_specs),
+            "example_weight_key",
+            "example_weight_keys",
+            result,
+        )
+        if example_weights is not None:
+            result[constants.EXAMPLE_WEIGHTS_KEY] = example_weights
+        return result
 
-  return extracts | 'ExtractExampleWeights' >> beam.Map(extract_example_weights)
+    return extracts | "ExtractExampleWeights" >> beam.Map(extract_example_weights)

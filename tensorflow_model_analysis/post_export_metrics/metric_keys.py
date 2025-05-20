@@ -23,90 +23,99 @@ only kept around for the sake of OSS users who still depend on it.
 from typing import Optional
 
 # Prefix for post export metrics keys in metric_ops.
-DEFAULT_PREFIX = 'post_export_metrics'
+DEFAULT_PREFIX = "post_export_metrics"
 
 
 def base_key(suffix: str, prefix: Optional[str] = DEFAULT_PREFIX) -> str:
-  """Creates a base key from a prefix and a suffix."""
-  return '%s/%s' % (prefix, suffix)
+    """Creates a base key from a prefix and a suffix."""
+    return "%s/%s" % (prefix, suffix)
 
 
 def tagged_key(key: str, tag: str) -> str:
-  """Returns a base key tagged with a user defined tag.
+    """Returns a base key tagged with a user defined tag.
 
-  The tag is inserted after the base key's initial prefix.
+    The tag is inserted after the base key's initial prefix.
 
-  Example: tagged_key('a/c', 'b') -> 'a/b/c'
-  Example: tagged_key('a', 'b') -> 'a/b'  # Use case for plots keys.
+    Example: tagged_key('a/c', 'b') -> 'a/b/c'
+    Example: tagged_key('a', 'b') -> 'a/b'  # Use case for plots keys.
 
-  Args:
-    key: Base key.
-    tag: Tag to add to base key.
-  """
-  parts = key.split('/')
-  if len(parts) > 1:
-    return '%s/%s/%s' % (parts[0], tag, '/'.join(parts[1:]))
-  return '%s/%s' % (key, tag)
+    Args:
+    ----
+      key: Base key.
+      tag: Tag to add to base key.
+    """
+    parts = key.split("/")
+    if len(parts) > 1:
+        return "%s/%s/%s" % (parts[0], tag, "/".join(parts[1:]))
+    return "%s/%s" % (key, tag)
 
 
 def upper_bound_key(key: str) -> str:
-  """Creates an upper_bound key from a child key."""
-  return key + '/upper_bound'
+    """Creates an upper_bound key from a child key."""
+    return key + "/upper_bound"
 
 
 def lower_bound_key(key: str) -> str:
-  """Create a lower_bound key from a child key."""
-  return key + '/lower_bound'
+    """Create a lower_bound key from a child key."""
+    return key + "/lower_bound"
 
 
 # Not actually for any metric, just used for communicating errors.
-ERROR_METRIC = '__ERROR__'
+ERROR_METRIC = "__ERROR__"
 
-EXAMPLE_WEIGHT = base_key('example_weight')
-EXAMPLE_COUNT = base_key('example_count')
-SQUARED_PEARSON_CORRELATION = base_key('squared_pearson_correlation')
-CALIBRATION = base_key('calibration')
-_CALIBRATION_PLOT_MATRICES_SUFFIX = 'calibration_plot/matrices'
+EXAMPLE_WEIGHT = base_key("example_weight")
+EXAMPLE_COUNT = base_key("example_count")
+SQUARED_PEARSON_CORRELATION = base_key("squared_pearson_correlation")
+CALIBRATION = base_key("calibration")
+_CALIBRATION_PLOT_MATRICES_SUFFIX = "calibration_plot/matrices"
 CALIBRATION_PLOT_MATRICES = base_key(_CALIBRATION_PLOT_MATRICES_SUFFIX)
-_CALIBRATION_PLOT_BOUNDARIES_SUFFIX = 'calibration_plot/boundaries'
+_CALIBRATION_PLOT_BOUNDARIES_SUFFIX = "calibration_plot/boundaries"
 CALIBRATION_PLOT_BOUNDARIES = base_key(_CALIBRATION_PLOT_BOUNDARIES_SUFFIX)
 CONFUSION_MATRIX_AT_THRESHOLDS_MATRICES = base_key(
-    'confusion_matrix_at_thresholds/matrices')
+    "confusion_matrix_at_thresholds/matrices"
+)
 CONFUSION_MATRIX_AT_THRESHOLDS_THRESHOLDS = base_key(
-    'confusion_matrix_at_thresholds/thresholds')
+    "confusion_matrix_at_thresholds/thresholds"
+)
 CONFUSION_MATRIX_AT_THRESHOLDS = base_key(
-    'confusion_matrix_at_thresholds')  # Output-only
+    "confusion_matrix_at_thresholds"
+)  # Output-only
 FAIRNESS_CONFUSION_MATRIX_MATRICES = base_key(
-    'fairness/confusion_matrix_at_thresholds/matrices')
+    "fairness/confusion_matrix_at_thresholds/matrices"
+)
 FAIRNESS_CONFUSION_MATRIX_THESHOLDS = base_key(
-    'fairness/confusion_matrix_at_thresholds/thresholds')
+    "fairness/confusion_matrix_at_thresholds/thresholds"
+)
 FAIRNESS_CONFUSION_MATRIX = base_key(
-    'fairness/confusion_matrix_at_thresholds')  # Output-only
-FAIRNESS_AUC = base_key('fairness/auc')
-_AUC_PLOTS_MATRICES_SUFFIX = 'auc_plots/matrices'
+    "fairness/confusion_matrix_at_thresholds"
+)  # Output-only
+FAIRNESS_AUC = base_key("fairness/auc")
+_AUC_PLOTS_MATRICES_SUFFIX = "auc_plots/matrices"
 AUC_PLOTS_MATRICES = base_key(_AUC_PLOTS_MATRICES_SUFFIX)
-_AUC_PLOTS_THRESHOLDS_SUFFIX = 'auc_plots/thresholds'
+_AUC_PLOTS_THRESHOLDS_SUFFIX = "auc_plots/thresholds"
 AUC_PLOTS_THRESHOLDS = base_key(_AUC_PLOTS_THRESHOLDS_SUFFIX)
-AUC = base_key('auc')
-AUPRC = base_key('auprc')
-PRECISION_AT_K = base_key('precision_at_k')
-RECALL_AT_K = base_key('recall_at_k')
-MEAN_ABSOLUTE_ERROR = base_key('mean_absolute_error')
-MEAN_SQUARED_ERROR = base_key('mean_squared_error')
-ROOT_MEAN_SQUARED_ERROR = base_key('root_mean_squared_error')
+AUC = base_key("auc")
+AUPRC = base_key("auprc")
+PRECISION_AT_K = base_key("precision_at_k")
+RECALL_AT_K = base_key("recall_at_k")
+MEAN_ABSOLUTE_ERROR = base_key("mean_absolute_error")
+MEAN_SQUARED_ERROR = base_key("mean_squared_error")
+ROOT_MEAN_SQUARED_ERROR = base_key("root_mean_squared_error")
 
 # Suffixes of keys where the corresponding values are results for plots
 _PLOT_SUFFIXES = [
-    _CALIBRATION_PLOT_MATRICES_SUFFIX, _CALIBRATION_PLOT_BOUNDARIES_SUFFIX,
-    _AUC_PLOTS_MATRICES_SUFFIX, _AUC_PLOTS_THRESHOLDS_SUFFIX
+    _CALIBRATION_PLOT_MATRICES_SUFFIX,
+    _CALIBRATION_PLOT_BOUNDARIES_SUFFIX,
+    _AUC_PLOTS_MATRICES_SUFFIX,
+    _AUC_PLOTS_THRESHOLDS_SUFFIX,
 ]
 
 
 def is_plot_key(key: str) -> bool:
-  """Returns true if key is a plot key."""
-  # We need to check for suffixes here because metrics may have prefixes based
-  # on multiple labels and/or heads.
-  for suffix in _PLOT_SUFFIXES:
-    if key.endswith(suffix):
-      return True
-  return False
+    """Returns true if key is a plot key."""
+    # We need to check for suffixes here because metrics may have prefixes based
+    # on multiple labels and/or heads.
+    for suffix in _PLOT_SUFFIXES:
+        if key.endswith(suffix):
+            return True
+    return False

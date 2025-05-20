@@ -12,16 +12,17 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Visualization API."""
+
 import sys
 
 
 def _is_colab():
-  return "google.colab" in sys.modules
+    return "google.colab" in sys.modules
 
 
 if _is_colab():
-  from tensorflow_model_analysis.notebook.colab.renderer import *  # pylint: disable=wildcard-import,g-import-not-at-top
-  from tensorflow_model_analysis.notebook.colab.widget import *  # pylint: disable=wildcard-import,g-import-not-at-top
+    from tensorflow_model_analysis.notebook.colab.renderer import *  # pylint: disable=wildcard-import,g-import-not-at-top
+    from tensorflow_model_analysis.notebook.colab.widget import *  # pylint: disable=wildcard-import,g-import-not-at-top
 else:
-  from tensorflow_model_analysis.notebook.jupyter.renderer import *  # pylint: disable=wildcard-import,g-import-not-at-top
-  from tensorflow_model_analysis.notebook.jupyter.tfma_widget import *  # pylint: disable=wildcard-import,g-import-not-at-top
+    from tensorflow_model_analysis.notebook.jupyter.renderer import *  # pylint: disable=wildcard-import,g-import-not-at-top
+    from tensorflow_model_analysis.notebook.jupyter.tfma_widget import *  # pylint: disable=wildcard-import,g-import-not-at-top
