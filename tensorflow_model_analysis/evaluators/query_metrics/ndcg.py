@@ -27,147 +27,151 @@ from typing import Any, Dict, Iterable, List, NamedTuple, Tuple
 
 import apache_beam as beam
 import numpy as np
+
 from tensorflow_model_analysis.evaluators.query_metrics import query_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 
-_State = NamedTuple('_State', [('ndcg', Dict[int, float]), ('weight', float)])
+
+class _State(NamedTuple):
+    ndcg: Dict[int, float]
+    weight: float
 
 
 def _get_feature_value(fpl: query_types.FPL, key: str) -> float:
-  """Get value of the given feature from the features dictionary.
+    """Get value of the given feature from the features dictionary.
 
-  The feature must have exactly one value.
+    The feature must have exactly one value.
 
-  Args:
-    fpl: FPL
-    key: Key of feature to retrieve in features dictionary.
+    Args:
+    ----
+      fpl: FPL
+      key: Key of feature to retrieve in features dictionary.
 
-  Returns:
-    The singular value of the feature.
-  """
-  feature = fpl['features'].get(key)
-  if feature is None:
-    raise ValueError(
-        'feature %s not found in features %s' % (key, fpl['features'])
-    )
-  if feature.size != 1:
-    raise ValueError(
-        'feature %s did not contain exactly 1 value. value was: %s'
-        % (key, feature)
-    )
-  return feature[0][0]
+    Returns:
+    -------
+      The singular value of the feature.
+    """
+    feature = fpl["features"].get(key)
+    if feature is None:
+        raise ValueError("feature %s not found in features %s" % (key, fpl["features"]))
+    if feature.size != 1:
+        raise ValueError(
+            "feature %s did not contain exactly 1 value. value was: %s" % (key, feature)
+        )
+    return feature[0][0]
 
 
 class NdcgMetricCombineFn(beam.CombineFn):
-  """Computes normalized discounted cumulative gain."""
+    """Computes normalized discounted cumulative gain."""
 
-  def __init__(self, at_vals: List[int], gain_key: str, weight_key: str):
-    """Initialize.
+    def __init__(self, at_vals: List[int], gain_key: str, weight_key: str):
+        """Initialize.
 
-    Args:
-      at_vals: A list containing the number of values to consider in calculating
-        the values of nDCG (eg. nDCG@at).
-      gain_key: The key in the features dictionary which holds the gain values.
-      weight_key: The key in the features dictionary which holds the weights.
-        Note that the weight value must be identical across all examples in the
-        same query. If set to empty, uses 1.0 instead.
-    """
-    self._at_vals = at_vals
-    self._gain_key = gain_key
-    self._weight_key = weight_key
+        Args:
+        ----
+          at_vals: A list containing the number of values to consider in calculating
+            the values of nDCG (eg. nDCG@at).
+          gain_key: The key in the features dictionary which holds the gain values.
+          weight_key: The key in the features dictionary which holds the weights.
+            Note that the weight value must be identical across all examples in the
+            same query. If set to empty, uses 1.0 instead.
+        """
+        self._at_vals = at_vals
+        self._gain_key = gain_key
+        self._weight_key = weight_key
 
-  def _calculate_dcg_at_k(self, k: int, sorted_values: List[float]) -> float:
-    """Calculate the value of DCG@k.
+    def _calculate_dcg_at_k(self, k: int, sorted_values: List[float]) -> float:
+        """Calculate the value of DCG@k.
 
-    Args:
-      k: The last position to consider.
-      sorted_values: A list of gain values assumed to be sorted in the desired
-        ranking order.
+        Args:
+        ----
+          k: The last position to consider.
+          sorted_values: A list of gain values assumed to be sorted in the desired
+            ranking order.
 
-    Returns:
-      The value of DCG@k.
-    """
-    return np.sum(
-        np.array(sorted_values)[:k] / np.log2(np.array(range(2, k + 2)))
-    )
+        Returns:
+        -------
+          The value of DCG@k.
+        """
+        return np.sum(np.array(sorted_values)[:k] / np.log2(np.array(range(2, k + 2))))
 
-  def _calculate_ndcg(self, values: List[Tuple[int, float]], k: int) -> float:
-    """Calculate nDCG@k, based on given rank and gain values.
+    def _calculate_ndcg(self, values: List[Tuple[int, float]], k: int) -> float:
+        """Calculate nDCG@k, based on given rank and gain values.
 
-    Args:
-      values: A list of tuples representing rank order and gain values.
-      k: The maximum position to consider in calculating nDCG
+        Args:
+        ----
+          values: A list of tuples representing rank order and gain values.
+          k: The maximum position to consider in calculating nDCG
 
-    Returns:
-      The value of nDCG@k, for the given list of values.
-    """
-    max_rank = min(k, len(values))
-    ranked_values = [
-        gain for _, gain in sorted(values, key=lambda x: x[0], reverse=False)
-    ]
-    optimal_values = [
-        gain for _, gain in sorted(values, key=lambda x: x[1], reverse=True)
-    ]
-    dcg = self._calculate_dcg_at_k(max_rank, ranked_values)
-    optimal_dcg = self._calculate_dcg_at_k(max_rank, optimal_values)
-    if optimal_dcg > 0:
-      return dcg / optimal_dcg
-    else:
-      return 0
+        Returns:
+        -------
+          The value of nDCG@k, for the given list of values.
+        """
+        max_rank = min(k, len(values))
+        ranked_values = [
+            gain for _, gain in sorted(values, key=lambda x: x[0], reverse=False)
+        ]
+        optimal_values = [
+            gain for _, gain in sorted(values, key=lambda x: x[1], reverse=True)
+        ]
+        dcg = self._calculate_dcg_at_k(max_rank, ranked_values)
+        optimal_dcg = self._calculate_dcg_at_k(max_rank, optimal_values)
+        if optimal_dcg > 0:
+            return dcg / optimal_dcg
+        else:
+            return 0
 
-  def _new_ndcg_dict(self):
-    return dict.fromkeys(self._at_vals, 0)
+    def _new_ndcg_dict(self):
+        return dict.fromkeys(self._at_vals, 0)
 
-  def create_accumulator(self):
-    return _State(ndcg=self._new_ndcg_dict(), weight=0.0)
+    def create_accumulator(self):
+        return _State(ndcg=self._new_ndcg_dict(), weight=0.0)
 
-  def _add_states(self, left: _State, right: _State) -> _State:
-    ndcg_dict = self._new_ndcg_dict()
-    for at in self._at_vals:
-      ndcg_dict[at] = left.ndcg[at] + right.ndcg[at]
-    return _State(ndcg_dict, left.weight + right.weight)
+    def _add_states(self, left: _State, right: _State) -> _State:
+        ndcg_dict = self._new_ndcg_dict()
+        for at in self._at_vals:
+            ndcg_dict[at] = left.ndcg[at] + right.ndcg[at]
+        return _State(ndcg_dict, left.weight + right.weight)
 
-  def add_input(
-      self, accumulator: _State, query_fpl: query_types.QueryFPL
-  ) -> _State:
-    weight = 1.0
-    if self._weight_key:
-      weights = [
-          float(_get_feature_value(fpl, self._weight_key))
-          for fpl in query_fpl.fpls
-      ]
-      if weights:
-        if min(weights) != max(weights):
-          raise ValueError(
-              'weights were not identical for all examples in the '
-              'query. query_id was: %s, weights were: %s'
-              % (query_fpl.query_id, weights)
-          )
-        weight = weights[0]
+    def add_input(self, accumulator: _State, query_fpl: query_types.QueryFPL) -> _State:
+        weight = 1.0
+        if self._weight_key:
+            weights = [
+                float(_get_feature_value(fpl, self._weight_key))
+                for fpl in query_fpl.fpls
+            ]
+            if weights:
+                if min(weights) != max(weights):
+                    raise ValueError(
+                        "weights were not identical for all examples in the "
+                        "query. query_id was: %s, weights were: %s"
+                        % (query_fpl.query_id, weights)
+                    )
+                weight = weights[0]
 
-    ndcg_dict = {}
-    for at in self._at_vals:
-      rank_gain = [
-          (pos + 1, float(_get_feature_value(fpl, self._gain_key)))
-          for pos, fpl in enumerate(query_fpl.fpls)
-      ]
-      ndcg_dict[at] = self._calculate_ndcg(rank_gain, at) * weight
+        ndcg_dict = {}
+        for at in self._at_vals:
+            rank_gain = [
+                (pos + 1, float(_get_feature_value(fpl, self._gain_key)))
+                for pos, fpl in enumerate(query_fpl.fpls)
+            ]
+            ndcg_dict[at] = self._calculate_ndcg(rank_gain, at) * weight
 
-    return self._add_states(accumulator, _State(ndcg=ndcg_dict, weight=weight))
+        return self._add_states(accumulator, _State(ndcg=ndcg_dict, weight=weight))
 
-  def merge_accumulators(self, accumulators: Iterable[_State]) -> _State:
-    accumulators = iter(accumulators)
-    result = next(accumulators)
-    for accumulator in accumulators:
-      result = self._add_states(result, accumulator)
-    return result
+    def merge_accumulators(self, accumulators: Iterable[_State]) -> _State:
+        accumulators = iter(accumulators)
+        result = next(accumulators)
+        for accumulator in accumulators:
+            result = self._add_states(result, accumulator)
+        return result
 
-  def extract_output(self, accumulator: _State) -> Dict[str, Any]:
-    avg_dict = {}
-    for at in self._at_vals:
-      if accumulator.weight > 0:
-        avg_ndcg = accumulator.ndcg[at] / accumulator.weight
-      else:
-        avg_ndcg = 0
-      avg_dict[metric_keys.base_key('ndcg@%d' % at)] = avg_ndcg
-    return avg_dict
+    def extract_output(self, accumulator: _State) -> Dict[str, Any]:
+        avg_dict = {}
+        for at in self._at_vals:
+            if accumulator.weight > 0:
+                avg_ndcg = accumulator.ndcg[at] / accumulator.weight
+            else:
+                avg_ndcg = 0
+            avg_dict[metric_keys.base_key("ndcg@%d" % at)] = avg_ndcg
+        return avg_dict

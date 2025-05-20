@@ -17,62 +17,61 @@ import dataclasses
 from typing import Any, Dict, Iterable
 
 import apache_beam as beam
+
 from tensorflow_model_analysis.evaluators.query_metrics import query_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 
 
 @dataclasses.dataclass
 class _State:
-  """QueryStatisticsCombineFn accumulator type."""
+    """QueryStatisticsCombineFn accumulator type."""
 
-  total_queries: int
-  total_documents: int
-  min_documents: int
-  max_documents: int
+    total_queries: int
+    total_documents: int
+    min_documents: int
+    max_documents: int
 
-  def merge(self, other: '_State') -> None:
-    self.total_queries += other.total_queries
-    self.total_documents += other.total_documents
-    self.min_documents = min(self.min_documents, other.min_documents)
-    self.max_documents = max(self.max_documents, other.max_documents)
+    def merge(self, other: "_State") -> None:
+        self.total_queries += other.total_queries
+        self.total_documents += other.total_documents
+        self.min_documents = min(self.min_documents, other.min_documents)
+        self.max_documents = max(self.max_documents, other.max_documents)
 
-  def add(self, query_fpl: query_types.QueryFPL) -> None:
-    self.total_queries += 1
-    self.total_documents += len(query_fpl.fpls)
-    self.min_documents = min(self.min_documents, len(query_fpl.fpls))
-    self.max_documents = max(self.max_documents, len(query_fpl.fpls))
+    def add(self, query_fpl: query_types.QueryFPL) -> None:
+        self.total_queries += 1
+        self.total_documents += len(query_fpl.fpls)
+        self.min_documents = min(self.min_documents, len(query_fpl.fpls))
+        self.max_documents = max(self.max_documents, len(query_fpl.fpls))
 
 
 class QueryStatisticsCombineFn(beam.CombineFn):
-  """Computes simple statistics about queries."""
+    """Computes simple statistics about queries."""
 
-  LARGE_INT = 1000000000
+    LARGE_INT = 1000000000
 
-  def create_accumulator(self):
-    return _State(
-        total_queries=0,
-        total_documents=0,
-        min_documents=self.LARGE_INT,
-        max_documents=0,
-    )
+    def create_accumulator(self):
+        return _State(
+            total_queries=0,
+            total_documents=0,
+            min_documents=self.LARGE_INT,
+            max_documents=0,
+        )
 
-  def add_input(
-      self, accumulator: _State, query_fpl: query_types.QueryFPL
-  ) -> _State:
-    accumulator.add(query_fpl)
-    return accumulator
+    def add_input(self, accumulator: _State, query_fpl: query_types.QueryFPL) -> _State:
+        accumulator.add(query_fpl)
+        return accumulator
 
-  def merge_accumulators(self, accumulators: Iterable[_State]) -> _State:
-    it = iter(accumulators)
-    result = next(it)
-    for acc in it:
-      result.merge(acc)
-    return result
+    def merge_accumulators(self, accumulators: Iterable[_State]) -> _State:
+        it = iter(accumulators)
+        result = next(it)
+        for acc in it:
+            result.merge(acc)
+        return result
 
-  def extract_output(self, accumulator: _State) -> Dict[str, Any]:
-    return {
-        metric_keys.base_key('total_queries'): accumulator.total_queries,
-        metric_keys.base_key('total_documents'): accumulator.total_documents,
-        metric_keys.base_key('min_documents'): accumulator.min_documents,
-        metric_keys.base_key('max_documents'): accumulator.max_documents,
-    }
+    def extract_output(self, accumulator: _State) -> Dict[str, Any]:
+        return {
+            metric_keys.base_key("total_queries"): accumulator.total_queries,
+            metric_keys.base_key("total_documents"): accumulator.total_documents,
+            metric_keys.base_key("min_documents"): accumulator.min_documents,
+            metric_keys.base_key("max_documents"): accumulator.max_documents,
+        }

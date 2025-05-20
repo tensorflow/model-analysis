@@ -24,16 +24,16 @@ import tensorflow as tf
 
 
 def get_tfjs_binary():
-  """Download and return the path to the tfjs binary."""
-  if sys.platform == 'darwin':
-    url = 'http://storage.googleapis.com/tfjs-inference/tfjs-inference-macos'
-  else:
-    url = 'http://storage.googleapis.com/tfjs-inference/tfjs-inference-linux'
+    """Download and return the path to the tfjs binary."""
+    if sys.platform == "darwin":
+        url = "http://storage.googleapis.com/tfjs-inference/tfjs-inference-macos"
+    else:
+        url = "http://storage.googleapis.com/tfjs-inference/tfjs-inference-linux"
 
-  base_path = tempfile.mkdtemp()
-  path = os.path.join(base_path, 'binary')
-  with urllib.request.urlopen(url) as response:
-    with tf.io.gfile.GFile(path, 'w') as file:
-      shutil.copyfileobj(response, file)
-  subprocess.check_call(['chmod', '+x', path])
-  return path
+    base_path = tempfile.mkdtemp()
+    path = os.path.join(base_path, "binary")
+    with urllib.request.urlopen(url) as response:
+        with tf.io.gfile.GFile(path, "w") as file:
+            shutil.copyfileobj(response, file)
+    subprocess.check_call(["chmod", "+x", path])
+    return path
