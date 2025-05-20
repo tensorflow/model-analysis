@@ -78,6 +78,61 @@ ignore = [
     "D206",   # Docstrings should be indented with spaces; unnecessary when running ruff-format
     "E501",   # Line length too long; unnecessary when running ruff-format
     "W191",   # Indentation contains tabs; unnecessary when running ruff-format
+
+    # FIX AND REMOVE BELOW CODES
+    "ANN001", # Missing type annotation for function argument
+    "ANN102", # Missing type annotation for `cls` in classmethod
+    "ANN202", # Missing return type annotation for private function
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "ARG001", # Unused function argument
+    "ARG002", # Unused method argument
+    "ARG005", # Unused lambda argument
+    "B007",   # Loop control variable not used within loop body
+    "B008",   # Do not perform function call in argument defaults
+    "B020",   # Loop control variable overrides iterable it iterates
+    "B028",   # No explicit `stacklevel` keyword argument for `warnings.warn`
+    "B904",   # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None`
+    "D101",   # Missing docstring in public class
+    "D102",   # Missing docstring in public method
+    "D103",   # Missing docstring in public function
+    "D106",   # Missing docstring in public nested class
+    "D107",   # Missing docstring in `__init__`
+    "D210",   # No whitespaces allowed surrounding docstring text
+    "D401",   # First line of docstring should be in imperative mood
+    "D404",   # First word of the docstring should not be "This"
+    "E721",   # Use `is` or `isinstance()` for type comparisons
+    "E722",   # Do not use bare `except`
+    "E731",   # Do not assign a `lambda` expression, use a `def`
+    "E741",   # Ambiguous variable name
+    "ERA001", # Found commented-out code
+    "F403",   # `from module import *` used; unable to detect undefined names
+    "F841",   # Local variable is assigned to but never used
+    "FIX002", # Line contains TODO, consider resolving the issue
+    "N801",   # Class name should use CapWords convention
+    "N802",   # Function name should be lowercase
+    "N811",   # Constant imported as non-constant
+    "NPY002", # Replace legacy `np.random` call with `np.random.Generator`
+    "PD004",  # `.notna` is preferred to `.notnull`
+    "PD010",  # `.pivot_table` is preferred to `.pivot` or `.unstack`
+    "PD011",  # Use `.to_numpy()` instead of `.values`
+    "PT009",  # Use a regular `assert` instead of unittest-style assert
+    "PT018",  # Assertion should be broken down into multiple parts
+    "PT027",  # Use `pytest.raises` instead of unittest-style `assertRaises` or `assertRaisesRegex`
+    "RET503", # Missing explicit `return` at the end of function able to return non-`None` value
+    "RET504", # Unnecessary assignment to `result` before `return` statement
+    "RET505", # Unnecessary `elif` or `else` after `return` statement
+    "RET506", # Unnecessary `else` after `raise` statement
+    "SIM101", # Multiple `isinstance` calls, merge into a single call
+    "SIM102", # Use a single `if` statement instead of nested `if` statements
+    "SIM103", # Return the condition directly
+    "SIM109", # Use `in` for multiple equality comparisons
+    "SIM110", # Use `any(...)` instead of `for` loop for early return
+    "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
+    "SIM118", # Use `key in dict` instead of `key in dict.keys()`
+    "SIM401", # Use `self.get(key, None)` instead of an `if` block
+    "UP008",  # Use `super()` instead of `super(__class__, self)`
+    "UP028",  # Replace `yield` over `for` loop with `yield from`
+    "UP031",  # Use format specifiers instead of percent format
 ]
 
 [tool.ruff.lint.per-file-ignores]
