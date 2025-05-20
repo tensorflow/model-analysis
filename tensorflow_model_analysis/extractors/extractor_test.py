@@ -14,103 +14,111 @@
 """Test for extractor."""
 
 import apache_beam as beam
-from apache_beam.testing import util
 import tensorflow as tf
+from apache_beam.testing import util
+
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.utils import test_util
 
 
 class ExtractorTest(test_util.TensorflowModelAnalysisTest):
+    def testFilterRaisesValueError(self):
+        with self.assertRaises(ValueError):
+            with beam.Pipeline() as pipeline:
+                _ = (
+                    pipeline
+                    | "Create" >> beam.Create([])
+                    | "Filter" >> extractor.Filter(include=["a"], exclude=["b"])
+                )
 
-  def testFilterRaisesValueError(self):
-    with self.assertRaises(ValueError):
-      with beam.Pipeline() as pipeline:
-        _ = (
-            pipeline
-            | 'Create' >> beam.Create([])
-            | 'Filter' >> extractor.Filter(include=['a'], exclude=['b'])
-        )
+    def testIncludeFilter(self):
+        with beam.Pipeline() as pipeline:
+            got = (
+                pipeline
+                | "Create" >> beam.Create([{"a": 1, "b": 2, "c": 3, "d": 4}])
+                | "Filter" >> extractor.Filter(include=["a", "c"])
+            )
 
-  def testIncludeFilter(self):
-    with beam.Pipeline() as pipeline:
-      got = (
-          pipeline
-          | 'Create' >> beam.Create([{'a': 1, 'b': 2, 'c': 3, 'd': 4}])
-          | 'Filter' >> extractor.Filter(include=['a', 'c'])
-      )
+            def check_result(got):
+                try:
+                    self.assertEqual(got, [{"a": 1, "c": 3}])
+                except AssertionError as err:
+                    raise util.BeamAssertException(err)
 
-      def check_result(got):
-        try:
-          self.assertEqual(got, [{'a': 1, 'c': 3}])
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
+            util.assert_that(got, check_result)
 
-      util.assert_that(got, check_result)
+    def testIncludeFilterWithDict(self):
+        with beam.Pipeline() as pipeline:
+            got = (
+                pipeline
+                | "Create"
+                >> beam.Create(
+                    [
+                        {
+                            "a": 1,
+                            "b": {"b2": 2},
+                            "c": {"c2": {"c21": 3, "c22": 4}},
+                            "d": {"d2": 4},
+                        }
+                    ]
+                )
+                | "Filter"
+                >> extractor.Filter(include={"b": {}, "c": {"c2": {"c21": {}}}})
+            )
 
-  def testIncludeFilterWithDict(self):
-    with beam.Pipeline() as pipeline:
-      got = (
-          pipeline
-          | 'Create'
-          >> beam.Create([{
-              'a': 1,
-              'b': {'b2': 2},
-              'c': {'c2': {'c21': 3, 'c22': 4}},
-              'd': {'d2': 4},
-          }])
-          | 'Filter'
-          >> extractor.Filter(include={'b': {}, 'c': {'c2': {'c21': {}}}})
-      )
+            def check_result(got):
+                try:
+                    self.assertEqual(got, [{"b": {"b2": 2}, "c": {"c2": {"c21": 3}}}])
+                except AssertionError as err:
+                    raise util.BeamAssertException(err)
 
-      def check_result(got):
-        try:
-          self.assertEqual(got, [{'b': {'b2': 2}, 'c': {'c2': {'c21': 3}}}])
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
+            util.assert_that(got, check_result)
 
-      util.assert_that(got, check_result)
+    def testExludeFilter(self):
+        with beam.Pipeline() as pipeline:
+            got = (
+                pipeline
+                | "Create" >> beam.Create([{"a": 1, "b": 2, "c": 3, "d": 4}])
+                | "Filter" >> extractor.Filter(exclude=["b", "d"])
+            )
 
-  def testExludeFilter(self):
-    with beam.Pipeline() as pipeline:
-      got = (
-          pipeline
-          | 'Create' >> beam.Create([{'a': 1, 'b': 2, 'c': 3, 'd': 4}])
-          | 'Filter' >> extractor.Filter(exclude=['b', 'd'])
-      )
+            def check_result(got):
+                try:
+                    self.assertEqual(got, [{"a": 1, "c": 3}])
+                except AssertionError as err:
+                    raise util.BeamAssertException(err)
 
-      def check_result(got):
-        try:
-          self.assertEqual(got, [{'a': 1, 'c': 3}])
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
+            util.assert_that(got, check_result)
 
-      util.assert_that(got, check_result)
+    def testExcludeFilterWithDict(self):
+        with beam.Pipeline() as pipeline:
+            got = (
+                pipeline
+                | "Create"
+                >> beam.Create(
+                    [
+                        {
+                            "a": 1,
+                            "b": {"b2": 2},
+                            "c": {"c2": {"c21": 3, "c22": 4}},
+                            "d": {"d2": 4},
+                        }
+                    ]
+                )
+                | "Filter"
+                >> extractor.Filter(exclude={"b": {}, "c": {"c2": {"c21": {}}}})
+            )
 
-  def testExcludeFilterWithDict(self):
-    with beam.Pipeline() as pipeline:
-      got = (
-          pipeline
-          | 'Create'
-          >> beam.Create([{
-              'a': 1,
-              'b': {'b2': 2},
-              'c': {'c2': {'c21': 3, 'c22': 4}},
-              'd': {'d2': 4},
-          }])
-          | 'Filter'
-          >> extractor.Filter(exclude={'b': {}, 'c': {'c2': {'c21': {}}}})
-      )
+            def check_result(got):
+                try:
+                    self.assertEqual(
+                        got, [{"a": 1, "c": {"c2": {"c22": 4}}, "d": {"d2": 4}}]
+                    )
+                except AssertionError as err:
+                    raise util.BeamAssertException(err)
 
-      def check_result(got):
-        try:
-          self.assertEqual(
-              got, [{'a': 1, 'c': {'c2': {'c22': 4}}, 'd': {'d2': 4}}]
-          )
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
-
-      util.assert_that(got, check_result)
+            util.assert_that(got, check_result)
 
 
-if __name__ == '__main__':
-  tf.test.main()
+if __name__ == "__main__":
+    tf.test.main()

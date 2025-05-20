@@ -14,46 +14,48 @@
 """Tests for confusion matrix plot."""
 
 import apache_beam as beam
-from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
-import tensorflow_model_analysis as tfma  # pylint: disable=unused-import
+from apache_beam.testing import util
+from google.protobuf import text_format
+
 from tensorflow_model_analysis.api import model_eval_lib
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import test_util
 
-from google.protobuf import text_format
-
 
 class ScoreDistributionPlotTest(test_util.TensorflowModelAnalysisTest):
+    def testScoreDistributionPlot(self):
+        extracts = [
+            {
+                "features": {
+                    "my_predictions": np.array([0.0]),
+                    "my_weights": np.array([1.0]),
+                }
+            },
+            {
+                "features": {
+                    "my_predictions": np.array([0.5]),
+                    "my_weights": np.array([1.0]),
+                }
+            },
+            {
+                "features": {
+                    "my_predictions": np.array([0.3]),
+                    "my_weights": np.array([1.0]),
+                }
+            },
+            {
+                "features": {
+                    "my_predictions": np.array([0.9]),
+                    "my_weights": np.array([1.0]),
+                }
+            },
+        ]
 
-  def testScoreDistributionPlot(self):
-
-    extracts = [{
-        'features': {
-            'my_predictions': np.array([0.0]),
-            'my_weights': np.array([1.0]),
-        }
-    }, {
-        'features': {
-            'my_predictions': np.array([0.5]),
-            'my_weights': np.array([1.0]),
-        }
-    }, {
-        'features': {
-            'my_predictions': np.array([0.3]),
-            'my_weights': np.array([1.0]),
-        }
-    }, {
-        'features': {
-            'my_predictions': np.array([0.9]),
-            'my_weights': np.array([1.0]),
-        }
-    }]
-
-    eval_config = text_format.Parse(
-        """
+        eval_config = text_format.Parse(
+            """
         model_specs {
           name: "baseline"
           prediction_key: "my_predictions"
@@ -68,30 +70,36 @@ class ScoreDistributionPlotTest(test_util.TensorflowModelAnalysisTest):
         options {
           compute_confidence_intervals {
           }
-        }""", config_pb2.EvalConfig())
+        }""",
+            config_pb2.EvalConfig(),
+        )
 
-    evaluators = model_eval_lib.default_evaluators(eval_config=eval_config)
-    extractors = model_eval_lib.default_extractors(
-        eval_shared_model=None, eval_config=eval_config)
+        evaluators = model_eval_lib.default_evaluators(eval_config=eval_config)
+        extractors = model_eval_lib.default_extractors(
+            eval_shared_model=None, eval_config=eval_config
+        )
 
-    with beam.Pipeline() as pipeline:
-      result = (
-          pipeline
-          | 'LoadData' >> beam.Create(extracts)
-          | 'ExtractEval' >> model_eval_lib.ExtractAndEvaluate(
-              extractors=extractors, evaluators=evaluators))
+        with beam.Pipeline() as pipeline:
+            result = (
+                pipeline
+                | "LoadData" >> beam.Create(extracts)
+                | "ExtractEval"
+                >> model_eval_lib.ExtractAndEvaluate(
+                    extractors=extractors, evaluators=evaluators
+                )
+            )
 
-      def check_result(got):
-        try:
-          self.assertLen(got, 1)
-          got_slice_key, got_plots = got[0]
-          self.assertEqual(got_slice_key, ())
-          self.assertLen(got_plots, 1)
-          key = metric_types.PlotKey(name='score_distribution_plot')
-          self.assertIn(key, got_plots)
-          got_plot = got_plots[key]
-          self.assertProtoEquals(
-              """
+            def check_result(got):
+                try:
+                    self.assertLen(got, 1)
+                    got_slice_key, got_plots = got[0]
+                    self.assertEqual(got_slice_key, ())
+                    self.assertLen(got_plots, 1)
+                    key = metric_types.PlotKey(name="score_distribution_plot")
+                    self.assertIn(key, got_plots)
+                    got_plot = got_plots[key]
+                    self.assertProtoEquals(
+                        """
               matrices {
                 threshold: -1e-06
                 true_positives: 4.0
@@ -140,14 +148,14 @@ class ScoreDistributionPlotTest(test_util.TensorflowModelAnalysisTest):
                 false_omission_rate: 0.425
               }
           """,
-              got_plot,
-          )
+                        got_plot,
+                    )
 
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
+                except AssertionError as err:
+                    raise util.BeamAssertException(err)
 
-      util.assert_that(result['plots'], check_result, label='result')
+            util.assert_that(result["plots"], check_result, label="result")
 
 
-if __name__ == '__main__':
-  tf.test.main()
+if __name__ == "__main__":
+    tf.test.main()

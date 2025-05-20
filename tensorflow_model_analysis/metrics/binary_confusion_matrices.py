@@ -13,174 +13,202 @@
 # limitations under the License.
 """Binary confusion matrices."""
 
-from typing import Any, Callable, Dict, Iterable, List, NamedTuple, Optional, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import apache_beam as beam
 import numpy as np
+
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.contrib.aggregates import binary_confusion_matrices as bcm_computations
-from tensorflow_model_analysis.metrics import calibration_histogram
-from tensorflow_model_analysis.metrics import metric_types
-from tensorflow_model_analysis.metrics import metric_util
-from tensorflow_model_analysis.proto import config_pb2
-from tensorflow_model_analysis.proto import metrics_for_slice_pb2
+from tensorflow_model_analysis.contrib.aggregates import (
+    binary_confusion_matrices as bcm_computations,
+)
+from tensorflow_model_analysis.metrics import (
+    calibration_histogram,
+    metric_types,
+    metric_util,
+)
+from tensorflow_model_analysis.proto import config_pb2, metrics_for_slice_pb2
 
 DEFAULT_NUM_THRESHOLDS = calibration_histogram.DEFAULT_NUM_BUCKETS
 _KERAS_DEFAULT_NUM_THRESHOLDS = 200
 
-BINARY_CONFUSION_MATRICES_NAME = '_binary_confusion_matrices'
-BINARY_CONFUSION_EXAMPLES_NAME = '_binary_confusion_examples'
+BINARY_CONFUSION_MATRICES_NAME = "_binary_confusion_matrices"
+BINARY_CONFUSION_EXAMPLES_NAME = "_binary_confusion_examples"
 
-_BINARY_CONFUSION_MATRIX_NAME = '_binary_confusion_matrix'
+_BINARY_CONFUSION_MATRIX_NAME = "_binary_confusion_matrix"
 
 MatrixAccumulator = bcm_computations.MatrixAccumulator
 
 
 class Examples(
-    NamedTuple('Examples', [('thresholds', List[float]),
-                            ('tp_examples', List[List[str]]),
-                            ('tn_examples', List[List[str]]),
-                            ('fp_examples', List[List[str]]),
-                            ('fn_examples', List[List[str]])])):
-  """A set of examples for each binary confusion case at each threshold."""
+    NamedTuple(
+        "Examples",
+        [
+            ("thresholds", List[float]),
+            ("tp_examples", List[List[str]]),
+            ("tn_examples", List[List[str]]),
+            ("fp_examples", List[List[str]]),
+            ("fn_examples", List[List[str]]),
+        ],
+    )
+):
+    """A set of examples for each binary confusion case at each threshold."""
 
 
 class Matrices(  # pytype: disable=signature-mismatch  # always-use-return-annotations
     types.StructuredMetricValue,
     NamedTuple(
-        'Matrices',
+        "Matrices",
         [
-            ('thresholds', List[float]),
-            ('tp', List[float]),
-            ('tn', List[float]),
-            ('fp', List[float]),
-            ('fn', List[float]),
+            ("thresholds", List[float]),
+            ("tp", List[float]),
+            ("tn", List[float]),
+            ("fp", List[float]),
+            ("fn", List[float]),
         ],
     ),
 ):
-  """A class representing a set of binary confusion matrices at thresholds.
+    """A class representing a set of binary confusion matrices at thresholds.
 
-  For each threshold, in addition to the count of examples per prediction and
-  label, this class also contains a sample of raw examples. Threshold values are
-  sorted, and the entries within  tp[i], tn[i], fp[i], and fn[i] correspond to
-  thresholds[i].
-  """
-
-  def _apply_binary_op_elementwise(self, other: 'Matrices',
-                                   op: Callable[[float, float], float]):
-    """Applies an operator elementwise on self and `other` matrices."""
-    tp, tn, fp, fn = [], [], [], []
-    self_idx, other_idx = 0, 0
-    merged_thresholds = []
-    while True:
-      if (self_idx < len(self.thresholds) and
-          other_idx < len(other.thresholds) and
-          self.thresholds[self_idx] == other.thresholds[other_idx]):
-        # threshold present in both, advance both indices
-        merged_thresholds.append(self.thresholds[self_idx])
-        tp.append(op(self.tp[self_idx], other.tp[other_idx]))
-        tn.append(op(self.tn[self_idx], other.tn[other_idx]))
-        fp.append(op(self.fp[self_idx], other.fp[other_idx]))
-        fn.append(op(self.fn[self_idx], other.fn[other_idx]))
-        self_idx += 1
-        other_idx += 1
-      elif (self_idx < len(self.thresholds) and
-            (other_idx >= len(other.thresholds) or
-             self.thresholds[self_idx] < other.thresholds[other_idx])):
-        # threshold present in self but missing from other, use default values
-        # for other and advance self_idx
-        merged_thresholds.append(self.thresholds[self_idx])
-        tp.append(op(self.tp[self_idx], 0))
-        tn.append(op(self.tn[self_idx], 0))
-        fp.append(op(self.fp[self_idx], 0))
-        fn.append(op(self.fn[self_idx], 0))
-        self_idx += 1
-      elif (other_idx < len(other.thresholds) and
-            (self_idx >= len(self.thresholds) or
-             other.thresholds[self_idx] < self.thresholds[other_idx])):
-        # threshold present in other but missing from self, use default values
-        # for self and advance other_idx
-        merged_thresholds.append(other.thresholds[other_idx])
-        tp.append(op(0, other.tp[other_idx]))
-        tn.append(op(0, other.tn[other_idx]))
-        fp.append(op(0, other.fp[other_idx]))
-        fn.append(op(0, other.fn[other_idx]))
-        other_idx += 1
-      else:
-        assert (self_idx >= len(self.thresholds) and
-                other_idx >= len(other.thresholds))
-        break
-    return Matrices(thresholds=merged_thresholds, tp=tp, tn=tn, fp=fp, fn=fn)
-
-  def _apply_binary_op_broadcast(self, other: float,
-                                 op: Callable[[float, float], float]):
-    """Applies an operator on each element and the provided float."""
-    return Matrices(
-        thresholds=self.thresholds,
-        tp=[op(tp, other) for tp in self.tp],
-        tn=[op(tn, other) for tn in self.tn],
-        fp=[op(fp, other) for fp in self.fp],
-        fn=[op(fn, other) for fn in self.fn])
-
-  def to_proto(self) -> metrics_for_slice_pb2.MetricValue:
-    """Converts matrices into ConfusionMatrixAtThresholds proto.
-
-    If precision or recall are undefined then 1.0 and 0.0 will be used.
-
-    Returns:
-      A MetricValue proto containing a ConfusionMatrixAtThresholds proto.
+    For each threshold, in addition to the count of examples per prediction and
+    label, this class also contains a sample of raw examples. Threshold values are
+    sorted, and the entries within  tp[i], tn[i], fp[i], and fn[i] correspond to
+    thresholds[i].
     """
 
-    result = metrics_for_slice_pb2.MetricValue()
-    tp, fp = np.array(self.tp), np.array(self.fp)
-    tn, fn = np.array(self.tn), np.array(self.fn)
-    predicted_positives, labeled_positives = tp + fp, tp + fn
-    predicated_negatives, labeled_negatives = tn + fn, tn + fp
+    def _apply_binary_op_elementwise(
+        self, other: "Matrices", op: Callable[[float, float], float]
+    ):
+        """Applies an operator elementwise on self and `other` matrices."""
+        tp, tn, fp, fn = [], [], [], []
+        self_idx, other_idx = 0, 0
+        merged_thresholds = []
+        while True:
+            if (
+                self_idx < len(self.thresholds)
+                and other_idx < len(other.thresholds)
+                and self.thresholds[self_idx] == other.thresholds[other_idx]
+            ):
+                # threshold present in both, advance both indices
+                merged_thresholds.append(self.thresholds[self_idx])
+                tp.append(op(self.tp[self_idx], other.tp[other_idx]))
+                tn.append(op(self.tn[self_idx], other.tn[other_idx]))
+                fp.append(op(self.fp[self_idx], other.fp[other_idx]))
+                fn.append(op(self.fn[self_idx], other.fn[other_idx]))
+                self_idx += 1
+                other_idx += 1
+            elif self_idx < len(self.thresholds) and (
+                other_idx >= len(other.thresholds)
+                or self.thresholds[self_idx] < other.thresholds[other_idx]
+            ):
+                # threshold present in self but missing from other, use default values
+                # for other and advance self_idx
+                merged_thresholds.append(self.thresholds[self_idx])
+                tp.append(op(self.tp[self_idx], 0))
+                tn.append(op(self.tn[self_idx], 0))
+                fp.append(op(self.fp[self_idx], 0))
+                fn.append(op(self.fn[self_idx], 0))
+                self_idx += 1
+            elif other_idx < len(other.thresholds) and (
+                self_idx >= len(self.thresholds)
+                or other.thresholds[self_idx] < self.thresholds[other_idx]
+            ):
+                # threshold present in other but missing from self, use default values
+                # for self and advance other_idx
+                merged_thresholds.append(other.thresholds[other_idx])
+                tp.append(op(0, other.tp[other_idx]))
+                tn.append(op(0, other.tn[other_idx]))
+                fp.append(op(0, other.fp[other_idx]))
+                fn.append(op(0, other.fn[other_idx]))
+                other_idx += 1
+            else:
+                assert self_idx >= len(self.thresholds) and other_idx >= len(
+                    other.thresholds
+                )
+                break
+        return Matrices(thresholds=merged_thresholds, tp=tp, tn=tn, fp=fp, fn=fn)
 
-    precision = np.divide(
-        tp,
-        predicted_positives,
-        out=np.ones_like(predicted_positives),
-        where=(predicted_positives > 0),
-    )
-    recall = np.divide(
-        tp,
-        labeled_positives,
-        out=np.zeros_like(labeled_positives),
-        where=(labeled_positives > 0),
-    )
-    f1 = 2 * precision * recall / (precision + recall)
-    accuracy = (tp + tn) / (tp + tn + fp + fn)
-    false_positive_rate = fp / labeled_negatives
-    false_omission_rate = fn / predicated_negatives
-    confusion_matrix_at_thresholds_proto = result.confusion_matrix_at_thresholds
-    for i, threshold in enumerate(self.thresholds):
-      confusion_matrix_at_thresholds_proto.matrices.add(
-          threshold=round(threshold, 6),
-          true_positives=tp[i],
-          false_positives=fp[i],
-          true_negatives=tn[i],
-          false_negatives=fn[i],
-          precision=precision[i],
-          recall=recall[i],
-          false_positive_rate=false_positive_rate[i],
-          false_omission_rate=false_omission_rate[i],
-          f1=f1[i],
-          accuracy=accuracy[i],
-      )
-    return result
+    def _apply_binary_op_broadcast(
+        self, other: float, op: Callable[[float, float], float]
+    ):
+        """Applies an operator on each element and the provided float."""
+        return Matrices(
+            thresholds=self.thresholds,
+            tp=[op(tp, other) for tp in self.tp],
+            tn=[op(tn, other) for tn in self.tn],
+            fp=[op(fp, other) for fp in self.fp],
+            fn=[op(fn, other) for fn in self.fn],
+        )
+
+    def to_proto(self) -> metrics_for_slice_pb2.MetricValue:
+        """Converts matrices into ConfusionMatrixAtThresholds proto.
+
+        If precision or recall are undefined then 1.0 and 0.0 will be used.
+
+        Returns
+        -------
+          A MetricValue proto containing a ConfusionMatrixAtThresholds proto.
+        """
+        result = metrics_for_slice_pb2.MetricValue()
+        tp, fp = np.array(self.tp), np.array(self.fp)
+        tn, fn = np.array(self.tn), np.array(self.fn)
+        predicted_positives, labeled_positives = tp + fp, tp + fn
+        predicated_negatives, labeled_negatives = tn + fn, tn + fp
+
+        precision = np.divide(
+            tp,
+            predicted_positives,
+            out=np.ones_like(predicted_positives),
+            where=(predicted_positives > 0),
+        )
+        recall = np.divide(
+            tp,
+            labeled_positives,
+            out=np.zeros_like(labeled_positives),
+            where=(labeled_positives > 0),
+        )
+        f1 = 2 * precision * recall / (precision + recall)
+        accuracy = (tp + tn) / (tp + tn + fp + fn)
+        false_positive_rate = fp / labeled_negatives
+        false_omission_rate = fn / predicated_negatives
+        confusion_matrix_at_thresholds_proto = result.confusion_matrix_at_thresholds
+        for i, threshold in enumerate(self.thresholds):
+            confusion_matrix_at_thresholds_proto.matrices.add(
+                threshold=round(threshold, 6),
+                true_positives=tp[i],
+                false_positives=fp[i],
+                true_negatives=tn[i],
+                false_negatives=fn[i],
+                precision=precision[i],
+                recall=recall[i],
+                false_positive_rate=false_positive_rate[i],
+                false_omission_rate=false_omission_rate[i],
+                f1=f1[i],
+                accuracy=accuracy[i],
+            )
+        return result
 
 
 _EPSILON = 1e-7
 
 
 def _interpolated_thresholds(num_thresholds: int) -> List[float]:
-  """Returns thresholds interpolated over a range equal to num_thresholds."""
-  # The interpolation strategy used here matches that used by keras for AUC.
-  thresholds = [
-      (i + 1) * 1.0 / (num_thresholds - 1) for i in range(num_thresholds - 2)
-  ]
-  return [-_EPSILON] + thresholds + [1.0 + _EPSILON]
+    """Returns thresholds interpolated over a range equal to num_thresholds."""
+    # The interpolation strategy used here matches that used by keras for AUC.
+    thresholds = [
+        (i + 1) * 1.0 / (num_thresholds - 1) for i in range(num_thresholds - 2)
+    ]
+    return [-_EPSILON] + thresholds + [1.0 + _EPSILON]
 
 
 def binary_confusion_matrices(
@@ -188,8 +216,8 @@ def binary_confusion_matrices(
     thresholds: Optional[List[float]] = None,
     name: Optional[str] = None,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: str = '',
-    output_name: str = '',
+    model_name: str = "",
+    output_name: str = "",
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
@@ -204,295 +232,315 @@ def binary_confusion_matrices(
     example_ids_count: Optional[int] = None,
     fractional_labels: bool = True,
 ) -> metric_types.MetricComputations:
-  """Returns metric computations for computing binary confusion matrices.
+    """Returns metric computations for computing binary confusion matrices.
 
-  Args:
-    num_thresholds: Number of thresholds to use. Thresholds will be calculated
-      using linear interpolation between 0.0 and 1.0 with equidistant values and
-      bondardaries at -epsilon and 1.0+epsilon. Values must be > 0. Only one of
-      num_thresholds or thresholds should be used. If used, num_thresholds must
-      be > 1.
-    thresholds: A specific set of thresholds to use. The caller is responsible
-      for marking the boundaries with +/-epsilon if desired. Only one of
-      num_thresholds or thresholds should be used. For metrics computed at top k
-      this may be a single negative threshold value (i.e. -inf).
-    name: Metric name containing binary_confusion_matrices.Matrices.
-    eval_config: Eval config.
-    model_name: Optional model name (if multi-model evaluation).
-    output_name: Optional output name (if multi-output model type).
-    sub_key: Optional sub key.
-    aggregation_type: Optional aggregation type.
-    class_weights: Optional class weights to apply to multi-class / multi-label
-      labels and predictions prior to flattening (when micro averaging is used).
-    example_weighted: True if example weights should be applied.
-    use_histogram: If true, matrices will be derived from calibration
-      histograms.
-    extract_label_prediction_and_weight: User-provided function argument that
-      yields label, prediction, and example weights for use in calculations
-      (relevant only when use_histogram flag is not true).
-    preprocessors: User-provided preprocessor for including additional extracts
-      in StandardMetricInputs (relevant only when use_histogram flag is not
-      true).
-    examples_name: Metric name containing binary_confusion_matrices.Examples.
-      (relevant only when use_histogram flag is not true and example_id_key is
-      set).
-    example_id_key: Feature key containing example id (relevant only when
-      use_histogram flag is not true).
-    example_ids_count: Max number of example ids to be extracted for false
-      positives and false negatives (relevant only when use_histogram flag is
-      not true).
-    fractional_labels: If true, each incoming tuple of (label, prediction, and
-      example weight) will be split into two tuples as follows (where l, p, w
-      represent the resulting label, prediction, and example weight values): (1)
-      l = 0.0, p = prediction, and w = example_weight * (1.0 - label) (2) l =
-      1.0, p = prediction, and w = example_weight * label If enabled, an
-      exception will be raised if labels are not within [0, 1]. The
-      implementation is such that tuples associated with a weight of zero are
-      not yielded. This means it is safe to enable fractional_labels even when
-      the labels only take on the values of 0.0 or 1.0.
+    Args:
+    ----
+      num_thresholds: Number of thresholds to use. Thresholds will be calculated
+        using linear interpolation between 0.0 and 1.0 with equidistant values and
+        bondardaries at -epsilon and 1.0+epsilon. Values must be > 0. Only one of
+        num_thresholds or thresholds should be used. If used, num_thresholds must
+        be > 1.
+      thresholds: A specific set of thresholds to use. The caller is responsible
+        for marking the boundaries with +/-epsilon if desired. Only one of
+        num_thresholds or thresholds should be used. For metrics computed at top k
+        this may be a single negative threshold value (i.e. -inf).
+      name: Metric name containing binary_confusion_matrices.Matrices.
+      eval_config: Eval config.
+      model_name: Optional model name (if multi-model evaluation).
+      output_name: Optional output name (if multi-output model type).
+      sub_key: Optional sub key.
+      aggregation_type: Optional aggregation type.
+      class_weights: Optional class weights to apply to multi-class / multi-label
+        labels and predictions prior to flattening (when micro averaging is used).
+      example_weighted: True if example weights should be applied.
+      use_histogram: If true, matrices will be derived from calibration
+        histograms.
+      extract_label_prediction_and_weight: User-provided function argument that
+        yields label, prediction, and example weights for use in calculations
+        (relevant only when use_histogram flag is not true).
+      preprocessors: User-provided preprocessor for including additional extracts
+        in StandardMetricInputs (relevant only when use_histogram flag is not
+        true).
+      examples_name: Metric name containing binary_confusion_matrices.Examples.
+        (relevant only when use_histogram flag is not true and example_id_key is
+        set).
+      example_id_key: Feature key containing example id (relevant only when
+        use_histogram flag is not true).
+      example_ids_count: Max number of example ids to be extracted for false
+        positives and false negatives (relevant only when use_histogram flag is
+        not true).
+      fractional_labels: If true, each incoming tuple of (label, prediction, and
+        example weight) will be split into two tuples as follows (where l, p, w
+        represent the resulting label, prediction, and example weight values): (1)
+        l = 0.0, p = prediction, and w = example_weight * (1.0 - label) (2) l =
+        1.0, p = prediction, and w = example_weight * label If enabled, an
+        exception will be raised if labels are not within [0, 1]. The
+        implementation is such that tuples associated with a weight of zero are
+        not yielded. This means it is safe to enable fractional_labels even when
+        the labels only take on the values of 0.0 or 1.0.
 
-  Raises:
-    ValueError: If both num_thresholds and thresholds are set at the same time.
-  """
-  # TF v1 Keras AUC turns num_thresholds parameters into thresholds which
-  # circumvents sharing of settings. If the thresholds match the interpolated
-  # version of the thresholds then reset back to num_thresholds.
-  if thresholds:
-    if (not num_thresholds and
-        thresholds == _interpolated_thresholds(len(thresholds))):
-      num_thresholds = len(thresholds)
-      thresholds = None
-    elif (num_thresholds
-          in (DEFAULT_NUM_THRESHOLDS, _KERAS_DEFAULT_NUM_THRESHOLDS) and
-          len(thresholds) == num_thresholds - 2):
-      thresholds = None
-  if num_thresholds is not None and thresholds is not None:
-    raise ValueError(
-        'only one of thresholds or num_thresholds can be set at a time: '
-        f'num_thresholds={num_thresholds}, thresholds={thresholds}, '
-        f'len(thresholds)={len(thresholds)})')
-  if num_thresholds is None and thresholds is None:
-    num_thresholds = DEFAULT_NUM_THRESHOLDS
-  if num_thresholds is not None:
-    if num_thresholds <= 1:
-      raise ValueError('num_thresholds must be > 1')
-    # The interpolation strategy used here matches that used by keras for AUC.
-    thresholds = _interpolated_thresholds(num_thresholds)
+    Raises:
+    ------
+      ValueError: If both num_thresholds and thresholds are set at the same time.
+    """
+    # TF v1 Keras AUC turns num_thresholds parameters into thresholds which
+    # circumvents sharing of settings. If the thresholds match the interpolated
+    # version of the thresholds then reset back to num_thresholds.
+    if thresholds:
+        if not num_thresholds and thresholds == _interpolated_thresholds(
+            len(thresholds)
+        ):
+            num_thresholds = len(thresholds)
+            thresholds = None
+        elif (
+            num_thresholds in (DEFAULT_NUM_THRESHOLDS, _KERAS_DEFAULT_NUM_THRESHOLDS)
+            and len(thresholds) == num_thresholds - 2
+        ):
+            thresholds = None
+    if num_thresholds is not None and thresholds is not None:
+        raise ValueError(
+            "only one of thresholds or num_thresholds can be set at a time: "
+            f"num_thresholds={num_thresholds}, thresholds={thresholds}, "
+            f"len(thresholds)={len(thresholds)})"
+        )
+    if num_thresholds is None and thresholds is None:
+        num_thresholds = DEFAULT_NUM_THRESHOLDS
+    if num_thresholds is not None:
+        if num_thresholds <= 1:
+            raise ValueError("num_thresholds must be > 1")
+        # The interpolation strategy used here matches that used by keras for AUC.
+        thresholds = _interpolated_thresholds(num_thresholds)
 
-  if use_histogram is None:
-    use_histogram = (
-        num_thresholds is not None or
-        (len(thresholds) == 1 and thresholds[0] < 0))
+    if use_histogram is None:
+        use_histogram = num_thresholds is not None or (
+            len(thresholds) == 1 and thresholds[0] < 0
+        )
 
-  if use_histogram and (examples_name or example_id_key or example_ids_count):
-    raise ValueError('Example sampling is only performed when not using the '
-                     'histogram computation. However, use_histogram is true '
-                     f'and one of examples_name ("{examples_name}"), '
-                     f'examples_id_key ("{example_id_key}"), '
-                     f'or example_ids_count ({example_ids_count}) was '
-                     'provided, which will have no effect.')
+    if use_histogram and (examples_name or example_id_key or example_ids_count):
+        raise ValueError(
+            "Example sampling is only performed when not using the "
+            "histogram computation. However, use_histogram is true "
+            f'and one of examples_name ("{examples_name}"), '
+            f'examples_id_key ("{example_id_key}"), '
+            f"or example_ids_count ({example_ids_count}) was "
+            "provided, which will have no effect."
+        )
 
-  if examples_name and not (example_id_key and example_ids_count):
-    raise ValueError('examples_name provided but either example_id_key or '
-                     'example_ids_count was not. Examples will only be '
-                     'returned when both example_id_key and '
-                     'example_ids_count are provided, and when the '
-                     'non-histogram computation is used. '
-                     f'example_id_key: "{example_id_key}" '
-                     f'example_ids_count: {example_ids_count}')
+    if examples_name and not (example_id_key and example_ids_count):
+        raise ValueError(
+            "examples_name provided but either example_id_key or "
+            "example_ids_count was not. Examples will only be "
+            "returned when both example_id_key and "
+            "example_ids_count are provided, and when the "
+            "non-histogram computation is used. "
+            f'example_id_key: "{example_id_key}" '
+            f"example_ids_count: {example_ids_count}"
+        )
 
-  if name is None:
-    name_args = {
-        'example_id_key': example_id_key,
-        'example_ids_count': example_ids_count
-    }
-    if num_thresholds:
-      name_args['num_thresholds'] = num_thresholds
-    else:
-      name_args['thresholds'] = thresholds
-    if preprocessors:
-      name_args['preprocessors'] = tuple(p.name for p in preprocessors)
-    if class_weights:
-      name_args['class_weights'] = class_weights
+    if name is None:
+        name_args = {
+            "example_id_key": example_id_key,
+            "example_ids_count": example_ids_count,
+        }
+        if num_thresholds:
+            name_args["num_thresholds"] = num_thresholds
+        else:
+            name_args["thresholds"] = thresholds
+        if preprocessors:
+            name_args["preprocessors"] = tuple(p.name for p in preprocessors)
+        if class_weights:
+            name_args["class_weights"] = class_weights
 
-    name = metric_util.generate_private_name_from_arguments(
-        BINARY_CONFUSION_MATRICES_NAME, **name_args)
-    examples_name = metric_util.generate_private_name_from_arguments(
-        BINARY_CONFUSION_EXAMPLES_NAME, **name_args)
+        name = metric_util.generate_private_name_from_arguments(
+            BINARY_CONFUSION_MATRICES_NAME, **name_args
+        )
+        examples_name = metric_util.generate_private_name_from_arguments(
+            BINARY_CONFUSION_EXAMPLES_NAME, **name_args
+        )
 
-  matrices_key = metric_types.MetricKey(
-      name=name,
-      model_name=model_name,
-      output_name=output_name,
-      sub_key=sub_key,
-      example_weighted=example_weighted)
-  examples_key = metric_types.MetricKey(
-      name=examples_name,
-      model_name=model_name,
-      output_name=output_name,
-      sub_key=sub_key,
-      example_weighted=example_weighted)
-
-  computations = []
-  if use_histogram:
-    # Use calibration histogram to calculate matrices. For efficiency (unless
-    # all predictions are matched - i.e. thresholds <= 0) we will assume that
-    # other metrics will make use of the calibration histogram and re-use the
-    # default histogram for the given model_name/output_name/sub_key. This is
-    # also required to get accurate counts at the threshold boundaries. If this
-    # becomes an issue, then calibration histogram can be updated to support
-    # non-linear boundaries.
-    # If used for object_detection, to distinguish between histograms with
-    # different specs, we generate a unique name for it.
-
-    # For precision/recall_at_k were a single large negative threshold
-    # is used, we only need one bucket. Note that the histogram will
-    # actually have 2 buckets: one that we set (which handles
-    # predictions > -1.0) and a default catch-all bucket (i.e. bucket 0)
-    # that the histogram creates for large negative predictions (i.e.
-    # predictions <= -1.0).
-    num_buckets = 1 if len(thresholds) == 1 and thresholds[0] <= 0 else None
-
-    computations = calibration_histogram.calibration_histogram(
-        eval_config=eval_config,
-        num_buckets=num_buckets,
-        model_name=model_name,
-        output_name=output_name,
-        preprocessors=preprocessors,
-        sub_key=sub_key,
-        aggregation_type=aggregation_type,
-        class_weights=class_weights,
-        example_weighted=example_weighted)
-    input_metric_key = computations[-1].keys[-1]
-    output_metric_keys = [matrices_key]
-  else:
-    if bool(example_ids_count) != bool(example_id_key):
-      raise ValueError('Both of example_ids_count and example_id_key must be '
-                       f'set, but got example_id_key: "{example_id_key}" and '
-                       f'example_ids_count: {example_ids_count}.')
-    computations = _binary_confusion_matrix_computation(
-        eval_config=eval_config,
+    matrices_key = metric_types.MetricKey(
         name=name,
-        thresholds=thresholds,
         model_name=model_name,
         output_name=output_name,
         sub_key=sub_key,
-        extract_label_prediction_and_weight=extract_label_prediction_and_weight,
-        preprocessors=preprocessors,
-        example_id_key=example_id_key,
-        example_ids_count=example_ids_count,
-        aggregation_type=aggregation_type,
-        class_weights=class_weights,
         example_weighted=example_weighted,
-        enable_fractional_labels=fractional_labels,
     )
-    input_metric_key = computations[-1].keys[-1]
-    # matrices_key is last for backwards compatibility with code that:
-    #   1) used this computation as an input for a derived computation
-    #   2) only accessed the matrix counts
-    #   3) used computations[-1].keys[-1] to access the input key
-    output_metric_keys = ([matrices_key] if not example_id_key else
-                          [examples_key, matrices_key])
+    examples_key = metric_types.MetricKey(
+        name=examples_name,
+        model_name=model_name,
+        output_name=output_name,
+        sub_key=sub_key,
+        example_weighted=example_weighted,
+    )
 
-  def result(
-      metrics: Dict[metric_types.MetricKey, Any]
-  ) -> Dict[metric_types.MetricKey, Union[Matrices, Examples]]:
-    """Returns binary confusion matrices."""
-    matrices = None
+    computations = []
     if use_histogram:
-      if len(thresholds) == 1 and thresholds[0] < 0:
-        # This case is used when all positive prediction values are relevant
-        # matches (e.g. when calculating top_k for precision/recall where the
-        # non-top_k values are expected to have been set to float('-inf')).
-        histogram = metrics[input_metric_key]
-      else:
-        # Calibration histogram uses intervals of the form [start, end) where
-        # the prediction >= start. The confusion matrices want intervals of the
-        # form (start, end] where the prediction > start. Add a small epsilon so
-        # that >= checks don't match. This correction shouldn't be needed in
-        # practice but allows for correctness in small tests.
-        rebin_thresholds = [t + _EPSILON if t != 0 else t for t in thresholds]
-        if thresholds[0] >= 0:
-          # Add -epsilon bucket to account for differences in histogram vs
-          # confusion matrix intervals mentioned above. If the epsilon bucket is
-          # missing the false negatives and false positives will be 0 for the
-          # first threshold.
-          rebin_thresholds = [-_EPSILON] + rebin_thresholds
-        if thresholds[-1] < 1.0:
-          # If the last threshold < 1.0, then add a fence post at 1.0 + epsilon
-          # otherwise true negatives and true positives will be overcounted.
-          rebin_thresholds = rebin_thresholds + [1.0 + _EPSILON]
-        histogram = calibration_histogram.rebin(rebin_thresholds,
-                                                metrics[input_metric_key])
-      matrices = _histogram_to_binary_confusion_matrices(thresholds, histogram)
-      return {matrices_key: matrices}
-    else:
-      matrices, examples = _accumulator_to_matrices_and_examples(
-          thresholds, metrics[input_metric_key])
-      result = {matrices_key: matrices}
-      if example_id_key:
-        result[examples_key] = examples
-      return result
+        # Use calibration histogram to calculate matrices. For efficiency (unless
+        # all predictions are matched - i.e. thresholds <= 0) we will assume that
+        # other metrics will make use of the calibration histogram and re-use the
+        # default histogram for the given model_name/output_name/sub_key. This is
+        # also required to get accurate counts at the threshold boundaries. If this
+        # becomes an issue, then calibration histogram can be updated to support
+        # non-linear boundaries.
+        # If used for object_detection, to distinguish between histograms with
+        # different specs, we generate a unique name for it.
 
-  derived_computation = metric_types.DerivedMetricComputation(
-      keys=output_metric_keys, result=result)
-  computations.append(derived_computation)
-  return computations
+        # For precision/recall_at_k were a single large negative threshold
+        # is used, we only need one bucket. Note that the histogram will
+        # actually have 2 buckets: one that we set (which handles
+        # predictions > -1.0) and a default catch-all bucket (i.e. bucket 0)
+        # that the histogram creates for large negative predictions (i.e.
+        # predictions <= -1.0).
+        num_buckets = 1 if len(thresholds) == 1 and thresholds[0] <= 0 else None
+
+        computations = calibration_histogram.calibration_histogram(
+            eval_config=eval_config,
+            num_buckets=num_buckets,
+            model_name=model_name,
+            output_name=output_name,
+            preprocessors=preprocessors,
+            sub_key=sub_key,
+            aggregation_type=aggregation_type,
+            class_weights=class_weights,
+            example_weighted=example_weighted,
+        )
+        input_metric_key = computations[-1].keys[-1]
+        output_metric_keys = [matrices_key]
+    else:
+        if bool(example_ids_count) != bool(example_id_key):
+            raise ValueError(
+                "Both of example_ids_count and example_id_key must be "
+                f'set, but got example_id_key: "{example_id_key}" and '
+                f"example_ids_count: {example_ids_count}."
+            )
+        computations = _binary_confusion_matrix_computation(
+            eval_config=eval_config,
+            name=name,
+            thresholds=thresholds,
+            model_name=model_name,
+            output_name=output_name,
+            sub_key=sub_key,
+            extract_label_prediction_and_weight=extract_label_prediction_and_weight,
+            preprocessors=preprocessors,
+            example_id_key=example_id_key,
+            example_ids_count=example_ids_count,
+            aggregation_type=aggregation_type,
+            class_weights=class_weights,
+            example_weighted=example_weighted,
+            enable_fractional_labels=fractional_labels,
+        )
+        input_metric_key = computations[-1].keys[-1]
+        # matrices_key is last for backwards compatibility with code that:
+        #   1) used this computation as an input for a derived computation
+        #   2) only accessed the matrix counts
+        #   3) used computations[-1].keys[-1] to access the input key
+        output_metric_keys = (
+            [matrices_key] if not example_id_key else [examples_key, matrices_key]
+        )
+
+    def result(
+        metrics: Dict[metric_types.MetricKey, Any],
+    ) -> Dict[metric_types.MetricKey, Union[Matrices, Examples]]:
+        """Returns binary confusion matrices."""
+        matrices = None
+        if use_histogram:
+            if len(thresholds) == 1 and thresholds[0] < 0:
+                # This case is used when all positive prediction values are relevant
+                # matches (e.g. when calculating top_k for precision/recall where the
+                # non-top_k values are expected to have been set to float('-inf')).
+                histogram = metrics[input_metric_key]
+            else:
+                # Calibration histogram uses intervals of the form [start, end) where
+                # the prediction >= start. The confusion matrices want intervals of the
+                # form (start, end] where the prediction > start. Add a small epsilon so
+                # that >= checks don't match. This correction shouldn't be needed in
+                # practice but allows for correctness in small tests.
+                rebin_thresholds = [t + _EPSILON if t != 0 else t for t in thresholds]
+                if thresholds[0] >= 0:
+                    # Add -epsilon bucket to account for differences in histogram vs
+                    # confusion matrix intervals mentioned above. If the epsilon bucket is
+                    # missing the false negatives and false positives will be 0 for the
+                    # first threshold.
+                    rebin_thresholds = [-_EPSILON] + rebin_thresholds
+                if thresholds[-1] < 1.0:
+                    # If the last threshold < 1.0, then add a fence post at 1.0 + epsilon
+                    # otherwise true negatives and true positives will be overcounted.
+                    rebin_thresholds = rebin_thresholds + [1.0 + _EPSILON]
+                histogram = calibration_histogram.rebin(
+                    rebin_thresholds, metrics[input_metric_key]
+                )
+            matrices = _histogram_to_binary_confusion_matrices(thresholds, histogram)
+            return {matrices_key: matrices}
+        else:
+            matrices, examples = _accumulator_to_matrices_and_examples(
+                thresholds, metrics[input_metric_key]
+            )
+            result = {matrices_key: matrices}
+            if example_id_key:
+                result[examples_key] = examples
+            return result
+
+    derived_computation = metric_types.DerivedMetricComputation(
+        keys=output_metric_keys, result=result
+    )
+    computations.append(derived_computation)
+    return computations
 
 
 def _histogram_to_binary_confusion_matrices(
-    thresholds: List[float],
-    histogram: calibration_histogram.Histogram) -> Matrices:
-  """Converts histogram to binary confusion matrices."""
-  # tp(i) - sum of positive labels >= bucket i
-  # fp(i) - sum of negative labels >= bucket i
-  # fn(i) - sum of positive labels < bucket i
-  # tn(i) - sum of negative labels < bucket i
-  n = len(histogram)
-  tp = [0.0] * n
-  fp = [0.0] * n
-  tn = [0.0] * n
-  fn = [0.0] * n
-  for i in range(n):
-    start = i
-    end = n - i - 1
-    start_pos = histogram[start].weighted_labels
-    start_neg = (
-        histogram[start].weighted_examples - histogram[start].weighted_labels)
-    end_pos = histogram[end].weighted_labels
-    end_neg = (
-        histogram[end].weighted_examples - histogram[end].weighted_labels)
-    tp[end] = tp[end + 1] + end_pos if end < n - 1 else end_pos
-    fp[end] = fp[end + 1] + end_neg if end < n - 1 else end_neg
-    if start + 1 < n:
-      tn[start + 1] = tn[start] + start_neg
-      fn[start + 1] = fn[start] + start_pos
-  # Check if need to remove -epsilon bucket (or reset back to 1 bucket).
-  threshold_offset = 0
-  if (thresholds[0] >= 0 or len(thresholds) == 1) and len(histogram) > 1:
-    threshold_offset = 1
-  tp = tp[threshold_offset:threshold_offset + len(thresholds)]
-  fp = fp[threshold_offset:threshold_offset + len(thresholds)]
-  tn = tn[threshold_offset:threshold_offset + len(thresholds)]
-  fn = fn[threshold_offset:threshold_offset + len(thresholds)]
-  # We sum all values >= bucket i, but TP/FP values greater that 1.0 + EPSILON
-  # should be 0.0. The FN/TN above 1.0 + _EPSILON should also be adjusted to
-  # match the TP/FP values at the start.
-  for i, t in enumerate(thresholds):
-    if t >= 1.0 + _EPSILON:
-      tp[i] = 0.0
-      fp[i] = 0.0
-      fn[i] = tp[0]
-      tn[i] = fp[0]
-  return Matrices(thresholds, tp, tn, fp, fn)
+    thresholds: List[float], histogram: calibration_histogram.Histogram
+) -> Matrices:
+    """Converts histogram to binary confusion matrices."""
+    # tp(i) - sum of positive labels >= bucket i
+    # fp(i) - sum of negative labels >= bucket i
+    # fn(i) - sum of positive labels < bucket i
+    # tn(i) - sum of negative labels < bucket i
+    n = len(histogram)
+    tp = [0.0] * n
+    fp = [0.0] * n
+    tn = [0.0] * n
+    fn = [0.0] * n
+    for i in range(n):
+        start = i
+        end = n - i - 1
+        start_pos = histogram[start].weighted_labels
+        start_neg = (
+            histogram[start].weighted_examples - histogram[start].weighted_labels
+        )
+        end_pos = histogram[end].weighted_labels
+        end_neg = histogram[end].weighted_examples - histogram[end].weighted_labels
+        tp[end] = tp[end + 1] + end_pos if end < n - 1 else end_pos
+        fp[end] = fp[end + 1] + end_neg if end < n - 1 else end_neg
+        if start + 1 < n:
+            tn[start + 1] = tn[start] + start_neg
+            fn[start + 1] = fn[start] + start_pos
+    # Check if need to remove -epsilon bucket (or reset back to 1 bucket).
+    threshold_offset = 0
+    if (thresholds[0] >= 0 or len(thresholds) == 1) and len(histogram) > 1:
+        threshold_offset = 1
+    tp = tp[threshold_offset : threshold_offset + len(thresholds)]
+    fp = fp[threshold_offset : threshold_offset + len(thresholds)]
+    tn = tn[threshold_offset : threshold_offset + len(thresholds)]
+    fn = fn[threshold_offset : threshold_offset + len(thresholds)]
+    # We sum all values >= bucket i, but TP/FP values greater that 1.0 + EPSILON
+    # should be 0.0. The FN/TN above 1.0 + _EPSILON should also be adjusted to
+    # match the TP/FP values at the start.
+    for i, t in enumerate(thresholds):
+        if t >= 1.0 + _EPSILON:
+            tp[i] = 0.0
+            fp[i] = 0.0
+            fn[i] = tp[0]
+            tn[i] = fp[0]
+    return Matrices(thresholds, tp, tn, fp, fn)
 
 
 def _binary_confusion_matrix_computation(
     thresholds: List[float],
     name: Optional[str] = None,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: str = '',
-    output_name: str = '',
+    model_name: str = "",
+    output_name: str = "",
     sub_key: Optional[metric_types.SubKey] = None,
     extract_label_prediction_and_weight: Optional[
         Callable[..., Any]
@@ -505,150 +553,143 @@ def _binary_confusion_matrix_computation(
     example_weighted: bool = False,
     enable_fractional_labels: bool = True,
 ) -> metric_types.MetricComputations:
-  """Returns metric computations for computing binary confusion matrix."""
-  if example_ids_count is None:
-    example_ids_count = bcm_computations.DEFAULT_NUM_EXAMPLE_IDS
+    """Returns metric computations for computing binary confusion matrix."""
+    if example_ids_count is None:
+        example_ids_count = bcm_computations.DEFAULT_NUM_EXAMPLE_IDS
 
-  key = metric_types.MetricKey(
-      name=name,
-      model_name=model_name,
-      output_name=output_name,
-      sub_key=sub_key,
-      aggregation_type=aggregation_type,
-      example_weighted=example_weighted,
-  )
+    key = metric_types.MetricKey(
+        name=name,
+        model_name=model_name,
+        output_name=output_name,
+        sub_key=sub_key,
+        aggregation_type=aggregation_type,
+        example_weighted=example_weighted,
+    )
 
-  return [
-      metric_types.MetricComputation(
-          keys=[key],
-          preprocessors=preprocessors,
-          combiner=_BinaryConfusionMatrixCombiner(
-              key=key,
-              eval_config=eval_config,
-              thresholds=thresholds,
-              extract_label_prediction_and_weight=extract_label_prediction_and_weight,
-              example_id_key=example_id_key,
-              example_ids_count=example_ids_count,
-              aggregation_type=aggregation_type,
-              class_weights=class_weights,
-              example_weighted=example_weighted,
-              enable_fractional_labels=enable_fractional_labels,
-          ),
-      )
-  ]
+    return [
+        metric_types.MetricComputation(
+            keys=[key],
+            preprocessors=preprocessors,
+            combiner=_BinaryConfusionMatrixCombiner(
+                key=key,
+                eval_config=eval_config,
+                thresholds=thresholds,
+                extract_label_prediction_and_weight=extract_label_prediction_and_weight,
+                example_id_key=example_id_key,
+                example_ids_count=example_ids_count,
+                aggregation_type=aggregation_type,
+                class_weights=class_weights,
+                example_weighted=example_weighted,
+                enable_fractional_labels=enable_fractional_labels,
+            ),
+        )
+    ]
 
 
 class _BinaryConfusionMatrixCombiner(beam.CombineFn):
-  """Computes binary confusion matrix in TFMA."""
+    """Computes binary confusion matrix in TFMA."""
 
-  def __init__(
-      self,
-      key: metric_types.MetricKey,
-      eval_config: Optional[config_pb2.EvalConfig],
-      thresholds: List[float],
-      extract_label_prediction_and_weight: Callable[..., Any],
-      example_id_key: Optional[str],
-      example_ids_count: int,
-      aggregation_type: Optional[metric_types.AggregationType],
-      class_weights: Optional[Dict[int, float]],
-      example_weighted: bool,
-      enable_fractional_labels: bool,
-  ):
-    self._key = key
-    self._eval_config = eval_config
-    self._extract_label_prediction_and_weight = (
-        extract_label_prediction_and_weight
-    )
-    self._example_id_key = example_id_key
-    self._aggregation_type = aggregation_type
-    self._class_weights = class_weights
-    self._example_weighted = example_weighted
-    self._enable_fractional_labels = enable_fractional_labels
-
-    self._binary_confusion_matrices = bcm_computations.BinaryConfusionMatrices(
-        thresholds=thresholds,
-        example_ids_count=example_ids_count,
-        enable_fractional_labels=enable_fractional_labels,
-    )
-
-  def create_accumulator(self) -> MatrixAccumulator:
-    return self._binary_confusion_matrices.create_accumulator()
-
-  def add_input(
-      self,
-      accumulator: MatrixAccumulator,
-      element: metric_types.StandardMetricInputs,
-  ) -> MatrixAccumulator:
-    example_id = None
-    if self._example_id_key and self._example_id_key in element.features:
-      example_id = element.features[self._example_id_key]
-
-    labels = []
-    predictions = []
-    example_weights = []
-
-    for (
-        label,
-        prediction,
-        example_weight,
-    ) in self._extract_label_prediction_and_weight(
-        element,
-        eval_config=self._eval_config,
-        model_name=self._key.model_name,
-        output_name=self._key.output_name,
-        sub_key=self._key.sub_key,
-        fractional_labels=self._enable_fractional_labels,
-        flatten=True,
-        aggregation_type=self._aggregation_type,
-        class_weights=self._class_weights,
-        example_weighted=self._example_weighted,
+    def __init__(
+        self,
+        key: metric_types.MetricKey,
+        eval_config: Optional[config_pb2.EvalConfig],
+        thresholds: List[float],
+        extract_label_prediction_and_weight: Callable[..., Any],
+        example_id_key: Optional[str],
+        example_ids_count: int,
+        aggregation_type: Optional[metric_types.AggregationType],
+        class_weights: Optional[Dict[int, float]],
+        example_weighted: bool,
+        enable_fractional_labels: bool,
     ):
-      example_weights.append(metric_util.safe_to_scalar(example_weight))
-      labels.append(metric_util.safe_to_scalar(label))
-      predictions.append(metric_util.safe_to_scalar(prediction))
+        self._key = key
+        self._eval_config = eval_config
+        self._extract_label_prediction_and_weight = extract_label_prediction_and_weight
+        self._example_id_key = example_id_key
+        self._aggregation_type = aggregation_type
+        self._class_weights = class_weights
+        self._example_weighted = example_weighted
+        self._enable_fractional_labels = enable_fractional_labels
 
-    return self._binary_confusion_matrices.add_input(
-        accumulator=accumulator,
-        labels=labels,
-        predictions=predictions,
-        example_weights=example_weights,
-        example_id=example_id,
-    )
+        self._binary_confusion_matrices = bcm_computations.BinaryConfusionMatrices(
+            thresholds=thresholds,
+            example_ids_count=example_ids_count,
+            enable_fractional_labels=enable_fractional_labels,
+        )
 
-  def merge_accumulators(
-      self, accumulators: Iterable[MatrixAccumulator]
-  ) -> MatrixAccumulator:
-    return self._binary_confusion_matrices.merge_accumulators(accumulators)
+    def create_accumulator(self) -> MatrixAccumulator:
+        return self._binary_confusion_matrices.create_accumulator()
 
-  def extract_output(
-      self, accumulator: MatrixAccumulator
-  ) -> Dict[metric_types.MetricKey, MatrixAccumulator]:
-    return {
-        self._key: self._binary_confusion_matrices.extract_output(accumulator)
-    }
+    def add_input(
+        self,
+        accumulator: MatrixAccumulator,
+        element: metric_types.StandardMetricInputs,
+    ) -> MatrixAccumulator:
+        example_id = None
+        if self._example_id_key and self._example_id_key in element.features:
+            example_id = element.features[self._example_id_key]
+
+        labels = []
+        predictions = []
+        example_weights = []
+
+        for (
+            label,
+            prediction,
+            example_weight,
+        ) in self._extract_label_prediction_and_weight(
+            element,
+            eval_config=self._eval_config,
+            model_name=self._key.model_name,
+            output_name=self._key.output_name,
+            sub_key=self._key.sub_key,
+            fractional_labels=self._enable_fractional_labels,
+            flatten=True,
+            aggregation_type=self._aggregation_type,
+            class_weights=self._class_weights,
+            example_weighted=self._example_weighted,
+        ):
+            example_weights.append(metric_util.safe_to_scalar(example_weight))
+            labels.append(metric_util.safe_to_scalar(label))
+            predictions.append(metric_util.safe_to_scalar(prediction))
+
+        return self._binary_confusion_matrices.add_input(
+            accumulator=accumulator,
+            labels=labels,
+            predictions=predictions,
+            example_weights=example_weights,
+            example_id=example_id,
+        )
+
+    def merge_accumulators(
+        self, accumulators: Iterable[MatrixAccumulator]
+    ) -> MatrixAccumulator:
+        return self._binary_confusion_matrices.merge_accumulators(accumulators)
+
+    def extract_output(
+        self, accumulator: MatrixAccumulator
+    ) -> Dict[metric_types.MetricKey, MatrixAccumulator]:
+        return {self._key: self._binary_confusion_matrices.extract_output(accumulator)}
 
 
 def _accumulator_to_matrices_and_examples(
     thresholds: List[float], acc: MatrixAccumulator
 ) -> Tuple[Matrices, Examples]:
-  """Converts MatrixAccumulator to binary confusion matrices."""
-  matrices = Matrices(thresholds=[], tp=[], tn=[], fp=[], fn=[])
-  examples = Examples(
-      thresholds=[],
-      tp_examples=[],
-      tn_examples=[],
-      fp_examples=[],
-      fn_examples=[])
-  for threshold in thresholds:
-    matrices.thresholds.append(threshold)
-    matrices.tp.append(acc[threshold].matrix.tp)
-    matrices.tn.append(acc[threshold].matrix.tn)
-    matrices.fp.append(acc[threshold].matrix.fp)
-    matrices.fn.append(acc[threshold].matrix.fn)
+    """Converts MatrixAccumulator to binary confusion matrices."""
+    matrices = Matrices(thresholds=[], tp=[], tn=[], fp=[], fn=[])
+    examples = Examples(
+        thresholds=[], tp_examples=[], tn_examples=[], fp_examples=[], fn_examples=[]
+    )
+    for threshold in thresholds:
+        matrices.thresholds.append(threshold)
+        matrices.tp.append(acc[threshold].matrix.tp)
+        matrices.tn.append(acc[threshold].matrix.tn)
+        matrices.fp.append(acc[threshold].matrix.fp)
+        matrices.fn.append(acc[threshold].matrix.fn)
 
-    examples.thresholds.append(threshold)
-    examples.tp_examples.append(acc[threshold].tp_examples)
-    examples.tn_examples.append(acc[threshold].tn_examples)
-    examples.fp_examples.append(acc[threshold].fp_examples)
-    examples.fn_examples.append(acc[threshold].fn_examples)
-  return matrices, examples
+        examples.thresholds.append(threshold)
+        examples.tp_examples.append(acc[threshold].tp_examples)
+        examples.tn_examples.append(acc[threshold].tn_examples)
+        examples.fp_examples.append(acc[threshold].fp_examples)
+        examples.fn_examples.append(acc[threshold].fn_examples)
+    return matrices, examples
