@@ -2,18 +2,19 @@ workspace(name = "org_tensorflow_model_analysis")
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
-# TF 1.15.2
+# TF 2.17.1
 # LINT.IfChange(tf_commit)
-_TENSORFLOW_GIT_COMMIT = "6887368d6d46223f460358323c4b76d61d1558a8"
+_TENSORFLOW_GIT_COMMIT = "3c92ac03cab816044f7b18a86eb86aa01a294d95"
+
 # LINT.ThenChange(:io_bazel_rules_closure)
 http_archive(
     name = "org_tensorflow",
-    sha256 = "bb25fa4574e42ea4d452979e1d2ba3b86b39569d6b8106a846a238b880d73652",
-    urls = [
-      "https://mirror.bazel.build/github.com/tensorflow/tensorflow/archive/%s.tar.gz" % _TENSORFLOW_GIT_COMMIT,
-      "https://github.com/tensorflow/tensorflow/archive/%s.tar.gz" % _TENSORFLOW_GIT_COMMIT,
-    ],
+    sha256 = "317dd95c4830a408b14f3e802698eb68d70d81c7c7cfcd3d28b0ba023fe84a68",
     strip_prefix = "tensorflow-%s" % _TENSORFLOW_GIT_COMMIT,
+    urls = [
+        "https://mirror.bazel.build/github.com/tensorflow/tensorflow/archive/%s.tar.gz" % _TENSORFLOW_GIT_COMMIT,
+        "https://github.com/tensorflow/tensorflow/archive/%s.tar.gz" % _TENSORFLOW_GIT_COMMIT,
+    ],
 )
 
 # Needed by tensorboard. Because these http_archives do not handle transitive
@@ -48,6 +49,7 @@ web_test_repositories()
 
 # LINT.IfChange(io_bazel_rules_closure)
 _RULES_CLOSURE_GIT_COMMIT = "db4683a2a1836ac8e265804ca5fa31852395185b"
+
 # LINT.ThenChange(:tf_commit)
 http_archive(
     name = "io_bazel_rules_closure",
@@ -60,7 +62,9 @@ http_archive(
 )
 
 load("@io_bazel_rules_closure//closure:repositories.bzl", "rules_closure_dependencies", "rules_closure_toolchains")
+
 rules_closure_dependencies()
+
 rules_closure_toolchains()
 
 http_archive(
@@ -87,7 +91,6 @@ load("@com_google_protobuf//:protobuf_deps.bzl", "protobuf_deps")
 
 protobuf_deps()
 
-
 tensorboard_workspace()
 
 load("//third_party:workspace.bzl", "tensorflow_model_analysis_workspace")
@@ -96,4 +99,5 @@ load("//third_party:workspace.bzl", "tensorflow_model_analysis_workspace")
 tensorflow_model_analysis_workspace()
 
 load("@bazel_skylib//lib:versions.bzl", "versions")
+
 versions.check("6.5.0")
