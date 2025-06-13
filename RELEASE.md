@@ -8,11 +8,30 @@
 
 ## Breaking Changes
 
+## Deprecations
+
+# Version 0.48.0
+
+## Major Features and Improvements
+
+*   N/A
+
+## Bug fixes and other Changes
+
 *   Depends on `tensorflow>=2.17,<2.18`.
 *   Depends on `protobuf>=4.25.2,<5` for Python 3.11 and on
     `protobuf>=4.21.6,<6.0.0` for 3.9 and 3.10.
+*   Depends on `apache-beam[gcp]>=2.53.0,<3` for Python 3.11 and on
+    `apache-beam[gcp]>=2.50.0,<2.51` for 3.9 and 3.10.
+*   macOS wheel publishing is temporarily paused due to missing ARM64 support.
+
+## Breaking Changes
+
+*   N/A
 
 ## Deprecations
+
+*   N/A
 
 # Version 0.47.1
 
@@ -75,6 +94,7 @@
 *   Remove all eval_saved_model files.
 
 ## Deprecations
+
 *   Migrate common utils in eval_saved_model testutils to utils/test_util.py.
     This enables further deprecation of eval saved model.
 *   Deprecate legacy estimator related tests in predictions_extractor_test.py
@@ -1504,7 +1524,7 @@ Deprecated python3.7 support.
 *   For multi-output and / or multi-class models, please provide output_name and
     / or class_id to tfma.view.render_plot.
 *   Replaced dependency on `tensorflow-transform` with `tfx-bsl`. If running
-    with latest master, `tfx-bsl` must also be latest master.
+    with latest main, `tfx-bsl` must also be latest main.
 *   Depends on `tfx-bsl>=0.15,<0.16`.
 *   Slicing now supports conversion between int/floats and strings.
 *   Depends on `apache-beam[gcp]>=2.16,<3`.
@@ -1538,7 +1558,7 @@ Deprecated python3.7 support.
 *   Added QueryBasedMetricsEvaluator which supports computing query-based
     metrics (e.g. normalized discounted cumulative gain).
 *   Added support for merging metrics produced by different evaluators.
-*   Added support for blacklisting specified features from fetches.
+*   Added support for blocklisting specified features from fetches.
 *   Added functionality to the FeatureExtractor to specify the features dict as
     a possible destination.
 *   Added support for label vocabularies for binary and multi-class estimators

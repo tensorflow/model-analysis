@@ -72,13 +72,14 @@ http_archive(
 
 load("@org_tensorflow_tensorboard//third_party:workspace.bzl", "tensorboard_workspace")
 
-_PROTOBUF_COMMIT = "3.21.9"
+_PROTOBUF_COMMIT = "4.25.6"  # 4.25.6
+
 http_archive(
     name = "com_google_protobuf",
-    sha256 = "f66073dee0bc159157b0bd7f502d7d1ee0bc76b3c1eac9836927511bdc4b3fc1",
+    sha256 = "ff6e9c3db65f985461d200c96c771328b6186ee0b10bc7cb2bbc87cf02ebd864",
     strip_prefix = "protobuf-%s" % _PROTOBUF_COMMIT,
     urls = [
-        "https://github.com/protocolbuffers/protobuf/archive/v3.21.9.zip",
+        "https://github.com/protocolbuffers/protobuf/archive/v4.25.6.zip",
     ],
 )
 
@@ -95,4 +96,4 @@ load("//third_party:workspace.bzl", "tensorflow_model_analysis_workspace")
 tensorflow_model_analysis_workspace()
 
 load("@bazel_skylib//lib:versions.bzl", "versions")
-versions.check("6.1.0")
+versions.check("6.5.0")
