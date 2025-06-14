@@ -38,5 +38,3 @@ class TextTest(tf.test.TestCase, parameterized.TestCase):
     self.assertAllEqual(actual, expected)
 
 
-if __name__ == '__main__':
-  tf.test.main()

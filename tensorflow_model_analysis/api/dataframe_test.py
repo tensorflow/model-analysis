@@ -516,5 +516,3 @@ class PlotsAsDataFrameTest(tf.test.TestCase):
     )
     pd.testing.assert_frame_equal(expected, df, check_column_type=False)
 
-if __name__ == '__main__':
-  tf.test.main()
