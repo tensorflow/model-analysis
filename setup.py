@@ -102,7 +102,14 @@ def generate_proto(source, require=True):
           'or install the binary package.\n')
       sys.exit(-1)
 
-    protoc_command = [protoc, '-I../src', '-I.', '--python_out=.', source]
+    protoc_command = [
+        protoc,
+        '-I/usr/include',
+        '-I.',
+        '-I./tensorflow_model_analysis/proto',
+        '--python_out=.',
+        source,
+    ]
     if subprocess.call(protoc_command) != 0:
       sys.exit(-1)
 
