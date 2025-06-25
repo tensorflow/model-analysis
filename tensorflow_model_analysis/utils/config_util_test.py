@@ -511,5 +511,3 @@ class ConfigTest(tf.test.TestCase):
     self.assertFalse(config_util.has_change_threshold(eval_config))
 
 
-if __name__ == '__main__':
-  tf.test.main()
