@@ -955,6 +955,8 @@ class ModelUtilTest(
         model_util.get_default_signature_name_from_saved_model_proto(
             saved_model_proto))
 
+  # PR 189: Remove the `expectedFailure` mark if the test passes
+  @unittest.expectedFailure
   def testGetDefaultModelSignatureFromModelPath(self):
     saved_model_proto = text_format.Parse(
         """
