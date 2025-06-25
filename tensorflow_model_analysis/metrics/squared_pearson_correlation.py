@@ -16,25 +16,27 @@
 from typing import Dict, Iterable, Optional
 
 import apache_beam as beam
-from tensorflow_model_analysis.metrics import metric_types
-from tensorflow_model_analysis.metrics import metric_util
+
+from tensorflow_model_analysis.metrics import metric_types, metric_util
 from tensorflow_model_analysis.proto import config_pb2
 
-SQUARED_PEARSON_CORRELATION_NAME = 'squared_pearson_correlation'
+SQUARED_PEARSON_CORRELATION_NAME = "squared_pearson_correlation"
 
 
 class SquaredPearsonCorrelation(metric_types.Metric):
-  """Squared pearson correlation (r^2) metric."""
+    """Squared pearson correlation (r^2) metric."""
 
-  def __init__(self, name: str = SQUARED_PEARSON_CORRELATION_NAME):
-    """Initializes squared pearson correlation (r^2) metric.
+    def __init__(self, name: str = SQUARED_PEARSON_CORRELATION_NAME):
+        """Initializes squared pearson correlation (r^2) metric.
 
-    Args:
-      name: Metric name.
-    """
-    super().__init__(
-        metric_util.merge_per_key_computations(_squared_pearson_correlation),
-        name=name)
+        Args:
+        ----
+          name: Metric name.
+        """
+        super().__init__(
+            metric_util.merge_per_key_computations(_squared_pearson_correlation),
+            name=name,
+        )
 
 
 metric_types.register_metric(SquaredPearsonCorrelation)
@@ -43,150 +45,172 @@ metric_types.register_metric(SquaredPearsonCorrelation)
 def _squared_pearson_correlation(
     name: str = SQUARED_PEARSON_CORRELATION_NAME,
     eval_config: Optional[config_pb2.EvalConfig] = None,
-    model_name: str = '',
-    output_name: str = '',
+    model_name: str = "",
+    output_name: str = "",
     sub_key: Optional[metric_types.SubKey] = None,
     aggregation_type: Optional[metric_types.AggregationType] = None,
     class_weights: Optional[Dict[int, float]] = None,
-    example_weighted: bool = False) -> metric_types.MetricComputations:
-  """Returns metric computations for squared pearson correlation (r^2)."""
-  key = metric_types.MetricKey(
-      name=name,
-      model_name=model_name,
-      output_name=output_name,
-      sub_key=sub_key,
-      example_weighted=example_weighted)
-  return [
-      metric_types.MetricComputation(
-          keys=[key],
-          preprocessors=None,
-          combiner=_SquaredPearsonCorrelationCombiner(key, eval_config,
-                                                      aggregation_type,
-                                                      class_weights,
-                                                      example_weighted))
-  ]
+    example_weighted: bool = False,
+) -> metric_types.MetricComputations:
+    """Returns metric computations for squared pearson correlation (r^2)."""
+    key = metric_types.MetricKey(
+        name=name,
+        model_name=model_name,
+        output_name=output_name,
+        sub_key=sub_key,
+        example_weighted=example_weighted,
+    )
+    return [
+        metric_types.MetricComputation(
+            keys=[key],
+            preprocessors=None,
+            combiner=_SquaredPearsonCorrelationCombiner(
+                key, eval_config, aggregation_type, class_weights, example_weighted
+            ),
+        )
+    ]
 
 
 class _SquaredPearsonCorrelationAccumulator:
-  """Squared pearson correlation (r^2) accumulator."""
-  __slots__ = [
-      'total_weighted_labels', 'total_weighted_predictions',
-      'total_weighted_squared_labels', 'total_weighted_squared_predictions',
-      'total_weighted_labels_times_predictions', 'total_weighted_examples'
-  ]
+    """Squared pearson correlation (r^2) accumulator."""
 
-  def __init__(self):
-    self.total_weighted_labels = 0.0
-    self.total_weighted_predictions = 0.0
-    self.total_weighted_squared_labels = 0.0
-    self.total_weighted_squared_predictions = 0.0
-    self.total_weighted_labels_times_predictions = 0.0
-    self.total_weighted_examples = 0.0
+    __slots__ = [
+        "total_weighted_labels",
+        "total_weighted_predictions",
+        "total_weighted_squared_labels",
+        "total_weighted_squared_predictions",
+        "total_weighted_labels_times_predictions",
+        "total_weighted_examples",
+    ]
+
+    def __init__(self):
+        self.total_weighted_labels = 0.0
+        self.total_weighted_predictions = 0.0
+        self.total_weighted_squared_labels = 0.0
+        self.total_weighted_squared_predictions = 0.0
+        self.total_weighted_labels_times_predictions = 0.0
+        self.total_weighted_examples = 0.0
 
 
 class _SquaredPearsonCorrelationCombiner(beam.CombineFn):
-  """Computes squared pearson correlation (r^2) metric."""
+    """Computes squared pearson correlation (r^2) metric."""
 
-  def __init__(self, key: metric_types.MetricKey,
-               eval_config: Optional[config_pb2.EvalConfig],
-               aggregation_type: Optional[metric_types.AggregationType],
-               class_weights: Optional[Dict[int,
-                                            float]], example_weighted: bool):
-    self._key = key
-    self._eval_config = eval_config
-    self._aggregation_type = aggregation_type
-    self._class_weights = class_weights
-    self._example_weighted = example_weighted
+    def __init__(
+        self,
+        key: metric_types.MetricKey,
+        eval_config: Optional[config_pb2.EvalConfig],
+        aggregation_type: Optional[metric_types.AggregationType],
+        class_weights: Optional[Dict[int, float]],
+        example_weighted: bool,
+    ):
+        self._key = key
+        self._eval_config = eval_config
+        self._aggregation_type = aggregation_type
+        self._class_weights = class_weights
+        self._example_weighted = example_weighted
 
-  def create_accumulator(self) -> _SquaredPearsonCorrelationAccumulator:
-    return _SquaredPearsonCorrelationAccumulator()
+    def create_accumulator(self) -> _SquaredPearsonCorrelationAccumulator:
+        return _SquaredPearsonCorrelationAccumulator()
 
-  def add_input(
-      self, accumulator: _SquaredPearsonCorrelationAccumulator,
-      element: metric_types.StandardMetricInputs
-  ) -> _SquaredPearsonCorrelationAccumulator:
-    for label, prediction, example_weight in (
-        metric_util.to_label_prediction_example_weight(
+    def add_input(
+        self,
+        accumulator: _SquaredPearsonCorrelationAccumulator,
+        element: metric_types.StandardMetricInputs,
+    ) -> _SquaredPearsonCorrelationAccumulator:
+        for (
+            label,
+            prediction,
+            example_weight,
+        ) in metric_util.to_label_prediction_example_weight(
             element,
             eval_config=self._eval_config,
             model_name=self._key.model_name,
             output_name=self._key.output_name,
             aggregation_type=self._aggregation_type,
             class_weights=self._class_weights,
-            example_weighted=self._example_weighted)):
-      example_weight = float(example_weight)
-      label = float(label)
-      prediction = float(prediction)
-      accumulator.total_weighted_labels += example_weight * label
-      accumulator.total_weighted_predictions += example_weight * prediction
-      accumulator.total_weighted_squared_labels += example_weight * label**2
-      accumulator.total_weighted_squared_predictions += (
-          example_weight * prediction**2)
-      accumulator.total_weighted_labels_times_predictions += (
-          example_weight * label * prediction)
-      accumulator.total_weighted_examples += example_weight
-    return accumulator
+            example_weighted=self._example_weighted,
+        ):
+            example_weight = float(example_weight)
+            label = float(label)
+            prediction = float(prediction)
+            accumulator.total_weighted_labels += example_weight * label
+            accumulator.total_weighted_predictions += example_weight * prediction
+            accumulator.total_weighted_squared_labels += example_weight * label**2
+            accumulator.total_weighted_squared_predictions += (
+                example_weight * prediction**2
+            )
+            accumulator.total_weighted_labels_times_predictions += (
+                example_weight * label * prediction
+            )
+            accumulator.total_weighted_examples += example_weight
+        return accumulator
 
-  def merge_accumulators(
-      self, accumulators: Iterable[_SquaredPearsonCorrelationAccumulator]
-  ) -> _SquaredPearsonCorrelationAccumulator:
-    accumulators = iter(accumulators)
-    result = next(accumulators)
-    for accumulator in accumulators:
-      result.total_weighted_labels += accumulator.total_weighted_labels
-      result.total_weighted_predictions += (
-          accumulator.total_weighted_predictions)
-      result.total_weighted_squared_labels += (
-          accumulator.total_weighted_squared_labels)
-      result.total_weighted_squared_predictions += (
-          accumulator.total_weighted_squared_predictions)
-      result.total_weighted_labels_times_predictions += (
-          accumulator.total_weighted_labels_times_predictions)
-      result.total_weighted_examples += accumulator.total_weighted_examples
-    return result
+    def merge_accumulators(
+        self, accumulators: Iterable[_SquaredPearsonCorrelationAccumulator]
+    ) -> _SquaredPearsonCorrelationAccumulator:
+        accumulators = iter(accumulators)
+        result = next(accumulators)
+        for accumulator in accumulators:
+            result.total_weighted_labels += accumulator.total_weighted_labels
+            result.total_weighted_predictions += accumulator.total_weighted_predictions
+            result.total_weighted_squared_labels += (
+                accumulator.total_weighted_squared_labels
+            )
+            result.total_weighted_squared_predictions += (
+                accumulator.total_weighted_squared_predictions
+            )
+            result.total_weighted_labels_times_predictions += (
+                accumulator.total_weighted_labels_times_predictions
+            )
+            result.total_weighted_examples += accumulator.total_weighted_examples
+        return result
 
-  def extract_output(
-      self, accumulator: _SquaredPearsonCorrelationAccumulator
-  ) -> Dict[metric_types.MetricKey, float]:
-    result = float('nan')
+    def extract_output(
+        self, accumulator: _SquaredPearsonCorrelationAccumulator
+    ) -> Dict[metric_types.MetricKey, float]:
+        result = float("nan")
 
-    if accumulator.total_weighted_examples > 0.0:
-      # See https://en.wikipedia.org/wiki/Pearson_correlation_coefficient
-      # r^2 = Cov(X, Y)^2 / VAR(X) * VAR(Y)
-      #     = (E[XY] - E[X]E[Y])^2 / (E[X^2] - E[X]^2) * (E[Y^2] - E[Y]^2)
-      #     = [SUM(xy) - n*mean(x)*mean(y)]^2 /
-      #         [SUM(x^2) - n*mean(x)^2 * SUM(y^2) - n*mean(y)^2]
-      # n = total_weighted_examples
-      # SUM(x) = total_weighted_labels
-      # SUM(y) = total_weighted_predictions
-      # SUM(xy) = total_weighted_labels_times_predictions
-      # SUM(x^2) = total_weighted_squared_labels
-      # SUM(y^2) = total_weighted_squared_predictions
+        if accumulator.total_weighted_examples > 0.0:
+            # See https://en.wikipedia.org/wiki/Pearson_correlation_coefficient
+            # r^2 = Cov(X, Y)^2 / VAR(X) * VAR(Y)
+            #     = (E[XY] - E[X]E[Y])^2 / (E[X^2] - E[X]^2) * (E[Y^2] - E[Y]^2)
+            #     = [SUM(xy) - n*mean(x)*mean(y)]^2 /
+            #         [SUM(x^2) - n*mean(x)^2 * SUM(y^2) - n*mean(y)^2]
+            # n = total_weighted_examples
+            # SUM(x) = total_weighted_labels
+            # SUM(y) = total_weighted_predictions
+            # SUM(xy) = total_weighted_labels_times_predictions
+            # SUM(x^2) = total_weighted_squared_labels
+            # SUM(y^2) = total_weighted_squared_predictions
 
-      # numerator = [SUM(xy) - n*mean(x)*mean(y)]^2
-      #           = [SUM(xy) - n*SUM(x)/n*SUM(y)/n]^2
-      #           = [SUM(xy) - SUM(x)*SUM(y)/n]^2
-      numerator = (accumulator.total_weighted_labels_times_predictions -
-                   accumulator.total_weighted_labels *
-                   accumulator.total_weighted_predictions /
-                   accumulator.total_weighted_examples)**2
-      # denominator_y = SUM(y^2) - n*mean(y)^2
-      #               = SUM(y^2) - n*(SUM(y)/n)^2
-      #               = SUM(y^2) - SUM(y)^2/n
-      denominator_y = (
-          accumulator.total_weighted_squared_predictions -
-          accumulator.total_weighted_predictions**2 /
-          accumulator.total_weighted_examples)
+            # numerator = [SUM(xy) - n*mean(x)*mean(y)]^2
+            #           = [SUM(xy) - n*SUM(x)/n*SUM(y)/n]^2
+            #           = [SUM(xy) - SUM(x)*SUM(y)/n]^2
+            numerator = (
+                accumulator.total_weighted_labels_times_predictions
+                - accumulator.total_weighted_labels
+                * accumulator.total_weighted_predictions
+                / accumulator.total_weighted_examples
+            ) ** 2
+            # denominator_y = SUM(y^2) - n*mean(y)^2
+            #               = SUM(y^2) - n*(SUM(y)/n)^2
+            #               = SUM(y^2) - SUM(y)^2/n
+            denominator_y = (
+                accumulator.total_weighted_squared_predictions
+                - accumulator.total_weighted_predictions**2
+                / accumulator.total_weighted_examples
+            )
 
-      # denominator_x = SUM(x^2) - n*mean(x)^2
-      #               = SUM(x^2) - n*(SUM(x)/n)^2
-      #               = SUM(x^2) - SUM(x)^2/n
-      denominator_x = (
-          accumulator.total_weighted_squared_labels -
-          accumulator.total_weighted_labels**2 /
-          accumulator.total_weighted_examples)
-      denominator = denominator_x * denominator_y
-      if denominator > 0.0:
-        result = numerator / denominator
+            # denominator_x = SUM(x^2) - n*mean(x)^2
+            #               = SUM(x^2) - n*(SUM(x)/n)^2
+            #               = SUM(x^2) - SUM(x)^2/n
+            denominator_x = (
+                accumulator.total_weighted_squared_labels
+                - accumulator.total_weighted_labels**2
+                / accumulator.total_weighted_examples
+            )
+            denominator = denominator_x * denominator_y
+            if denominator > 0.0:
+                result = numerator / denominator
 
-    return {self._key: result}
+        return {self._key: result}

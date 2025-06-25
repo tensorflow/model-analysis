@@ -19,4 +19,8 @@ from tensorflow_model_analysis.api import types
 
 # Should contain features, predictions, labels
 FPL = Dict[str, types.DictOfTensorValue]
-QueryFPL = NamedTuple('QueryFPL', [('fpls', List[FPL]), ('query_id', str)])
+
+
+class QueryFPL(NamedTuple):
+    fpls: List[FPL]
+    query_id: str
