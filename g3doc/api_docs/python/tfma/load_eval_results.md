@@ -23,7 +23,12 @@ Run model analysis for a single model on multiple data sets.
 
 *   <b>`output_paths`</b>: A list of output paths of completed tfma runs.
 *   <b>`mode`</b>: The mode of the evaluation. Currently, tfma.DATA_CENTRIC_MODE
-    and tfma.MODEL_CENTRIC_MODE are supported.
+    and tfma.MODEL_CENTRIC_MODE are supported. In tfma.MODEL_CENTRIC_MODE, the
+    data will be presented in a model centric way which shows how a model
+    progresses over each run (i.e., the main axis will be the model run id). In
+    DATA_CENTRIC_MODE, the data will be presented in a data centric way which
+    shows how the latest version of the model performs as new evaluation data
+    become available (i.e., the main axis is the last data span).
 
 #### Returns:
 
