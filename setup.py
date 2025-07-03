@@ -103,7 +103,14 @@ def generate_proto(source, require=True):
           'or install the binary package.\n')
       sys.exit(-1)
 
-    protoc_command = [protoc, '-I../src', '-I.', '--python_out=.', source]
+    protoc_command = [
+        protoc,
+        '-I/usr/include',
+        '-I.',
+        '-I./tensorflow_model_analysis/proto',
+        '--python_out=.',
+        source,
+    ]
     if subprocess.call(protoc_command) != 0:
       sys.exit(-1)
 
@@ -308,7 +315,7 @@ setup_args = {
         # Sort alphabetically
         'absl-py>=0.9,<2.0.0',
         'apache-beam[gcp]>=2.53,<3;python_version>="3.11"',
-        'apache-beam[gcp]>=2.47,<3;python_version<"3.11"',
+        'apache-beam[gcp]>=2.50,<2.51;python_version<"3.11"',
         'ipython>=7,<8',
         'ipywidgets>=7,<8',
         'numpy>=1.23.5',
@@ -325,14 +332,14 @@ setup_args = {
         'tensorflow-estimator>=2.10',
         'tensorflow-metadata'
         + select_constraint(
-            default='>=1.16.1,<1.17.0',
-            nightly='>=1.17.0.dev',
+            default='>=1.17.1,<1.18.0',
+            nightly='>=1.18.0.dev',
             git_master='@git+https://github.com/tensorflow/metadata@master',
         ),
         'tfx-bsl'
         + select_constraint(
-            default='>=1.16.1,<1.17.0',
-            nightly='>=1.17.0.dev',
+            default='>=1.17.1,<1.18.0',
+            nightly='>=1.18.0.dev',
             git_master='@git+https://github.com/tensorflow/tfx-bsl@master',
         ),
     ],

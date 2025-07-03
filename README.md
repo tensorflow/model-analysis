@@ -7,7 +7,7 @@
 [![Documentation](https://img.shields.io/badge/api-reference-blue.svg)](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma)
 
 *TensorFlow Model Analysis* (TFMA) is a library for evaluating TensorFlow
-models.  It allows users to evaluate their models on large amounts of data in a
+models. It allows users to evaluate their models on large amounts of data in a
 distributed manner, using the same metrics defined in their trainer. These
 metrics can be computed over different slices of data and visualized in Jupyter
 notebooks.
@@ -95,12 +95,11 @@ Using a JupyterLab extension requires installing dependencies on the command
 line. You can do this within the console in the JupyterLab UI or on the command
 line. This includes separately installing any pip package dependencies and
 JupyterLab labextension plugin dependencies, and the version numbers must be
-compatible.  JupyterLab labextension packages refer to npm packages
+compatible. JupyterLab labextension packages refer to npm packages
 (eg, [tensorflow_model_analysis](https://www.npmjs.com/package/tensorflow_model_analysis).
 
 The examples below use 0.32.0. Check available [versions](#compatible-versions)
 below to use the latest.
-
 
 #### Jupyter Lab 3.0.x
 
@@ -109,7 +108,6 @@ pip install tensorflow_model_analysis==0.32.0
 jupyter labextension install tensorflow_model_analysis@0.32.0
 pip install jupyterlab_widgets==1.0.0
 ```
-
 
 #### Jupyter Lab 2.2.x
 
@@ -146,10 +144,9 @@ environment, the parameter `--sys-prefix` might be required.
 #### Building TFMA from source
 
 If you want to build TFMA from source and use the UI in JupyterLab, you'll need
-to make sure that the source contains valid version numbers.  Check that the
+to make sure that the source contains valid version numbers. Check that the
 Python package version number and npm package version number are exactly the
-same, and that both valid version numbers (eg, remove the `-dev` suffix).
-
+same, and that both are valid version numbers (eg, remove the `-dev` suffix).
 
 #### Troubleshooting
 
@@ -169,18 +166,17 @@ jupyter nbextension list  # for classic Jupyter Notebook
 ### Standalone HTML page with `embed_minimal_html`
 
 TFMA notebook extension can be built into a standalone HTML file that also
-bundles data into the HTML file.  See the Jupyter Widgets docs on
+bundles data into the HTML file. See the Jupyter Widgets docs on
 [embed_minimal_html](https://ipywidgets.readthedocs.io/en/latest/embedding.html#python-interface).
-
 
 ### Kubeflow Pipelines
 
 [Kubeflow Pipelines](https://www.kubeflow.org/docs/components/pipelines/sdk/output-viewer/)
-includes integrations that embed the TFMA notebook extension ([code](https://github.com/kubeflow/pipelines/blob/1.5.0-rc.2/backend/src/apiserver/visualization/types/tfma.py#L17)).
+includes integrations that embed the TFMA notebook extension
+([code](https://github.com/kubeflow/pipelines/blob/1.5.0-rc.2/backend/src/apiserver/visualization/types/tfma.py#L17)).
 This integration relies on network access at runtime to load a variant of the
 JavaScript build published on unpkg.com (see [config](https://github.com/tensorflow/model-analysis/blob/v0.29.0/tensorflow_model_analysis/notebook/jupyter/js/webpack.config.js#L78)
 and [loader code](https://github.com/tensorflow/model-analysis/blob/v0.29.0/tensorflow_model_analysis/notebook/jupyter/js/lib/widget.js#L23)).
-
 
 ### Notable Dependencies
 
@@ -198,8 +194,8 @@ represent data internally in order to make use of vectorized numpy functions.
 
 ## Getting Started
 
-For instructions on using TFMA, see the [get started
-guide](https://github.com/tensorflow/model-analysis/blob/master/g3doc/get_started.md).
+For instructions on using TFMA, see the
+[get started guide](https://github.com/tensorflow/model-analysis/blob/master/g3doc/get_started.md).
 
 ## Compatible Versions
 
@@ -209,7 +205,8 @@ combinations may also work.
 
 |tensorflow-model-analysis                                                            |apache-beam[gcp]|pyarrow   |tensorflow         |tensorflow-metadata |tfx-bsl   |
 |------------------------------------------------------------------------------------ |----------------|----------|-------------------|--------------------|----------|
-|[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md) | 2.60.0         | 10.0.1   | nightly (2.x)     | 1.16.1             | 1.16.1   |
+|[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md) | 2.65.0         | 10.0.1   | nightly (2.x)     | 1.17.1             | 1.17.1   |
+|[0.48.0](https://github.com/tensorflow/model-analysis/blob/v0.48.0/RELEASE.md)       | 2.65.0         | 10.0.1   | 2.17              | 1.17.1             | 1.17.1   |
 |[0.47.1](https://github.com/tensorflow/model-analysis/blob/v0.47.1/RELEASE.md)       | 2.60.0         | 10.0.1   | 2.16              | 1.16.1             | 1.16.1   |
 |[0.47.0](https://github.com/tensorflow/model-analysis/blob/v0.47.0/RELEASE.md)       | 2.60.0         | 10.0.1   | 2.16              | 1.16.1             | 1.16.1   |
 |[0.46.0](https://github.com/tensorflow/model-analysis/blob/v0.46.0/RELEASE.md)       | 2.47.0         | 10.0.0   | 2.15              | 1.15.0             | 1.15.1   |
