@@ -1,0 +1,2434 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../setup/">
+      
+      
+        <link rel="next" href="../visualizations/">
+      
+      
+      <link rel="icon" href="../images/tf_full_color_primary_icon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
+    
+    
+      
+        <title>Metrics and Plots - TensorFlow Model Analysis</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.342714a4.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#tensorflow-model-analysis-metrics-and-plots" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="TensorFlow Model Analysis" class="md-header__button md-logo" aria-label="TensorFlow Model Analysis" data-md-component="logo">
+      
+  <img src="../images/tf_full_color_primary_icon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            TensorFlow Model Analysis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Metrics and Plots
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/tensorflow/model-analysis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    model-analysis
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="TensorFlow Model Analysis" class="md-nav__button md-logo" aria-label="TensorFlow Model Analysis" data-md-component="logo">
+      
+  <img src="../images/tf_full_color_primary_icon.svg" alt="logo">
+
+    </a>
+    TensorFlow Model Analysis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/tensorflow/model-analysis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    model-analysis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Guide
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Improving Model Quality
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Install
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../get_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Get Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Setup
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Metrics and Plots
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Metrics and Plots
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#regression-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Regression Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#binary-classification-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Binary Classification Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-classmulti-label-classification-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-class/Multi-label Classification Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-classmulti-label-binarized-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-class/Multi-label Binarized Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-classmulti-label-aggregate-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-class/Multi-label Aggregate Metrics
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Multi-class/Multi-label Aggregate Metrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#micro-average" class="md-nav__link">
+    <span class="md-ellipsis">
+      Micro Average
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#macro-weighted-macro-average" class="md-nav__link">
+    <span class="md-ellipsis">
+      Macro / Weighted Macro Average
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#query-ranking-based-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Query / Ranking Based Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-model-evaluation-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-model Evaluation Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-comparison-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model Comparison Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-output-model-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-output Model Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#customizing-metric-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Customizing Metric Settings
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Outputs
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Outputs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metric-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metric Keys
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metric-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metric Value
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plot-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plot Keys
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plot-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plot Values
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#evalresult" class="md-nav__link">
+    <span class="md-ellipsis">
+      EvalResult
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Customization
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Customization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-keras-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Keras Metrics
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Custom Keras Metrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#keras-metric-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Keras Metric Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-tfma-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom TFMA Metrics
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Custom TFMA Metrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metric" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metric
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metriccomputation" class="md-nav__link">
+    <span class="md-ellipsis">
+      MetricComputation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MetricComputation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#derivedmetriccomputation" class="md-nav__link">
+    <span class="md-ellipsis">
+      DerivedMetricComputation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DerivedMetricComputation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../visualizations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Visualizations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../model_validations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Model Validations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://tensorflow.github.io/tfx/guide/fairness_indicators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Using Fairness Indicators
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://tensorflow.github.io/fairness-indicators/tutorials/Fairness_Indicators_Pandas_Case_Study/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Using Fairness Indicators with Pandas DataFrames
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../architecture/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FAQ
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-constants/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.constants
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-contrib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.contrib
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-evaluators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.evaluators
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-experimental/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.experimental 🧪
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-extractors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.extractors
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.metrics
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-post_export_metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.post_export_metrics
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-sdk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.sdk
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.types
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.utils
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-validators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.validators
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.version
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-view/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.view
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-writers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.writers
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#configuration" class="md-nav__link">
+    <span class="md-ellipsis">
+      Configuration
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Configuration">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#regression-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Regression Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#binary-classification-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Binary Classification Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-classmulti-label-classification-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-class/Multi-label Classification Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-classmulti-label-binarized-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-class/Multi-label Binarized Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-classmulti-label-aggregate-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-class/Multi-label Aggregate Metrics
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Multi-class/Multi-label Aggregate Metrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#micro-average" class="md-nav__link">
+    <span class="md-ellipsis">
+      Micro Average
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#macro-weighted-macro-average" class="md-nav__link">
+    <span class="md-ellipsis">
+      Macro / Weighted Macro Average
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#query-ranking-based-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Query / Ranking Based Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-model-evaluation-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-model Evaluation Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#model-comparison-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Model Comparison Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#multi-output-model-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Multi-output Model Metrics
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#customizing-metric-settings" class="md-nav__link">
+    <span class="md-ellipsis">
+      Customizing Metric Settings
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#outputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Outputs
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Outputs">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metric-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metric Keys
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metric-value" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metric Value
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plot-keys" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plot Keys
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#plot-values" class="md-nav__link">
+    <span class="md-ellipsis">
+      Plot Values
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#evalresult" class="md-nav__link">
+    <span class="md-ellipsis">
+      EvalResult
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Customization
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Customization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-keras-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Keras Metrics
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Custom Keras Metrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#keras-metric-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Keras Metric Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-tfma-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom TFMA Metrics
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Custom TFMA Metrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metric" class="md-nav__link">
+    <span class="md-ellipsis">
+      Metric
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#metriccomputation" class="md-nav__link">
+    <span class="md-ellipsis">
+      MetricComputation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="MetricComputation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#derivedmetriccomputation" class="md-nav__link">
+    <span class="md-ellipsis">
+      DerivedMetricComputation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="DerivedMetricComputation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#example_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      Example
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/tensorflow/model-analysis/edit/master/docs/metrics.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="tensorflow-model-analysis-metrics-and-plots">Tensorflow Model Analysis Metrics and Plots<a class="headerlink" href="#tensorflow-model-analysis-metrics-and-plots" title="Permanent link">&para;</a></h1>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>TFMA supports the following metrics and plots:</p>
+<ul>
+<li>Standard keras metrics
+    (<a href="https://www.tensorflow.org/api_docs/python/tf/keras/metrics"><code>tf.keras.metrics.*</code></a>)<ul>
+<li>Note that you do not need a keras model to use keras metrics. Metrics
+    are computed outside of the graph in beam using the metrics classes
+    directly.</li>
+</ul>
+</li>
+<li>
+<p>Standard TFMA metrics and plots
+    (<a href="../api_docs/python/tfma-metrics"><code>tfma.metrics.*</code></a>)</p>
+</li>
+<li>
+<p>Custom keras metrics (metrics derived from
+    <a href="https://www.tensorflow.org/api_docs/python/tf/keras/metrics/Metric"><code>tf.keras.metrics.Metric</code></a>)</p>
+</li>
+<li>
+<p>Custom TFMA metrics (metrics derived from
+    <a href="../api_docs/python/tfma-metrics#tensorflow_model_analysis.metrics.Metric"><code>tfma.metrics.Metric</code></a>)
+    using custom beam combiners or metrics derived from other metrics).</p>
+</li>
+</ul>
+<p>NOTE: In TFMA, plots and metrics are both defined under the metrics library. By
+convention the classes related to plots end in <code>Plot</code>.</p>
+<p>TFMA also provides built-in support for converting binary classification metrics
+for use with multi-class/multi-label problems:</p>
+<ul>
+<li>Binarization based on class ID, top K, etc.</li>
+<li>Aggregated metrics based on micro averaging, macro averaging, etc.</li>
+</ul>
+<p>TFMA also provides built-in support for query/ranking based metrics where the
+examples are grouped by a query key automatically in the pipeline.</p>
+<p>Combined there are over 50+ standard metrics and plots available for a variety
+of problems including regression, binary classification, multi-class/multi-label
+classification, ranking, etc.</p>
+<h2 id="configuration">Configuration<a class="headerlink" href="#configuration" title="Permanent link">&para;</a></h2>
+<p>There are two ways to configure metrics in TFMA: (1) using the
+<a href="../api_docs/python/tfma#tensorflow_model_analysis.metricsSpec"><code>tfma.MetricsSpec</code></a>
+or (2) by creating instances of <code>tf.keras.metrics.*</code> and/or <code>tfma.metrics.*</code>
+classes in python and using
+<a href="../api_docs/python/tfma-metrics#tensorflow_model_analysis.metrics.specs_from_metrics"><code>tfma.metrics.specs_from_metrics</code></a>
+to convert them to a list of <code>tfma.MetricsSpec</code>.</p>
+<p>The following sections describe example configurations for different types of
+machine learning problems.</p>
+<h3 id="regression-metrics">Regression Metrics<a class="headerlink" href="#regression-metrics" title="Permanent link">&para;</a></h3>
+<p>The following is an example configuration setup for a regression problem.
+Consult the <code>tf.keras.metrics.*</code> and <code>tfma.metrics.*</code> modules for possible
+additional metrics supported.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.protobuf</span><span class="w"> </span><span class="kn">import</span> <span class="n">text_format</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="s2">  metrics_specs {</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="s2">    metrics { class_name: &quot;ExampleCount&quot; }</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="s2">    metrics { class_name: &quot;MeanSquaredError&quot; }</span>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="s2">    metrics { class_name: &quot;Accuracy&quot; }</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="s2">    metrics { class_name: &quot;MeanLabel&quot; }</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="s2">    metrics { class_name: &quot;MeanPrediction&quot; }</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="s2">    metrics { class_name: &quot;Calibration&quot; }</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="s2">    metrics {</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="s2">      class_name: &quot;CalibrationPlot&quot;</span>
+</span><span id="__span-0-13"><a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a><span class="s2">      config: &#39;&quot;min_value&quot;: 0, &quot;max_value&quot;: 10&#39;</span>
+</span><span id="__span-0-14"><a id="__codelineno-0-14" name="__codelineno-0-14" href="#__codelineno-0-14"></a><span class="s2">    }</span>
+</span><span id="__span-0-15"><a id="__codelineno-0-15" name="__codelineno-0-15" href="#__codelineno-0-15"></a><span class="s2">  }</span>
+</span><span id="__span-0-16"><a id="__codelineno-0-16" name="__codelineno-0-16" href="#__codelineno-0-16"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">EvalConfig</span><span class="p">())</span><span class="o">.</span><span class="n">metrics_specs</span>
+</span></code></pre></div>
+<p>This same setup can be created using the following python code:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">ExampleCount</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;example_count&#39;</span><span class="p">),</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MeanSquaredError</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;mse&#39;</span><span class="p">),</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">Accuracy</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;accuracy&#39;</span><span class="p">),</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MeanLabel</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;mean_label&#39;</span><span class="p">),</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MeanPrediction</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;mean_prediction&#39;</span><span class="p">),</span>
+</span><span id="__span-1-7"><a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">Calibration</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;calibration&#39;</span><span class="p">),</span>
+</span><span id="__span-1-8"><a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">CalibrationPlot</span><span class="p">(</span>
+</span><span id="__span-1-9"><a id="__codelineno-1-9" name="__codelineno-1-9" href="#__codelineno-1-9"></a>        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;calibration&#39;</span><span class="p">,</span> <span class="n">min_value</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span> <span class="n">max_value</span><span class="o">=</span><span class="mi">10</span><span class="p">)</span>
+</span><span id="__span-1-10"><a id="__codelineno-1-10" name="__codelineno-1-10" href="#__codelineno-1-10"></a><span class="p">]</span>
+</span><span id="__span-1-11"><a id="__codelineno-1-11" name="__codelineno-1-11" href="#__codelineno-1-11"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">specs_from_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Note that this setup is also avaliable by calling
+<code>tfma.metrics.default_regression_specs</code>.</p>
+<h3 id="binary-classification-metrics">Binary Classification Metrics<a class="headerlink" href="#binary-classification-metrics" title="Permanent link">&para;</a></h3>
+<p>The following is an example configuration setup for a binary classification
+problem. Consult the <code>tf.keras.metrics.*</code> and <code>tfma.metrics.*</code> modules for
+possible additional metrics supported.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.protobuf</span><span class="w"> </span><span class="kn">import</span> <span class="n">text_format</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="s2">  metrics_specs {</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="s2">    metrics { class_name: &quot;ExampleCount&quot; }</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="s2">    metrics { class_name: &quot;BinaryCrossentropy&quot; }</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="s2">    metrics { class_name: &quot;BinaryAccuracy&quot; }</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="s2">    metrics { class_name: &quot;AUC&quot; }</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a><span class="s2">    metrics { class_name: &quot;AUCPrecisionRecall&quot; }</span>
+</span><span id="__span-2-10"><a id="__codelineno-2-10" name="__codelineno-2-10" href="#__codelineno-2-10"></a><span class="s2">    metrics { class_name: &quot;MeanLabel&quot; }</span>
+</span><span id="__span-2-11"><a id="__codelineno-2-11" name="__codelineno-2-11" href="#__codelineno-2-11"></a><span class="s2">    metrics { class_name: &quot;MeanPrediction&quot; }</span>
+</span><span id="__span-2-12"><a id="__codelineno-2-12" name="__codelineno-2-12" href="#__codelineno-2-12"></a><span class="s2">    metrics { class_name: &quot;Calibration&quot; }</span>
+</span><span id="__span-2-13"><a id="__codelineno-2-13" name="__codelineno-2-13" href="#__codelineno-2-13"></a><span class="s2">    metrics { class_name: &quot;ConfusionMatrixPlot&quot; }</span>
+</span><span id="__span-2-14"><a id="__codelineno-2-14" name="__codelineno-2-14" href="#__codelineno-2-14"></a><span class="s2">    metrics { class_name: &quot;CalibrationPlot&quot; }</span>
+</span><span id="__span-2-15"><a id="__codelineno-2-15" name="__codelineno-2-15" href="#__codelineno-2-15"></a><span class="s2">  }</span>
+</span><span id="__span-2-16"><a id="__codelineno-2-16" name="__codelineno-2-16" href="#__codelineno-2-16"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">EvalConfig</span><span class="p">())</span><span class="o">.</span><span class="n">metrics_specs</span>
+</span></code></pre></div>
+<p>This same setup can be created using the following python code:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">ExampleCount</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;example_count&#39;</span><span class="p">),</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">BinaryCrossentropy</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;binary_crossentropy&#39;</span><span class="p">),</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">BinaryAccuracy</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;accuracy&#39;</span><span class="p">),</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">AUC</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;auc&#39;</span><span class="p">,</span> <span class="n">num_thresholds</span><span class="o">=</span><span class="mi">10000</span><span class="p">),</span>
+</span><span id="__span-3-6"><a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">AUC</span><span class="p">(</span>
+</span><span id="__span-3-7"><a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;auc_precision_recall&#39;</span><span class="p">,</span> <span class="n">curve</span><span class="o">=</span><span class="s1">&#39;PR&#39;</span><span class="p">,</span> <span class="n">num_thresholds</span><span class="o">=</span><span class="mi">10000</span><span class="p">),</span>
+</span><span id="__span-3-8"><a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">Precision</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;precision&#39;</span><span class="p">),</span>
+</span><span id="__span-3-9"><a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">Recall</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;recall&#39;</span><span class="p">),</span>
+</span><span id="__span-3-10"><a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MeanLabel</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;mean_label&#39;</span><span class="p">),</span>
+</span><span id="__span-3-11"><a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MeanPrediction</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;mean_prediction&#39;</span><span class="p">),</span>
+</span><span id="__span-3-12"><a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">Calibration</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;calibration&#39;</span><span class="p">),</span>
+</span><span id="__span-3-13"><a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">ConfusionMatrixPlot</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;confusion_matrix_plot&#39;</span><span class="p">),</span>
+</span><span id="__span-3-14"><a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">CalibrationPlot</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;calibration_plot&#39;</span><span class="p">)</span>
+</span><span id="__span-3-15"><a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="p">]</span>
+</span><span id="__span-3-16"><a id="__codelineno-3-16" name="__codelineno-3-16" href="#__codelineno-3-16"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">specs_from_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Note that this setup is also avaliable by calling
+<code>tfma.metrics.default_binary_classification_specs</code>.</p>
+<h3 id="multi-classmulti-label-classification-metrics">Multi-class/Multi-label Classification Metrics<a class="headerlink" href="#multi-classmulti-label-classification-metrics" title="Permanent link">&para;</a></h3>
+<p>The following is an example configuration setup for a multi-class classification
+problem. Consult the <code>tf.keras.metrics.*</code> and <code>tfma.metrics.*</code> modules for
+possible additional metrics supported.</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.protobuf</span><span class="w"> </span><span class="kn">import</span> <span class="n">text_format</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="s2">  metrics_specs {</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="s2">    metrics { class_name: &quot;ExampleCount&quot; }</span>
+</span><span id="__span-4-6"><a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="s2">    metrics { class_name: &quot;SparseCategoricalCrossentropy&quot; }</span>
+</span><span id="__span-4-7"><a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="s2">    metrics { class_name: &quot;SparseCategoricalAccuracy&quot; }</span>
+</span><span id="__span-4-8"><a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="s2">    metrics { class_name: &quot;Precision&quot; config: &#39;&quot;top_k&quot;: 1&#39; }</span>
+</span><span id="__span-4-9"><a id="__codelineno-4-9" name="__codelineno-4-9" href="#__codelineno-4-9"></a><span class="s2">    metrics { class_name: &quot;Precision&quot; config: &#39;&quot;top_k&quot;: 3&#39; }</span>
+</span><span id="__span-4-10"><a id="__codelineno-4-10" name="__codelineno-4-10" href="#__codelineno-4-10"></a><span class="s2">    metrics { class_name: &quot;Recall&quot; config: &#39;&quot;top_k&quot;: 1&#39; }</span>
+</span><span id="__span-4-11"><a id="__codelineno-4-11" name="__codelineno-4-11" href="#__codelineno-4-11"></a><span class="s2">    metrics { class_name: &quot;Recall&quot; config: &#39;&quot;top_k&quot;: 3&#39; }</span>
+</span><span id="__span-4-12"><a id="__codelineno-4-12" name="__codelineno-4-12" href="#__codelineno-4-12"></a><span class="s2">    metrics { class_name: &quot;MultiClassConfusionMatrixPlot&quot; }</span>
+</span><span id="__span-4-13"><a id="__codelineno-4-13" name="__codelineno-4-13" href="#__codelineno-4-13"></a><span class="s2">  }</span>
+</span><span id="__span-4-14"><a id="__codelineno-4-14" name="__codelineno-4-14" href="#__codelineno-4-14"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">EvalConfig</span><span class="p">())</span><span class="o">.</span><span class="n">metrics_specs</span>
+</span></code></pre></div>
+<p>Note: For multi-label there is <code>MultiLabelConfusionMatrixPlot</code> instead of
+<code>MultiClassConfusionMatrixPlot</code></p>
+<p>This same setup can be created using the following python code:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">ExampleCount</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;example_count&#39;</span><span class="p">),</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">SparseCategoricalCrossentropy</span><span class="p">(</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;sparse_categorical_crossentropy&#39;</span><span class="p">),</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">SparseCategoricalAccuracy</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;accuracy&#39;</span><span class="p">),</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">Precision</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;precision&#39;</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">Precision</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;precision&#39;</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">Recall</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;recall&#39;</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="mi">1</span><span class="p">),</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">Recall</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;recall&#39;</span><span class="p">,</span> <span class="n">top_k</span><span class="o">=</span><span class="mi">3</span><span class="p">),</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MultiClassConfusionMatrixPlot</span><span class="p">(</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>        <span class="n">name</span><span class="o">=</span><span class="s1">&#39;multi_class_confusion_matrix_plot&#39;</span><span class="p">),</span>
+</span><span id="__span-5-12"><a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="p">]</span>
+</span><span id="__span-5-13"><a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">specs_from_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Note that this setup is also avaliable by calling
+<code>tfma.metrics.default_multi_class_classification_specs</code>.</p>
+<h3 id="multi-classmulti-label-binarized-metrics">Multi-class/Multi-label Binarized Metrics<a class="headerlink" href="#multi-classmulti-label-binarized-metrics" title="Permanent link">&para;</a></h3>
+<p>Multi-class/multi-label metrics can be binarized to produce metrics per class,
+per top_k, etc using the <code>tfma.BinarizationOptions</code>. For example:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.protobuf</span><span class="w"> </span><span class="kn">import</span> <span class="n">text_format</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="s2">  metrics_specs {</span>
+</span><span id="__span-6-5"><a id="__codelineno-6-5" name="__codelineno-6-5" href="#__codelineno-6-5"></a><span class="s2">    binarize: { class_ids: { values: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9] } }</span>
+</span><span id="__span-6-6"><a id="__codelineno-6-6" name="__codelineno-6-6" href="#__codelineno-6-6"></a><span class="s2">    // Metrics to binarize</span>
+</span><span id="__span-6-7"><a id="__codelineno-6-7" name="__codelineno-6-7" href="#__codelineno-6-7"></a><span class="s2">    metrics { class_name: &quot;AUC&quot; }</span>
+</span><span id="__span-6-8"><a id="__codelineno-6-8" name="__codelineno-6-8" href="#__codelineno-6-8"></a><span class="s2">    ...</span>
+</span><span id="__span-6-9"><a id="__codelineno-6-9" name="__codelineno-6-9" href="#__codelineno-6-9"></a><span class="s2">  }</span>
+</span><span id="__span-6-10"><a id="__codelineno-6-10" name="__codelineno-6-10" href="#__codelineno-6-10"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">EvalConfig</span><span class="p">())</span><span class="o">.</span><span class="n">metrics_specs</span>
+</span></code></pre></div>
+<p>This same setup can be created using the following python code:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a>    <span class="o">//</span> <span class="n">Metrics</span> <span class="n">to</span> <span class="n">binarize</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">AUC</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;auc&#39;</span><span class="p">,</span> <span class="n">num_thresholds</span><span class="o">=</span><span class="mi">10000</span><span class="p">),</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>    <span class="o">...</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a><span class="p">]</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">specs_from_metrics</span><span class="p">(</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>    <span class="n">metrics</span><span class="p">,</span> <span class="n">binarize</span><span class="o">=</span><span class="n">tfma</span><span class="o">.</span><span class="n">BinarizationOptions</span><span class="p">(</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a>        <span class="n">class_ids</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;values&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">0</span><span class="p">,</span><span class="mi">1</span><span class="p">,</span><span class="mi">2</span><span class="p">,</span><span class="mi">3</span><span class="p">,</span><span class="mi">4</span><span class="p">,</span><span class="mi">5</span><span class="p">,</span><span class="mi">6</span><span class="p">,</span><span class="mi">7</span><span class="p">,</span><span class="mi">8</span><span class="p">,</span><span class="mi">9</span><span class="p">]}))</span>
+</span></code></pre></div>
+<h3 id="multi-classmulti-label-aggregate-metrics">Multi-class/Multi-label Aggregate Metrics<a class="headerlink" href="#multi-classmulti-label-aggregate-metrics" title="Permanent link">&para;</a></h3>
+<p>Multi-class/multi-label metrics can be aggregated to produce a single aggregated
+value for a binary classification metric by using <code>tfma.AggregationOptions</code>.</p>
+<p>Note that aggregation settings are independent of binarization settings so you
+can use both <code>tfma.AggregationOptions</code> and <code>tfma.BinarizationOptions</code> at the
+same time.</p>
+<h4 id="micro-average">Micro Average<a class="headerlink" href="#micro-average" title="Permanent link">&para;</a></h4>
+<p>Micro averaging can be performed by using the <code>micro_average</code> option within
+<code>tfma.AggregationOptions</code>. For example:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.protobuf</span><span class="w"> </span><span class="kn">import</span> <span class="n">text_format</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a><span class="s2">  metrics_specs {</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a><span class="s2">    aggregate: { micro_average: true }</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a><span class="s2">    // Metrics to aggregate</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a><span class="s2">    metrics { class_name: &quot;AUC&quot; }</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a><span class="s2">    ...</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="s2">  }</span>
+</span><span id="__span-8-10"><a id="__codelineno-8-10" name="__codelineno-8-10" href="#__codelineno-8-10"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">EvalConfig</span><span class="p">())</span><span class="o">.</span><span class="n">metrics_specs</span>
+</span></code></pre></div>
+<p>This same setup can be created using the following python code:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a>    <span class="o">//</span> <span class="n">Metrics</span> <span class="n">to</span> <span class="n">aggregate</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">AUC</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;auc&#39;</span><span class="p">,</span> <span class="n">num_thresholds</span><span class="o">=</span><span class="mi">10000</span><span class="p">),</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>    <span class="o">...</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a><span class="p">]</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">specs_from_metrics</span><span class="p">(</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>    <span class="n">metrics</span><span class="p">,</span> <span class="n">aggregate</span><span class="o">=</span><span class="n">tfma</span><span class="o">.</span><span class="n">AggregationOptions</span><span class="p">(</span><span class="n">micro_average</span><span class="o">=</span><span class="kc">True</span><span class="p">))</span>
+</span></code></pre></div>
+<p>Micro averaging also supports setting <code>top_k</code> where only the top k values are
+used in the computation. For example:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.protobuf</span><span class="w"> </span><span class="kn">import</span> <span class="n">text_format</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a><span class="s2">  metrics_specs {</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a><span class="s2">    aggregate: {</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="s2">      micro_average: true</span>
+</span><span id="__span-10-7"><a id="__codelineno-10-7" name="__codelineno-10-7" href="#__codelineno-10-7"></a><span class="s2">      top_k_list: { values: [1, 3] }</span>
+</span><span id="__span-10-8"><a id="__codelineno-10-8" name="__codelineno-10-8" href="#__codelineno-10-8"></a><span class="s2">    }</span>
+</span><span id="__span-10-9"><a id="__codelineno-10-9" name="__codelineno-10-9" href="#__codelineno-10-9"></a><span class="s2">    // Metrics to aggregate</span>
+</span><span id="__span-10-10"><a id="__codelineno-10-10" name="__codelineno-10-10" href="#__codelineno-10-10"></a><span class="s2">    metrics { class_name: &quot;AUC&quot; }</span>
+</span><span id="__span-10-11"><a id="__codelineno-10-11" name="__codelineno-10-11" href="#__codelineno-10-11"></a><span class="s2">    ...</span>
+</span><span id="__span-10-12"><a id="__codelineno-10-12" name="__codelineno-10-12" href="#__codelineno-10-12"></a><span class="s2">  }</span>
+</span><span id="__span-10-13"><a id="__codelineno-10-13" name="__codelineno-10-13" href="#__codelineno-10-13"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">EvalConfig</span><span class="p">())</span><span class="o">.</span><span class="n">metrics_specs</span>
+</span></code></pre></div>
+<p>This same setup can be created using the following python code:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a>    <span class="o">//</span> <span class="n">Metrics</span> <span class="n">to</span> <span class="n">aggregate</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">AUC</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;auc&#39;</span><span class="p">,</span> <span class="n">num_thresholds</span><span class="o">=</span><span class="mi">10000</span><span class="p">),</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>    <span class="o">...</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="p">]</span>
+</span><span id="__span-11-6"><a id="__codelineno-11-6" name="__codelineno-11-6" href="#__codelineno-11-6"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">specs_from_metrics</span><span class="p">(</span>
+</span><span id="__span-11-7"><a id="__codelineno-11-7" name="__codelineno-11-7" href="#__codelineno-11-7"></a>    <span class="n">metrics</span><span class="p">,</span>
+</span><span id="__span-11-8"><a id="__codelineno-11-8" name="__codelineno-11-8" href="#__codelineno-11-8"></a>    <span class="n">aggregate</span><span class="o">=</span><span class="n">tfma</span><span class="o">.</span><span class="n">AggregationOptions</span><span class="p">(</span><span class="n">micro_average</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-11-9"><a id="__codelineno-11-9" name="__codelineno-11-9" href="#__codelineno-11-9"></a>                                      <span class="n">top_k_list</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;values&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]}))</span>
+</span></code></pre></div>
+<h4 id="macro-weighted-macro-average">Macro / Weighted Macro Average<a class="headerlink" href="#macro-weighted-macro-average" title="Permanent link">&para;</a></h4>
+<p>Macro averaging can be performed by using the <code>macro_average</code> or
+<code>weighted_macro_average</code> options within <code>tfma.AggregationOptions</code>. Unless
+<code>top_k</code> settings are used, macro requires setting the <code>class_weights</code> in order
+to know which classes to compute the average for. If a <code>class_weight</code> is not
+provided then 0.0 is assumed. For example:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.protobuf</span><span class="w"> </span><span class="kn">import</span> <span class="n">text_format</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a><span class="s2">  metrics_specs {</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a><span class="s2">    aggregate: {</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="s2">      macro_average: true</span>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="s2">      class_weights: { key: 0 value: 1.0 }</span>
+</span><span id="__span-12-8"><a id="__codelineno-12-8" name="__codelineno-12-8" href="#__codelineno-12-8"></a><span class="s2">      class_weights: { key: 1 value: 1.0 }</span>
+</span><span id="__span-12-9"><a id="__codelineno-12-9" name="__codelineno-12-9" href="#__codelineno-12-9"></a><span class="s2">      class_weights: { key: 2 value: 1.0 }</span>
+</span><span id="__span-12-10"><a id="__codelineno-12-10" name="__codelineno-12-10" href="#__codelineno-12-10"></a><span class="s2">      class_weights: { key: 3 value: 1.0 }</span>
+</span><span id="__span-12-11"><a id="__codelineno-12-11" name="__codelineno-12-11" href="#__codelineno-12-11"></a><span class="s2">      class_weights: { key: 4 value: 1.0 }</span>
+</span><span id="__span-12-12"><a id="__codelineno-12-12" name="__codelineno-12-12" href="#__codelineno-12-12"></a><span class="s2">      class_weights: { key: 5 value: 1.0 }</span>
+</span><span id="__span-12-13"><a id="__codelineno-12-13" name="__codelineno-12-13" href="#__codelineno-12-13"></a><span class="s2">      class_weights: { key: 6 value: 1.0 }</span>
+</span><span id="__span-12-14"><a id="__codelineno-12-14" name="__codelineno-12-14" href="#__codelineno-12-14"></a><span class="s2">      class_weights: { key: 7 value: 1.0 }</span>
+</span><span id="__span-12-15"><a id="__codelineno-12-15" name="__codelineno-12-15" href="#__codelineno-12-15"></a><span class="s2">      class_weights: { key: 8 value: 1.0 }</span>
+</span><span id="__span-12-16"><a id="__codelineno-12-16" name="__codelineno-12-16" href="#__codelineno-12-16"></a><span class="s2">      class_weights: { key: 9 value: 1.0 }</span>
+</span><span id="__span-12-17"><a id="__codelineno-12-17" name="__codelineno-12-17" href="#__codelineno-12-17"></a><span class="s2">    }</span>
+</span><span id="__span-12-18"><a id="__codelineno-12-18" name="__codelineno-12-18" href="#__codelineno-12-18"></a><span class="s2">    // Metrics to aggregate</span>
+</span><span id="__span-12-19"><a id="__codelineno-12-19" name="__codelineno-12-19" href="#__codelineno-12-19"></a><span class="s2">    metrics { class_name: &quot;AUC&quot; }</span>
+</span><span id="__span-12-20"><a id="__codelineno-12-20" name="__codelineno-12-20" href="#__codelineno-12-20"></a><span class="s2">    ...</span>
+</span><span id="__span-12-21"><a id="__codelineno-12-21" name="__codelineno-12-21" href="#__codelineno-12-21"></a><span class="s2">  }</span>
+</span><span id="__span-12-22"><a id="__codelineno-12-22" name="__codelineno-12-22" href="#__codelineno-12-22"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">EvalConfig</span><span class="p">())</span><span class="o">.</span><span class="n">metrics_specs</span>
+</span></code></pre></div>
+<p>This same setup can be created using the following python code:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-13-1"><a id="__codelineno-13-1" name="__codelineno-13-1" href="#__codelineno-13-1"></a><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-13-2"><a id="__codelineno-13-2" name="__codelineno-13-2" href="#__codelineno-13-2"></a>    <span class="o">//</span> <span class="n">Metrics</span> <span class="n">to</span> <span class="n">aggregate</span>
+</span><span id="__span-13-3"><a id="__codelineno-13-3" name="__codelineno-13-3" href="#__codelineno-13-3"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">AUC</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;auc&#39;</span><span class="p">,</span> <span class="n">num_thresholds</span><span class="o">=</span><span class="mi">10000</span><span class="p">),</span>
+</span><span id="__span-13-4"><a id="__codelineno-13-4" name="__codelineno-13-4" href="#__codelineno-13-4"></a>    <span class="o">...</span>
+</span><span id="__span-13-5"><a id="__codelineno-13-5" name="__codelineno-13-5" href="#__codelineno-13-5"></a><span class="p">]</span>
+</span><span id="__span-13-6"><a id="__codelineno-13-6" name="__codelineno-13-6" href="#__codelineno-13-6"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">specs_from_metrics</span><span class="p">(</span>
+</span><span id="__span-13-7"><a id="__codelineno-13-7" name="__codelineno-13-7" href="#__codelineno-13-7"></a>    <span class="n">metrics</span><span class="p">,</span>
+</span><span id="__span-13-8"><a id="__codelineno-13-8" name="__codelineno-13-8" href="#__codelineno-13-8"></a>    <span class="n">aggregate</span><span class="o">=</span><span class="n">tfma</span><span class="o">.</span><span class="n">AggregationOptions</span><span class="p">(</span>
+</span><span id="__span-13-9"><a id="__codelineno-13-9" name="__codelineno-13-9" href="#__codelineno-13-9"></a>        <span class="n">macro_average</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">class_weights</span><span class="o">=</span><span class="p">{</span><span class="n">i</span><span class="p">:</span> <span class="mf">1.0</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">10</span><span class="p">)}))</span>
+</span></code></pre></div>
+<p>Like micro averaging, macro averaging also supports setting <code>top_k</code> where only
+the top k values are used in the computation. For example:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-14-1"><a id="__codelineno-14-1" name="__codelineno-14-1" href="#__codelineno-14-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.protobuf</span><span class="w"> </span><span class="kn">import</span> <span class="n">text_format</span>
+</span><span id="__span-14-2"><a id="__codelineno-14-2" name="__codelineno-14-2" href="#__codelineno-14-2"></a>
+</span><span id="__span-14-3"><a id="__codelineno-14-3" name="__codelineno-14-3" href="#__codelineno-14-3"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-14-4"><a id="__codelineno-14-4" name="__codelineno-14-4" href="#__codelineno-14-4"></a><span class="s2">  metrics_specs {</span>
+</span><span id="__span-14-5"><a id="__codelineno-14-5" name="__codelineno-14-5" href="#__codelineno-14-5"></a><span class="s2">    aggregate: {</span>
+</span><span id="__span-14-6"><a id="__codelineno-14-6" name="__codelineno-14-6" href="#__codelineno-14-6"></a><span class="s2">      macro_average: true</span>
+</span><span id="__span-14-7"><a id="__codelineno-14-7" name="__codelineno-14-7" href="#__codelineno-14-7"></a><span class="s2">      top_k_list: { values: [1, 3] }</span>
+</span><span id="__span-14-8"><a id="__codelineno-14-8" name="__codelineno-14-8" href="#__codelineno-14-8"></a><span class="s2">    }</span>
+</span><span id="__span-14-9"><a id="__codelineno-14-9" name="__codelineno-14-9" href="#__codelineno-14-9"></a><span class="s2">    // Metrics to aggregate</span>
+</span><span id="__span-14-10"><a id="__codelineno-14-10" name="__codelineno-14-10" href="#__codelineno-14-10"></a><span class="s2">    metrics { class_name: &quot;AUC&quot; }</span>
+</span><span id="__span-14-11"><a id="__codelineno-14-11" name="__codelineno-14-11" href="#__codelineno-14-11"></a><span class="s2">    ...</span>
+</span><span id="__span-14-12"><a id="__codelineno-14-12" name="__codelineno-14-12" href="#__codelineno-14-12"></a><span class="s2">  }</span>
+</span><span id="__span-14-13"><a id="__codelineno-14-13" name="__codelineno-14-13" href="#__codelineno-14-13"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">EvalConfig</span><span class="p">())</span><span class="o">.</span><span class="n">metrics_specs</span>
+</span></code></pre></div>
+<p>This same setup can be created using the following python code:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-15-1"><a id="__codelineno-15-1" name="__codelineno-15-1" href="#__codelineno-15-1"></a><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-15-2"><a id="__codelineno-15-2" name="__codelineno-15-2" href="#__codelineno-15-2"></a>    <span class="o">//</span> <span class="n">Metrics</span> <span class="n">to</span> <span class="n">aggregate</span>
+</span><span id="__span-15-3"><a id="__codelineno-15-3" name="__codelineno-15-3" href="#__codelineno-15-3"></a>    <span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">AUC</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;auc&#39;</span><span class="p">,</span> <span class="n">num_thresholds</span><span class="o">=</span><span class="mi">10000</span><span class="p">),</span>
+</span><span id="__span-15-4"><a id="__codelineno-15-4" name="__codelineno-15-4" href="#__codelineno-15-4"></a>    <span class="o">...</span>
+</span><span id="__span-15-5"><a id="__codelineno-15-5" name="__codelineno-15-5" href="#__codelineno-15-5"></a><span class="p">]</span>
+</span><span id="__span-15-6"><a id="__codelineno-15-6" name="__codelineno-15-6" href="#__codelineno-15-6"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">specs_from_metrics</span><span class="p">(</span>
+</span><span id="__span-15-7"><a id="__codelineno-15-7" name="__codelineno-15-7" href="#__codelineno-15-7"></a>    <span class="n">metrics</span><span class="p">,</span>
+</span><span id="__span-15-8"><a id="__codelineno-15-8" name="__codelineno-15-8" href="#__codelineno-15-8"></a>    <span class="n">aggregate</span><span class="o">=</span><span class="n">tfma</span><span class="o">.</span><span class="n">AggregationOptions</span><span class="p">(</span><span class="n">macro_average</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+</span><span id="__span-15-9"><a id="__codelineno-15-9" name="__codelineno-15-9" href="#__codelineno-15-9"></a>                                      <span class="n">top_k_list</span><span class="o">=</span><span class="p">{</span><span class="s1">&#39;values&#39;</span><span class="p">:</span> <span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">3</span><span class="p">]}))</span>
+</span></code></pre></div>
+<h3 id="query-ranking-based-metrics">Query / Ranking Based Metrics<a class="headerlink" href="#query-ranking-based-metrics" title="Permanent link">&para;</a></h3>
+<p>Query/ranking based metrics are enabled by specifying the <code>query_key</code> option in
+the metrics specs. For example:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-16-1"><a id="__codelineno-16-1" name="__codelineno-16-1" href="#__codelineno-16-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.protobuf</span><span class="w"> </span><span class="kn">import</span> <span class="n">text_format</span>
+</span><span id="__span-16-2"><a id="__codelineno-16-2" name="__codelineno-16-2" href="#__codelineno-16-2"></a>
+</span><span id="__span-16-3"><a id="__codelineno-16-3" name="__codelineno-16-3" href="#__codelineno-16-3"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-16-4"><a id="__codelineno-16-4" name="__codelineno-16-4" href="#__codelineno-16-4"></a><span class="s2">  metrics_specs {</span>
+</span><span id="__span-16-5"><a id="__codelineno-16-5" name="__codelineno-16-5" href="#__codelineno-16-5"></a><span class="s2">    query_key: &quot;doc_id&quot;</span>
+</span><span id="__span-16-6"><a id="__codelineno-16-6" name="__codelineno-16-6" href="#__codelineno-16-6"></a><span class="s2">    metrics {</span>
+</span><span id="__span-16-7"><a id="__codelineno-16-7" name="__codelineno-16-7" href="#__codelineno-16-7"></a><span class="s2">      class_name: &quot;NDCG&quot;</span>
+</span><span id="__span-16-8"><a id="__codelineno-16-8" name="__codelineno-16-8" href="#__codelineno-16-8"></a><span class="s2">      config: &#39;&quot;gain_key&quot;: &quot;gain&quot;, &quot;top_k_list&quot;: [1, 2]&#39;</span>
+</span><span id="__span-16-9"><a id="__codelineno-16-9" name="__codelineno-16-9" href="#__codelineno-16-9"></a><span class="s2">    }</span>
+</span><span id="__span-16-10"><a id="__codelineno-16-10" name="__codelineno-16-10" href="#__codelineno-16-10"></a><span class="s2">    metrics { class_name: &quot;MinLabelPosition&quot; }</span>
+</span><span id="__span-16-11"><a id="__codelineno-16-11" name="__codelineno-16-11" href="#__codelineno-16-11"></a><span class="s2">  }</span>
+</span><span id="__span-16-12"><a id="__codelineno-16-12" name="__codelineno-16-12" href="#__codelineno-16-12"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">EvalConfig</span><span class="p">())</span><span class="o">.</span><span class="n">metrics_specs</span>
+</span></code></pre></div>
+<p>This same setup can be created using the following python code:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-17-1"><a id="__codelineno-17-1" name="__codelineno-17-1" href="#__codelineno-17-1"></a><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-17-2"><a id="__codelineno-17-2" name="__codelineno-17-2" href="#__codelineno-17-2"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">NDCG</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;ndcg&#39;</span><span class="p">,</span> <span class="n">gain_key</span><span class="o">=</span><span class="s1">&#39;gain&#39;</span><span class="p">,</span> <span class="n">top_k_list</span><span class="o">=</span><span class="p">[</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">]),</span>
+</span><span id="__span-17-3"><a id="__codelineno-17-3" name="__codelineno-17-3" href="#__codelineno-17-3"></a>    <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MinLabelPosition</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="s1">&#39;min_label_position&#39;</span><span class="p">)</span>
+</span><span id="__span-17-4"><a id="__codelineno-17-4" name="__codelineno-17-4" href="#__codelineno-17-4"></a><span class="p">]</span>
+</span><span id="__span-17-5"><a id="__codelineno-17-5" name="__codelineno-17-5" href="#__codelineno-17-5"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">specs_from_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="p">,</span> <span class="n">query_key</span><span class="o">=</span><span class="s1">&#39;doc_id&#39;</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="multi-model-evaluation-metrics">Multi-model Evaluation Metrics<a class="headerlink" href="#multi-model-evaluation-metrics" title="Permanent link">&para;</a></h3>
+<p>TFMA supports evaluating multiple models at the same time. When multi-model
+evaluation is performed, metrics will be calculated for each model. For example:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-18-1"><a id="__codelineno-18-1" name="__codelineno-18-1" href="#__codelineno-18-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.protobuf</span><span class="w"> </span><span class="kn">import</span> <span class="n">text_format</span>
+</span><span id="__span-18-2"><a id="__codelineno-18-2" name="__codelineno-18-2" href="#__codelineno-18-2"></a>
+</span><span id="__span-18-3"><a id="__codelineno-18-3" name="__codelineno-18-3" href="#__codelineno-18-3"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-18-4"><a id="__codelineno-18-4" name="__codelineno-18-4" href="#__codelineno-18-4"></a><span class="s2">  metrics_specs {</span>
+</span><span id="__span-18-5"><a id="__codelineno-18-5" name="__codelineno-18-5" href="#__codelineno-18-5"></a><span class="s2">    # no model_names means all models</span>
+</span><span id="__span-18-6"><a id="__codelineno-18-6" name="__codelineno-18-6" href="#__codelineno-18-6"></a><span class="s2">    ...</span>
+</span><span id="__span-18-7"><a id="__codelineno-18-7" name="__codelineno-18-7" href="#__codelineno-18-7"></a><span class="s2">  }</span>
+</span><span id="__span-18-8"><a id="__codelineno-18-8" name="__codelineno-18-8" href="#__codelineno-18-8"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">EvalConfig</span><span class="p">())</span><span class="o">.</span><span class="n">metrics_specs</span>
+</span></code></pre></div>
+<p>If metrics need to be computed for a subset of models, set <code>model_names</code> in the
+<code>metric_specs</code>. For example:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-19-1"><a id="__codelineno-19-1" name="__codelineno-19-1" href="#__codelineno-19-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.protobuf</span><span class="w"> </span><span class="kn">import</span> <span class="n">text_format</span>
+</span><span id="__span-19-2"><a id="__codelineno-19-2" name="__codelineno-19-2" href="#__codelineno-19-2"></a>
+</span><span id="__span-19-3"><a id="__codelineno-19-3" name="__codelineno-19-3" href="#__codelineno-19-3"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-19-4"><a id="__codelineno-19-4" name="__codelineno-19-4" href="#__codelineno-19-4"></a><span class="s2">  metrics_specs {</span>
+</span><span id="__span-19-5"><a id="__codelineno-19-5" name="__codelineno-19-5" href="#__codelineno-19-5"></a><span class="s2">    model_names: [&quot;my-model1&quot;]</span>
+</span><span id="__span-19-6"><a id="__codelineno-19-6" name="__codelineno-19-6" href="#__codelineno-19-6"></a><span class="s2">    ...</span>
+</span><span id="__span-19-7"><a id="__codelineno-19-7" name="__codelineno-19-7" href="#__codelineno-19-7"></a><span class="s2">  }</span>
+</span><span id="__span-19-8"><a id="__codelineno-19-8" name="__codelineno-19-8" href="#__codelineno-19-8"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">EvalConfig</span><span class="p">())</span><span class="o">.</span><span class="n">metrics_specs</span>
+</span></code></pre></div>
+<p>The <code>specs_from_metrics</code> API also supports passing model names:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-20-1"><a id="__codelineno-20-1" name="__codelineno-20-1" href="#__codelineno-20-1"></a><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-20-2"><a id="__codelineno-20-2" name="__codelineno-20-2" href="#__codelineno-20-2"></a>    <span class="o">...</span>
+</span><span id="__span-20-3"><a id="__codelineno-20-3" name="__codelineno-20-3" href="#__codelineno-20-3"></a><span class="p">]</span>
+</span><span id="__span-20-4"><a id="__codelineno-20-4" name="__codelineno-20-4" href="#__codelineno-20-4"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">specs_from_metrics</span><span class="p">(</span>
+</span><span id="__span-20-5"><a id="__codelineno-20-5" name="__codelineno-20-5" href="#__codelineno-20-5"></a>    <span class="n">metrics</span><span class="p">,</span> <span class="n">model_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;my-model1&#39;</span><span class="p">])</span>
+</span></code></pre></div>
+<h3 id="model-comparison-metrics">Model Comparison Metrics<a class="headerlink" href="#model-comparison-metrics" title="Permanent link">&para;</a></h3>
+<p>TFMA supports evaluating comparison metrics for a candidate model against a
+baseline model. A simple way to setup the candidate and baseline model pair is
+to pass along a eval_shared_model with the proper model names (tfma.BASELINE_KEY
+and tfma.CANDIDATE_KEY):</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-21-1"><a id="__codelineno-21-1" name="__codelineno-21-1" href="#__codelineno-21-1"></a><span class="n">eval_config</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-21-2"><a id="__codelineno-21-2" name="__codelineno-21-2" href="#__codelineno-21-2"></a><span class="s2">  model_specs {</span>
+</span><span id="__span-21-3"><a id="__codelineno-21-3" name="__codelineno-21-3" href="#__codelineno-21-3"></a><span class="s2">    # ... model_spec without names ...</span>
+</span><span id="__span-21-4"><a id="__codelineno-21-4" name="__codelineno-21-4" href="#__codelineno-21-4"></a><span class="s2">  }</span>
+</span><span id="__span-21-5"><a id="__codelineno-21-5" name="__codelineno-21-5" href="#__codelineno-21-5"></a><span class="s2">  metrics_spec {</span>
+</span><span id="__span-21-6"><a id="__codelineno-21-6" name="__codelineno-21-6" href="#__codelineno-21-6"></a><span class="s2">    # ... metrics ...</span>
+</span><span id="__span-21-7"><a id="__codelineno-21-7" name="__codelineno-21-7" href="#__codelineno-21-7"></a><span class="s2">  }</span>
+</span><span id="__span-21-8"><a id="__codelineno-21-8" name="__codelineno-21-8" href="#__codelineno-21-8"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">EvalConfig</span><span class="p">())</span>
+</span><span id="__span-21-9"><a id="__codelineno-21-9" name="__codelineno-21-9" href="#__codelineno-21-9"></a>
+</span><span id="__span-21-10"><a id="__codelineno-21-10" name="__codelineno-21-10" href="#__codelineno-21-10"></a><span class="n">eval_shared_models</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-21-11"><a id="__codelineno-21-11" name="__codelineno-21-11" href="#__codelineno-21-11"></a>  <span class="n">tfma</span><span class="o">.</span><span class="n">default_eval_shared_model</span><span class="p">(</span>
+</span><span id="__span-21-12"><a id="__codelineno-21-12" name="__codelineno-21-12" href="#__codelineno-21-12"></a>      <span class="n">model_name</span><span class="o">=</span><span class="n">tfma</span><span class="o">.</span><span class="n">CANDIDATE_KEY</span><span class="p">,</span>
+</span><span id="__span-21-13"><a id="__codelineno-21-13" name="__codelineno-21-13" href="#__codelineno-21-13"></a>      <span class="n">eval_saved_model_path</span><span class="o">=</span><span class="s1">&#39;/path/to/saved/candidate/model&#39;</span><span class="p">,</span>
+</span><span id="__span-21-14"><a id="__codelineno-21-14" name="__codelineno-21-14" href="#__codelineno-21-14"></a>      <span class="n">eval_config</span><span class="o">=</span><span class="n">eval_config</span><span class="p">),</span>
+</span><span id="__span-21-15"><a id="__codelineno-21-15" name="__codelineno-21-15" href="#__codelineno-21-15"></a>  <span class="n">tfma</span><span class="o">.</span><span class="n">default_eval_shared_model</span><span class="p">(</span>
+</span><span id="__span-21-16"><a id="__codelineno-21-16" name="__codelineno-21-16" href="#__codelineno-21-16"></a>      <span class="n">model_name</span><span class="o">=</span><span class="n">tfma</span><span class="o">.</span><span class="n">BASELINE_KEY</span><span class="p">,</span>
+</span><span id="__span-21-17"><a id="__codelineno-21-17" name="__codelineno-21-17" href="#__codelineno-21-17"></a>      <span class="n">eval_saved_model_path</span><span class="o">=</span><span class="s1">&#39;/path/to/saved/baseline/model&#39;</span><span class="p">,</span>
+</span><span id="__span-21-18"><a id="__codelineno-21-18" name="__codelineno-21-18" href="#__codelineno-21-18"></a>      <span class="n">eval_config</span><span class="o">=</span><span class="n">eval_config</span><span class="p">),</span>
+</span><span id="__span-21-19"><a id="__codelineno-21-19" name="__codelineno-21-19" href="#__codelineno-21-19"></a><span class="p">]</span>
+</span><span id="__span-21-20"><a id="__codelineno-21-20" name="__codelineno-21-20" href="#__codelineno-21-20"></a>
+</span><span id="__span-21-21"><a id="__codelineno-21-21" name="__codelineno-21-21" href="#__codelineno-21-21"></a><span class="n">eval_result</span> <span class="o">=</span> <span class="n">tfma</span><span class="o">.</span><span class="n">run_model_analysis</span><span class="p">(</span>
+</span><span id="__span-21-22"><a id="__codelineno-21-22" name="__codelineno-21-22" href="#__codelineno-21-22"></a>    <span class="n">eval_shared_models</span><span class="p">,</span>
+</span><span id="__span-21-23"><a id="__codelineno-21-23" name="__codelineno-21-23" href="#__codelineno-21-23"></a>    <span class="n">eval_config</span><span class="o">=</span><span class="n">eval_config</span><span class="p">,</span>
+</span><span id="__span-21-24"><a id="__codelineno-21-24" name="__codelineno-21-24" href="#__codelineno-21-24"></a>    <span class="c1"># This assumes your data is a TFRecords file containing records in the</span>
+</span><span id="__span-21-25"><a id="__codelineno-21-25" name="__codelineno-21-25" href="#__codelineno-21-25"></a>    <span class="c1"># tf.train.Example format.</span>
+</span><span id="__span-21-26"><a id="__codelineno-21-26" name="__codelineno-21-26" href="#__codelineno-21-26"></a>    <span class="n">data_location</span><span class="o">=</span><span class="s2">&quot;/path/to/file/containing/tfrecords&quot;</span><span class="p">,</span>
+</span><span id="__span-21-27"><a id="__codelineno-21-27" name="__codelineno-21-27" href="#__codelineno-21-27"></a>    <span class="n">output_path</span><span class="o">=</span><span class="s2">&quot;/path/for/output&quot;</span><span class="p">)</span>
+</span></code></pre></div>
+<p>Comparison metrics are computed automatically for all of the diff-able metrics
+(currently only scalar value metrics such as accuracy and AUC).</p>
+<h3 id="multi-output-model-metrics">Multi-output Model Metrics<a class="headerlink" href="#multi-output-model-metrics" title="Permanent link">&para;</a></h3>
+<p>TFMA supports evaluating metrics on models that have different outputs.
+Multi-output models store their output predictions in the form of a dict keyed
+by output name. When multi-output model's are used, the names of the outputs
+associated with a set of metrics must be specified in the <code>output_names</code> section
+of the MetricsSpec. For example:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-22-1"><a id="__codelineno-22-1" name="__codelineno-22-1" href="#__codelineno-22-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.protobuf</span><span class="w"> </span><span class="kn">import</span> <span class="n">text_format</span>
+</span><span id="__span-22-2"><a id="__codelineno-22-2" name="__codelineno-22-2" href="#__codelineno-22-2"></a>
+</span><span id="__span-22-3"><a id="__codelineno-22-3" name="__codelineno-22-3" href="#__codelineno-22-3"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-22-4"><a id="__codelineno-22-4" name="__codelineno-22-4" href="#__codelineno-22-4"></a><span class="s2">  metrics_specs {</span>
+</span><span id="__span-22-5"><a id="__codelineno-22-5" name="__codelineno-22-5" href="#__codelineno-22-5"></a><span class="s2">    output_names: [&quot;my-output&quot;]</span>
+</span><span id="__span-22-6"><a id="__codelineno-22-6" name="__codelineno-22-6" href="#__codelineno-22-6"></a><span class="s2">    ...</span>
+</span><span id="__span-22-7"><a id="__codelineno-22-7" name="__codelineno-22-7" href="#__codelineno-22-7"></a><span class="s2">  }</span>
+</span><span id="__span-22-8"><a id="__codelineno-22-8" name="__codelineno-22-8" href="#__codelineno-22-8"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">EvalConfig</span><span class="p">())</span><span class="o">.</span><span class="n">metrics_specs</span>
+</span></code></pre></div>
+<p>The <code>specs_from_metrics</code> API also supports passing output names:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-23-1"><a id="__codelineno-23-1" name="__codelineno-23-1" href="#__codelineno-23-1"></a><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-23-2"><a id="__codelineno-23-2" name="__codelineno-23-2" href="#__codelineno-23-2"></a>    <span class="o">...</span>
+</span><span id="__span-23-3"><a id="__codelineno-23-3" name="__codelineno-23-3" href="#__codelineno-23-3"></a><span class="p">]</span>
+</span><span id="__span-23-4"><a id="__codelineno-23-4" name="__codelineno-23-4" href="#__codelineno-23-4"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">specs_from_metrics</span><span class="p">(</span>
+</span><span id="__span-23-5"><a id="__codelineno-23-5" name="__codelineno-23-5" href="#__codelineno-23-5"></a>    <span class="n">metrics</span><span class="p">,</span> <span class="n">output_names</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;my-output&#39;</span><span class="p">])</span>
+</span></code></pre></div>
+<h3 id="customizing-metric-settings">Customizing Metric Settings<a class="headerlink" href="#customizing-metric-settings" title="Permanent link">&para;</a></h3>
+<p>TFMA allows customizing of the settings that are used with different metrics.
+For example you might want to change the name, set thresholds, etc. This is done
+by adding a <code>config</code> section to the metric config. The config is specified using
+the JSON string version of the parameters that would be passed to the metrics
+<code>__init__</code> method (for ease of use the leading and trailing '{' and '}' brackets
+may be omitted). For example:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-24-1"><a id="__codelineno-24-1" name="__codelineno-24-1" href="#__codelineno-24-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.protobuf</span><span class="w"> </span><span class="kn">import</span> <span class="n">text_format</span>
+</span><span id="__span-24-2"><a id="__codelineno-24-2" name="__codelineno-24-2" href="#__codelineno-24-2"></a>
+</span><span id="__span-24-3"><a id="__codelineno-24-3" name="__codelineno-24-3" href="#__codelineno-24-3"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-24-4"><a id="__codelineno-24-4" name="__codelineno-24-4" href="#__codelineno-24-4"></a><span class="s2">  metrics_specs {</span>
+</span><span id="__span-24-5"><a id="__codelineno-24-5" name="__codelineno-24-5" href="#__codelineno-24-5"></a><span class="s2">    metrics {</span>
+</span><span id="__span-24-6"><a id="__codelineno-24-6" name="__codelineno-24-6" href="#__codelineno-24-6"></a><span class="s2">      class_name: &quot;ConfusionMatrixAtThresholds&quot;</span>
+</span><span id="__span-24-7"><a id="__codelineno-24-7" name="__codelineno-24-7" href="#__codelineno-24-7"></a><span class="s2">      config: &#39;&quot;thresholds&quot;: [0.3, 0.5, 0.8]&#39;</span>
+</span><span id="__span-24-8"><a id="__codelineno-24-8" name="__codelineno-24-8" href="#__codelineno-24-8"></a><span class="s2">    }</span>
+</span><span id="__span-24-9"><a id="__codelineno-24-9" name="__codelineno-24-9" href="#__codelineno-24-9"></a><span class="s2">  }</span>
+</span><span id="__span-24-10"><a id="__codelineno-24-10" name="__codelineno-24-10" href="#__codelineno-24-10"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">MetricsSpec</span><span class="p">())</span><span class="o">.</span><span class="n">metrics_specs</span>
+</span></code></pre></div>
+<p>This customization is of course also supported directly:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-25-1"><a id="__codelineno-25-1" name="__codelineno-25-1" href="#__codelineno-25-1"></a><span class="n">metrics</span> <span class="o">=</span> <span class="p">[</span>
+</span><span id="__span-25-2"><a id="__codelineno-25-2" name="__codelineno-25-2" href="#__codelineno-25-2"></a>   <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">ConfusionMatrixAtThresholds</span><span class="p">(</span><span class="n">thresholds</span><span class="o">=</span><span class="p">[</span><span class="mf">0.3</span><span class="p">,</span> <span class="mf">0.5</span><span class="p">,</span> <span class="mf">0.8</span><span class="p">]),</span>
+</span><span id="__span-25-3"><a id="__codelineno-25-3" name="__codelineno-25-3" href="#__codelineno-25-3"></a><span class="p">]</span>
+</span><span id="__span-25-4"><a id="__codelineno-25-4" name="__codelineno-25-4" href="#__codelineno-25-4"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">specs_from_metrics</span><span class="p">(</span><span class="n">metrics</span><span class="p">)</span>
+</span></code></pre></div>
+<p>NOTE: It is advisable to set the default number of thresholds used with AUC, etc
+to 10000 because this is the default value used by the underlying histogram
+calcuation which is shared between multiple metric implementations.</p>
+<h2 id="outputs">Outputs<a class="headerlink" href="#outputs" title="Permanent link">&para;</a></h2>
+<p>The output of a metric evaluation is a series of metric keys/values and/or plot
+keys/values based on the configuration used.</p>
+<h3 id="metric-keys">Metric Keys<a class="headerlink" href="#metric-keys" title="Permanent link">&para;</a></h3>
+<p><a href="https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/proto/metrics_for_slice.proto">MetricKeys</a>
+are defined using a structured key type. This key uniquely identifies each of
+the following aspects of a metric:</p>
+<ul>
+<li>Metric name (<code>auc</code>, <code>mean_label</code>, etc)</li>
+<li>Model name (only used if multi-model evaluation)</li>
+<li>Output name (only used if multi-output models are evaluated)</li>
+<li>Sub key (e.g. class ID if multi-class model is binarized)</li>
+</ul>
+<h3 id="metric-value">Metric Value<a class="headerlink" href="#metric-value" title="Permanent link">&para;</a></h3>
+<p><a href="https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/proto/metrics_for_slice.proto">MetricValues</a>
+are defined using a proto that encapulates the different value types supported
+by the different metrics (e.g. <code>double</code>, <code>ConfusionMatrixAtThresholds</code>, etc).</p>
+<p>Below are the supported metric value types:</p>
+<ul>
+<li><a href="https://developers.google.com/protocol-buffers/docs/reference/csharp/class/google/protobuf/well-known-types/double-value"><code>double_value</code></a> -
+    A wrapper for a double type.</li>
+<li><a href="https://developers.google.com/protocol-buffers/docs/proto3"><code>bytes_value</code></a> -
+    A bytes value.</li>
+<li><code>bounded_value</code> - Represents a real value which could be a pointwise
+    estimate, optionally with approximate bounds of some sort. Has properties
+    <code>value</code>, <code>lower_bound</code>, and <code>upper_bound</code>.</li>
+<li><code>value_at_cutoffs</code> - Value at cutoffs (e.g. precision@K, recall@K). Has
+    property <code>values</code>, each of which has properties <code>cutoff</code> and <code>value</code>.</li>
+<li><code>confusion_matrix_at_thresholds</code> - Confusion matrix at thresholds. Has
+    property <code>matrices</code>, each of which has properties for <code>threshold</code>,
+    <code>precision</code>, <code>recall</code>, and confusion matrix values such as
+    <code>false_negatives</code>.</li>
+<li><code>array_value</code> - For metrics which return an array of values.</li>
+</ul>
+<h3 id="plot-keys">Plot Keys<a class="headerlink" href="#plot-keys" title="Permanent link">&para;</a></h3>
+<p><a href="https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/proto/metrics_for_slice.proto">PlotKeys</a>
+are similar to metric keys except that for historical reasons all the plots
+values are stored in a single proto so the plot key does not have a name.</p>
+<h3 id="plot-values">Plot Values<a class="headerlink" href="#plot-values" title="Permanent link">&para;</a></h3>
+<p>All the supported plots are stored in a single proto called
+<a href="https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/proto/metrics_for_slice.proto">PlotData</a>.</p>
+<h3 id="evalresult">EvalResult<a class="headerlink" href="#evalresult" title="Permanent link">&para;</a></h3>
+<p>The return from an evaluation run is an
+<a href="../api_docs/python/tfma#tensorflow_model_analysis.EvalResult"><code>tfma.EvalResult</code></a>.
+This record contains <code>slicing_metrics</code> that encode the metric key as a
+multi-level dict where the levels correspond to output name, class ID, metric
+name, and metric value respectively. This is intended to be used for UI display
+in a Jupiter notebook. If access to the underlying data is needed the <code>metrics</code>
+result file should be used instead (see
+<a href="https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/proto/metrics_for_slice.proto">metrics_for_slice.proto</a>).</p>
+<h2 id="customization">Customization<a class="headerlink" href="#customization" title="Permanent link">&para;</a></h2>
+<p>In addition to custom metrics that are added as part of a saved keras (or legacy
+EvalSavedModel). There are two ways to customize metrics in TFMA post saving:
+(1) by defining a custom keras metric class and (2) by defining a custom TFMA
+metrics class backed by a beam combiner.</p>
+<p>In both cases, the metrics are configured by specifying the name of the metric
+class and associated module. For example:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-26-1"><a id="__codelineno-26-1" name="__codelineno-26-1" href="#__codelineno-26-1"></a><span class="kn">from</span><span class="w"> </span><span class="nn">google.protobuf</span><span class="w"> </span><span class="kn">import</span> <span class="n">text_format</span>
+</span><span id="__span-26-2"><a id="__codelineno-26-2" name="__codelineno-26-2" href="#__codelineno-26-2"></a>
+</span><span id="__span-26-3"><a id="__codelineno-26-3" name="__codelineno-26-3" href="#__codelineno-26-3"></a><span class="n">metrics_specs</span> <span class="o">=</span> <span class="n">text_format</span><span class="o">.</span><span class="n">Parse</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;</span>
+</span><span id="__span-26-4"><a id="__codelineno-26-4" name="__codelineno-26-4" href="#__codelineno-26-4"></a><span class="s2">  metrics_specs {</span>
+</span><span id="__span-26-5"><a id="__codelineno-26-5" name="__codelineno-26-5" href="#__codelineno-26-5"></a><span class="s2">    metrics { class_name: &quot;MyMetric&quot; module: &quot;my.module&quot;}</span>
+</span><span id="__span-26-6"><a id="__codelineno-26-6" name="__codelineno-26-6" href="#__codelineno-26-6"></a><span class="s2">  }</span>
+</span><span id="__span-26-7"><a id="__codelineno-26-7" name="__codelineno-26-7" href="#__codelineno-26-7"></a><span class="s2">&quot;&quot;&quot;</span><span class="p">,</span> <span class="n">tfma</span><span class="o">.</span><span class="n">EvalConfig</span><span class="p">())</span><span class="o">.</span><span class="n">metrics_specs</span>
+</span></code></pre></div>
+<p>NOTE: When customizing metrics you must ensure that the module is available to
+beam.</p>
+<h3 id="custom-keras-metrics">Custom Keras Metrics<a class="headerlink" href="#custom-keras-metrics" title="Permanent link">&para;</a></h3>
+<p>To create a custom keras metric, users need to extend <code>tf.keras.metrics.Metric</code>
+with their implementation and then make sure the metric's module is available at
+evaluation time.</p>
+<p>Note that for metrics added post model save, TFMA only supports metrics that
+take label (i.e. y_true), prediction (y_pred), and example weight
+(sample_weight) as parameters to the <code>update_state</code> method.</p>
+<h4 id="keras-metric-example">Keras Metric Example<a class="headerlink" href="#keras-metric-example" title="Permanent link">&para;</a></h4>
+<p>The following is an example of a custom keras metric:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-27-1"><a id="__codelineno-27-1" name="__codelineno-27-1" href="#__codelineno-27-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">MyMetric</span><span class="p">(</span><span class="n">tf</span><span class="o">.</span><span class="n">keras</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">Mean</span><span class="p">):</span>
+</span><span id="__span-27-2"><a id="__codelineno-27-2" name="__codelineno-27-2" href="#__codelineno-27-2"></a>
+</span><span id="__span-27-3"><a id="__codelineno-27-3" name="__codelineno-27-3" href="#__codelineno-27-3"></a>  <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="s1">&#39;my_metric&#39;</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="__span-27-4"><a id="__codelineno-27-4" name="__codelineno-27-4" href="#__codelineno-27-4"></a>    <span class="nb">super</span><span class="p">(</span><span class="n">MyMetric</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">dtype</span><span class="p">)</span>
+</span><span id="__span-27-5"><a id="__codelineno-27-5" name="__codelineno-27-5" href="#__codelineno-27-5"></a>
+</span><span id="__span-27-6"><a id="__codelineno-27-6" name="__codelineno-27-6" href="#__codelineno-27-6"></a>  <span class="k">def</span><span class="w"> </span><span class="nf">update_state</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">y_true</span><span class="p">,</span> <span class="n">y_pred</span><span class="p">,</span> <span class="n">sample_weight</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+</span><span id="__span-27-7"><a id="__codelineno-27-7" name="__codelineno-27-7" href="#__codelineno-27-7"></a>    <span class="k">return</span> <span class="nb">super</span><span class="p">(</span><span class="n">MyMetric</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="n">update_state</span><span class="p">(</span>
+</span><span id="__span-27-8"><a id="__codelineno-27-8" name="__codelineno-27-8" href="#__codelineno-27-8"></a>        <span class="n">y_pred</span><span class="p">,</span> <span class="n">sample_weight</span><span class="o">=</span><span class="n">sample_weight</span><span class="p">)</span>
+</span></code></pre></div>
+<h3 id="custom-tfma-metrics">Custom TFMA Metrics<a class="headerlink" href="#custom-tfma-metrics" title="Permanent link">&para;</a></h3>
+<p>To create a custom TFMA metric, users need to extend <code>tfma.metrics.Metric</code> with
+their implementation and then make sure the metric's module is available at
+evaluation time.</p>
+<h4 id="metric">Metric<a class="headerlink" href="#metric" title="Permanent link">&para;</a></h4>
+<p>A <code>tfma.metrics.Metric</code> implementation is made up of a set of kwargs that define
+the metrics configuration along with a function for creating the computations
+(possibly multiple) needed to calcuate the metrics value. There are two main
+computation types that can be used: <code>tfma.metrics.MetricComputation</code> and
+<code>tfma.metrics.DerivedMetricComputation</code> that are described in the sections
+below. The function that creates these computations will be passed the following
+parameters as input:</p>
+<ul>
+<li><code>eval_config: tfam.EvalConfig</code><ul>
+<li>The eval config passed to the evaluator (useful for looking up model
+    spec settings such as prediction key to use, etc).</li>
+</ul>
+</li>
+<li><code>model_names: List[Text]</code><ul>
+<li>List of model names to compute metrics for (None if single-model)</li>
+</ul>
+</li>
+<li><code>output_names: List[Text]</code>.<ul>
+<li>List of output names to compute metrics for (None if single-model)</li>
+</ul>
+</li>
+<li><code>sub_keys: List[tfma.SubKey]</code>.<ul>
+<li>List of sub keys (class ID, top K, etc) to compute metrics for (or None)</li>
+</ul>
+</li>
+<li><code>aggregation_type: tfma.AggregationType</code><ul>
+<li>Type of aggregation if computing an aggregation metric.</li>
+</ul>
+</li>
+<li><code>class_weights: Dict[int, float]</code>.<ul>
+<li>Class weights to use if computing an aggregation metric.</li>
+</ul>
+</li>
+<li><code>query_key: Text</code><ul>
+<li>Query key used if computing a query/ranking based metric.</li>
+</ul>
+</li>
+</ul>
+<p>If a metric is not associated with one or more of these settings then it may
+leave those parameters out of its signature definition.</p>
+<p>If a metric is computed the same way for each model, output, and sub key, then
+the utility <code>tfma.metrics.merge_per_key_computations</code> can be used to perform the
+same computations for each of these inputs separately.</p>
+<h4 id="metriccomputation">MetricComputation<a class="headerlink" href="#metriccomputation" title="Permanent link">&para;</a></h4>
+<p>A <code>MetricComputation</code> is made up of a combination of <code>preprocessors</code> and a
+<code>combiner</code>. The <code>preprocessors</code> is a list of <code>preprocessor</code>, which is a
+<code>beam.DoFn</code> that takes extracts as its input and outputs the initial state that
+will be used by the combiner (see <a href="../architecture/">architecture</a> for more info
+on what are extracts). All preprocessors will be executed sequentially in the
+order of the list. If the <code>preprocessors</code> is empty, then the combiner will be
+passed
+<a href="../api_docs/python/tfma-metrics#tensorflow_model_analysis.metrics.StandardMetricInputs">StandardMetricInputs</a>
+(standard metric inputs contains labels, predictions, and example_weights). The
+<code>combiner</code> is a <code>beam.CombineFn</code> that takes a tuple of (slice key, preprocessor
+output) as its input and outputs a tuple of (slice_key, metric results dict) as
+its result.</p>
+<p>Note that slicing happens between the <code>preprocessors</code> and <code>combiner</code>.</p>
+<p>Note that if a metric computation wants to make use of both the standard metric
+inputs, but augment it with a few of the features from the <code>features</code> extracts,
+then the special
+<a href="../api_docs/python/tfma-metrics#tensorflow_model_analysis.metrics.FeaturePreprocessor">FeaturePreprocessor</a>
+can be used which will merge the requested features from multiple combiners into
+a single shared StandardMetricsInputs value that is passed to all the combiners
+(the combiners are responsible for reading the features they are interested in
+and ignoring the rest).</p>
+<h5 id="example">Example<a class="headerlink" href="#example" title="Permanent link">&para;</a></h5>
+<p>The following is a very simple example of TFMA metric definition for computing
+the ExampleCount:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-28-1"><a id="__codelineno-28-1" name="__codelineno-28-1" href="#__codelineno-28-1"></a><span class="k">class</span><span class="w"> </span><span class="nc">ExampleCount</span><span class="p">(</span><span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">Metric</span><span class="p">):</span>
+</span><span id="__span-28-2"><a id="__codelineno-28-2" name="__codelineno-28-2" href="#__codelineno-28-2"></a>
+</span><span id="__span-28-3"><a id="__codelineno-28-3" name="__codelineno-28-3" href="#__codelineno-28-3"></a>  <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">name</span><span class="p">:</span> <span class="n">Text</span> <span class="o">=</span> <span class="s1">&#39;example_count&#39;</span><span class="p">):</span>
+</span><span id="__span-28-4"><a id="__codelineno-28-4" name="__codelineno-28-4" href="#__codelineno-28-4"></a>    <span class="nb">super</span><span class="p">(</span><span class="n">ExampleCount</span><span class="p">,</span> <span class="bp">self</span><span class="p">)</span><span class="o">.</span><span class="fm">__init__</span><span class="p">(</span><span class="n">_example_count</span><span class="p">,</span> <span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</span><span id="__span-28-5"><a id="__codelineno-28-5" name="__codelineno-28-5" href="#__codelineno-28-5"></a>
+</span><span id="__span-28-6"><a id="__codelineno-28-6" name="__codelineno-28-6" href="#__codelineno-28-6"></a>
+</span><span id="__span-28-7"><a id="__codelineno-28-7" name="__codelineno-28-7" href="#__codelineno-28-7"></a><span class="k">def</span><span class="w"> </span><span class="nf">_example_count</span><span class="p">(</span>
+</span><span id="__span-28-8"><a id="__codelineno-28-8" name="__codelineno-28-8" href="#__codelineno-28-8"></a>    <span class="n">name</span><span class="p">:</span> <span class="n">Text</span> <span class="o">=</span> <span class="s1">&#39;example_count&#39;</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MetricComputations</span><span class="p">:</span>
+</span><span id="__span-28-9"><a id="__codelineno-28-9" name="__codelineno-28-9" href="#__codelineno-28-9"></a>  <span class="n">key</span> <span class="o">=</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MetricKey</span><span class="p">(</span><span class="n">name</span><span class="o">=</span><span class="n">name</span><span class="p">)</span>
+</span><span id="__span-28-10"><a id="__codelineno-28-10" name="__codelineno-28-10" href="#__codelineno-28-10"></a>  <span class="k">return</span> <span class="p">[</span>
+</span><span id="__span-28-11"><a id="__codelineno-28-11" name="__codelineno-28-11" href="#__codelineno-28-11"></a>      <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MetricComputation</span><span class="p">(</span>
+</span><span id="__span-28-12"><a id="__codelineno-28-12" name="__codelineno-28-12" href="#__codelineno-28-12"></a>          <span class="n">keys</span><span class="o">=</span><span class="p">[</span><span class="n">key</span><span class="p">],</span>
+</span><span id="__span-28-13"><a id="__codelineno-28-13" name="__codelineno-28-13" href="#__codelineno-28-13"></a>          <span class="n">preprocessors</span><span class="o">=</span><span class="p">[</span><span class="n">_ExampleCountPreprocessor</span><span class="p">()],</span>
+</span><span id="__span-28-14"><a id="__codelineno-28-14" name="__codelineno-28-14" href="#__codelineno-28-14"></a>          <span class="n">combiner</span><span class="o">=</span><span class="n">_ExampleCountCombiner</span><span class="p">(</span><span class="n">key</span><span class="p">))</span>
+</span><span id="__span-28-15"><a id="__codelineno-28-15" name="__codelineno-28-15" href="#__codelineno-28-15"></a>  <span class="p">]</span>
+</span><span id="__span-28-16"><a id="__codelineno-28-16" name="__codelineno-28-16" href="#__codelineno-28-16"></a>
+</span><span id="__span-28-17"><a id="__codelineno-28-17" name="__codelineno-28-17" href="#__codelineno-28-17"></a>
+</span><span id="__span-28-18"><a id="__codelineno-28-18" name="__codelineno-28-18" href="#__codelineno-28-18"></a><span class="k">class</span><span class="w"> </span><span class="nc">ExampleCountTest</span><span class="p">(</span><span class="n">tfma</span><span class="o">.</span><span class="n">test</span><span class="o">.</span><span class="n">testutil</span><span class="o">.</span><span class="n">TensorflowModelAnalysisTest</span><span class="p">):</span>
+</span><span id="__span-28-19"><a id="__codelineno-28-19" name="__codelineno-28-19" href="#__codelineno-28-19"></a>
+</span><span id="__span-28-20"><a id="__codelineno-28-20" name="__codelineno-28-20" href="#__codelineno-28-20"></a>  <span class="k">def</span><span class="w"> </span><span class="nf">testExampleCount</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-28-21"><a id="__codelineno-28-21" name="__codelineno-28-21" href="#__codelineno-28-21"></a>    <span class="n">metric</span> <span class="o">=</span> <span class="n">ExampleCount</span><span class="p">()</span>
+</span><span id="__span-28-22"><a id="__codelineno-28-22" name="__codelineno-28-22" href="#__codelineno-28-22"></a>    <span class="n">computations</span> <span class="o">=</span> <span class="n">metric</span><span class="o">.</span><span class="n">computations</span><span class="p">(</span><span class="n">example_weighted</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>
+</span><span id="__span-28-23"><a id="__codelineno-28-23" name="__codelineno-28-23" href="#__codelineno-28-23"></a>    <span class="n">computation</span> <span class="o">=</span> <span class="n">computations</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="__span-28-24"><a id="__codelineno-28-24" name="__codelineno-28-24" href="#__codelineno-28-24"></a>
+</span><span id="__span-28-25"><a id="__codelineno-28-25" name="__codelineno-28-25" href="#__codelineno-28-25"></a>    <span class="k">with</span> <span class="n">beam</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">()</span> <span class="k">as</span> <span class="n">pipeline</span><span class="p">:</span>
+</span><span id="__span-28-26"><a id="__codelineno-28-26" name="__codelineno-28-26" href="#__codelineno-28-26"></a>      <span class="n">result</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="__span-28-27"><a id="__codelineno-28-27" name="__codelineno-28-27" href="#__codelineno-28-27"></a>          <span class="n">pipeline</span>
+</span><span id="__span-28-28"><a id="__codelineno-28-28" name="__codelineno-28-28" href="#__codelineno-28-28"></a>          <span class="o">|</span> <span class="s1">&#39;Create&#39;</span> <span class="o">&gt;&gt;</span> <span class="n">beam</span><span class="o">.</span><span class="n">Create</span><span class="p">([</span><span class="o">...</span><span class="p">])</span>  <span class="c1"># Add inputs</span>
+</span><span id="__span-28-29"><a id="__codelineno-28-29" name="__codelineno-28-29" href="#__codelineno-28-29"></a>          <span class="o">|</span> <span class="s1">&#39;PreProcess&#39;</span> <span class="o">&gt;&gt;</span> <span class="n">beam</span><span class="o">.</span><span class="n">ParDo</span><span class="p">(</span><span class="n">computation</span><span class="o">.</span><span class="n">preprocessors</span><span class="p">[</span><span class="mi">0</span><span class="p">])</span>
+</span><span id="__span-28-30"><a id="__codelineno-28-30" name="__codelineno-28-30" href="#__codelineno-28-30"></a>          <span class="o">|</span> <span class="s1">&#39;Process&#39;</span> <span class="o">&gt;&gt;</span> <span class="n">beam</span><span class="o">.</span><span class="n">Map</span><span class="p">(</span><span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">to_standard_metric_inputs</span><span class="p">)</span>
+</span><span id="__span-28-31"><a id="__codelineno-28-31" name="__codelineno-28-31" href="#__codelineno-28-31"></a>          <span class="o">|</span> <span class="s1">&#39;AddSlice&#39;</span> <span class="o">&gt;&gt;</span> <span class="n">beam</span><span class="o">.</span><span class="n">Map</span><span class="p">(</span><span class="k">lambda</span> <span class="n">x</span><span class="p">:</span> <span class="p">((),</span> <span class="n">x</span><span class="p">))</span>
+</span><span id="__span-28-32"><a id="__codelineno-28-32" name="__codelineno-28-32" href="#__codelineno-28-32"></a>          <span class="o">|</span> <span class="s1">&#39;ComputeMetric&#39;</span> <span class="o">&gt;&gt;</span> <span class="n">beam</span><span class="o">.</span><span class="n">CombinePerKey</span><span class="p">(</span><span class="n">computation</span><span class="o">.</span><span class="n">combiner</span><span class="p">)</span>
+</span><span id="__span-28-33"><a id="__codelineno-28-33" name="__codelineno-28-33" href="#__codelineno-28-33"></a>      <span class="p">)</span>
+</span><span id="__span-28-34"><a id="__codelineno-28-34" name="__codelineno-28-34" href="#__codelineno-28-34"></a>
+</span><span id="__span-28-35"><a id="__codelineno-28-35" name="__codelineno-28-35" href="#__codelineno-28-35"></a>      <span class="k">def</span><span class="w"> </span><span class="nf">check_result</span><span class="p">(</span><span class="n">got</span><span class="p">):</span>
+</span><span id="__span-28-36"><a id="__codelineno-28-36" name="__codelineno-28-36" href="#__codelineno-28-36"></a>        <span class="k">try</span><span class="p">:</span>
+</span><span id="__span-28-37"><a id="__codelineno-28-37" name="__codelineno-28-37" href="#__codelineno-28-37"></a>          <span class="bp">self</span><span class="o">.</span><span class="n">assertLen</span><span class="p">(</span><span class="n">got</span><span class="p">,</span> <span class="mi">1</span><span class="p">)</span>
+</span><span id="__span-28-38"><a id="__codelineno-28-38" name="__codelineno-28-38" href="#__codelineno-28-38"></a>          <span class="n">got_slice_key</span><span class="p">,</span> <span class="n">got_metrics</span> <span class="o">=</span> <span class="n">got</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="__span-28-39"><a id="__codelineno-28-39" name="__codelineno-28-39" href="#__codelineno-28-39"></a>          <span class="bp">self</span><span class="o">.</span><span class="n">assertEqual</span><span class="p">(</span><span class="n">got_slice_key</span><span class="p">,</span> <span class="p">())</span>
+</span><span id="__span-28-40"><a id="__codelineno-28-40" name="__codelineno-28-40" href="#__codelineno-28-40"></a>          <span class="n">key</span> <span class="o">=</span> <span class="n">computation</span><span class="o">.</span><span class="n">keys</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+</span><span id="__span-28-41"><a id="__codelineno-28-41" name="__codelineno-28-41" href="#__codelineno-28-41"></a>          <span class="bp">self</span><span class="o">.</span><span class="n">assertIn</span><span class="p">(</span><span class="n">key</span><span class="p">,</span> <span class="n">got_metrics</span><span class="p">)</span>
+</span><span id="__span-28-42"><a id="__codelineno-28-42" name="__codelineno-28-42" href="#__codelineno-28-42"></a>          <span class="bp">self</span><span class="o">.</span><span class="n">assertAlmostEqual</span><span class="p">(</span><span class="n">got_metrics</span><span class="p">[</span><span class="n">key</span><span class="p">],</span> <span class="n">expected_value</span><span class="p">,</span> <span class="n">places</span><span class="o">=</span><span class="mi">5</span><span class="p">)</span>
+</span><span id="__span-28-43"><a id="__codelineno-28-43" name="__codelineno-28-43" href="#__codelineno-28-43"></a>        <span class="k">except</span> <span class="ne">AssertionError</span> <span class="k">as</span> <span class="n">err</span><span class="p">:</span>
+</span><span id="__span-28-44"><a id="__codelineno-28-44" name="__codelineno-28-44" href="#__codelineno-28-44"></a>          <span class="k">raise</span> <span class="n">util</span><span class="o">.</span><span class="n">BeamAssertException</span><span class="p">(</span><span class="n">err</span><span class="p">)</span>
+</span><span id="__span-28-45"><a id="__codelineno-28-45" name="__codelineno-28-45" href="#__codelineno-28-45"></a>
+</span><span id="__span-28-46"><a id="__codelineno-28-46" name="__codelineno-28-46" href="#__codelineno-28-46"></a>      <span class="n">util</span><span class="o">.</span><span class="n">assert_that</span><span class="p">(</span><span class="n">result</span><span class="p">,</span> <span class="n">check_result</span><span class="p">,</span> <span class="n">label</span><span class="o">=</span><span class="s1">&#39;result&#39;</span><span class="p">)</span>
+</span><span id="__span-28-47"><a id="__codelineno-28-47" name="__codelineno-28-47" href="#__codelineno-28-47"></a>
+</span><span id="__span-28-48"><a id="__codelineno-28-48" name="__codelineno-28-48" href="#__codelineno-28-48"></a><span class="k">class</span><span class="w"> </span><span class="nc">_ExampleCountPreprocessor</span><span class="p">(</span><span class="n">beam</span><span class="o">.</span><span class="n">DoFn</span><span class="p">):</span>
+</span><span id="__span-28-49"><a id="__codelineno-28-49" name="__codelineno-28-49" href="#__codelineno-28-49"></a>
+</span><span id="__span-28-50"><a id="__codelineno-28-50" name="__codelineno-28-50" href="#__codelineno-28-50"></a>  <span class="k">def</span><span class="w"> </span><span class="nf">process</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">extracts</span><span class="p">:</span> <span class="n">tfma</span><span class="o">.</span><span class="n">Extracts</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">]:</span>
+</span><span id="__span-28-51"><a id="__codelineno-28-51" name="__codelineno-28-51" href="#__codelineno-28-51"></a>    <span class="k">yield</span> <span class="mi">1</span>
+</span><span id="__span-28-52"><a id="__codelineno-28-52" name="__codelineno-28-52" href="#__codelineno-28-52"></a>
+</span><span id="__span-28-53"><a id="__codelineno-28-53" name="__codelineno-28-53" href="#__codelineno-28-53"></a>
+</span><span id="__span-28-54"><a id="__codelineno-28-54" name="__codelineno-28-54" href="#__codelineno-28-54"></a><span class="k">class</span><span class="w"> </span><span class="nc">_ExampleCountPreprocessorTest</span><span class="p">(</span><span class="n">unittest</span><span class="o">.</span><span class="n">TestCase</span><span class="p">):</span>
+</span><span id="__span-28-55"><a id="__codelineno-28-55" name="__codelineno-28-55" href="#__codelineno-28-55"></a>
+</span><span id="__span-28-56"><a id="__codelineno-28-56" name="__codelineno-28-56" href="#__codelineno-28-56"></a>  <span class="k">def</span><span class="w"> </span><span class="nf">testExampleCountPreprocessor</span><span class="p">(</span><span class="bp">self</span><span class="p">):</span>
+</span><span id="__span-28-57"><a id="__codelineno-28-57" name="__codelineno-28-57" href="#__codelineno-28-57"></a>    <span class="o">...</span>  <span class="c1"># Init the test case here</span>
+</span><span id="__span-28-58"><a id="__codelineno-28-58" name="__codelineno-28-58" href="#__codelineno-28-58"></a>    <span class="k">with</span> <span class="n">beam</span><span class="o">.</span><span class="n">Pipeline</span><span class="p">()</span> <span class="k">as</span> <span class="n">pipeline</span><span class="p">:</span>
+</span><span id="__span-28-59"><a id="__codelineno-28-59" name="__codelineno-28-59" href="#__codelineno-28-59"></a>      <span class="n">updated_pcoll</span> <span class="o">=</span> <span class="p">(</span>
+</span><span id="__span-28-60"><a id="__codelineno-28-60" name="__codelineno-28-60" href="#__codelineno-28-60"></a>          <span class="n">pipeline</span>
+</span><span id="__span-28-61"><a id="__codelineno-28-61" name="__codelineno-28-61" href="#__codelineno-28-61"></a>          <span class="o">|</span> <span class="s1">&#39;Create&#39;</span> <span class="o">&gt;&gt;</span> <span class="n">beam</span><span class="o">.</span><span class="n">Create</span><span class="p">([</span><span class="o">...</span><span class="p">])</span>  <span class="c1"># Add inputs</span>
+</span><span id="__span-28-62"><a id="__codelineno-28-62" name="__codelineno-28-62" href="#__codelineno-28-62"></a>          <span class="o">|</span> <span class="s1">&#39;Preprocess&#39;</span>
+</span><span id="__span-28-63"><a id="__codelineno-28-63" name="__codelineno-28-63" href="#__codelineno-28-63"></a>          <span class="o">&gt;&gt;</span> <span class="n">beam</span><span class="o">.</span><span class="n">ParDo</span><span class="p">(</span>
+</span><span id="__span-28-64"><a id="__codelineno-28-64" name="__codelineno-28-64" href="#__codelineno-28-64"></a>              <span class="n">_ExampleCountPreprocessor</span><span class="p">()</span>
+</span><span id="__span-28-65"><a id="__codelineno-28-65" name="__codelineno-28-65" href="#__codelineno-28-65"></a>          <span class="p">)</span>
+</span><span id="__span-28-66"><a id="__codelineno-28-66" name="__codelineno-28-66" href="#__codelineno-28-66"></a>      <span class="p">)</span>
+</span><span id="__span-28-67"><a id="__codelineno-28-67" name="__codelineno-28-67" href="#__codelineno-28-67"></a>
+</span><span id="__span-28-68"><a id="__codelineno-28-68" name="__codelineno-28-68" href="#__codelineno-28-68"></a>      <span class="n">beam_testing_util</span><span class="o">.</span><span class="n">assert_that</span><span class="p">(</span>
+</span><span id="__span-28-69"><a id="__codelineno-28-69" name="__codelineno-28-69" href="#__codelineno-28-69"></a>          <span class="n">updated_pcoll</span><span class="p">,</span>
+</span><span id="__span-28-70"><a id="__codelineno-28-70" name="__codelineno-28-70" href="#__codelineno-28-70"></a>          <span class="k">lambda</span> <span class="n">result</span><span class="p">:</span> <span class="o">...</span><span class="p">,</span>  <span class="c1"># Assert the test case</span>
+</span><span id="__span-28-71"><a id="__codelineno-28-71" name="__codelineno-28-71" href="#__codelineno-28-71"></a>      <span class="p">)</span>
+</span><span id="__span-28-72"><a id="__codelineno-28-72" name="__codelineno-28-72" href="#__codelineno-28-72"></a>
+</span><span id="__span-28-73"><a id="__codelineno-28-73" name="__codelineno-28-73" href="#__codelineno-28-73"></a>
+</span><span id="__span-28-74"><a id="__codelineno-28-74" name="__codelineno-28-74" href="#__codelineno-28-74"></a><span class="k">class</span><span class="w"> </span><span class="nc">_ExampleCountCombiner</span><span class="p">(</span><span class="n">beam</span><span class="o">.</span><span class="n">CombineFn</span><span class="p">):</span>
+</span><span id="__span-28-75"><a id="__codelineno-28-75" name="__codelineno-28-75" href="#__codelineno-28-75"></a>
+</span><span id="__span-28-76"><a id="__codelineno-28-76" name="__codelineno-28-76" href="#__codelineno-28-76"></a>  <span class="k">def</span><span class="w"> </span><span class="fm">__init__</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">metric_key</span><span class="p">:</span> <span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MetricKey</span><span class="p">):</span>
+</span><span id="__span-28-77"><a id="__codelineno-28-77" name="__codelineno-28-77" href="#__codelineno-28-77"></a>    <span class="bp">self</span><span class="o">.</span><span class="n">_metric_key</span> <span class="o">=</span> <span class="n">metric_key</span>
+</span><span id="__span-28-78"><a id="__codelineno-28-78" name="__codelineno-28-78" href="#__codelineno-28-78"></a>
+</span><span id="__span-28-79"><a id="__codelineno-28-79" name="__codelineno-28-79" href="#__codelineno-28-79"></a>  <span class="k">def</span><span class="w"> </span><span class="nf">create_accumulator</span><span class="p">(</span><span class="bp">self</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-28-80"><a id="__codelineno-28-80" name="__codelineno-28-80" href="#__codelineno-28-80"></a>    <span class="k">return</span> <span class="mi">0</span>
+</span><span id="__span-28-81"><a id="__codelineno-28-81" name="__codelineno-28-81" href="#__codelineno-28-81"></a>
+</span><span id="__span-28-82"><a id="__codelineno-28-82" name="__codelineno-28-82" href="#__codelineno-28-82"></a>  <span class="k">def</span><span class="w"> </span><span class="nf">add_input</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">accumulator</span><span class="p">:</span> <span class="nb">int</span><span class="p">,</span> <span class="n">state</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-28-83"><a id="__codelineno-28-83" name="__codelineno-28-83" href="#__codelineno-28-83"></a>    <span class="k">return</span> <span class="n">accumulator</span> <span class="o">+</span> <span class="n">state</span>
+</span><span id="__span-28-84"><a id="__codelineno-28-84" name="__codelineno-28-84" href="#__codelineno-28-84"></a>
+</span><span id="__span-28-85"><a id="__codelineno-28-85" name="__codelineno-28-85" href="#__codelineno-28-85"></a>  <span class="k">def</span><span class="w"> </span><span class="nf">merge_accumulators</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span> <span class="n">accumulators</span><span class="p">:</span> <span class="n">Iterable</span><span class="p">[</span><span class="nb">int</span><span class="p">])</span> <span class="o">-&gt;</span> <span class="nb">int</span><span class="p">:</span>
+</span><span id="__span-28-86"><a id="__codelineno-28-86" name="__codelineno-28-86" href="#__codelineno-28-86"></a>    <span class="n">accumulators</span> <span class="o">=</span> <span class="nb">iter</span><span class="p">(</span><span class="n">accumulators</span><span class="p">)</span>
+</span><span id="__span-28-87"><a id="__codelineno-28-87" name="__codelineno-28-87" href="#__codelineno-28-87"></a>    <span class="n">result</span> <span class="o">=</span> <span class="nb">next</span><span class="p">(</span><span class="n">accumulator</span><span class="p">)</span>
+</span><span id="__span-28-88"><a id="__codelineno-28-88" name="__codelineno-28-88" href="#__codelineno-28-88"></a>    <span class="k">for</span> <span class="n">accumulator</span> <span class="ow">in</span> <span class="n">accumulators</span><span class="p">:</span>
+</span><span id="__span-28-89"><a id="__codelineno-28-89" name="__codelineno-28-89" href="#__codelineno-28-89"></a>      <span class="n">result</span> <span class="o">+=</span> <span class="n">accumulator</span>
+</span><span id="__span-28-90"><a id="__codelineno-28-90" name="__codelineno-28-90" href="#__codelineno-28-90"></a>    <span class="k">return</span> <span class="n">result</span>
+</span><span id="__span-28-91"><a id="__codelineno-28-91" name="__codelineno-28-91" href="#__codelineno-28-91"></a>
+</span><span id="__span-28-92"><a id="__codelineno-28-92" name="__codelineno-28-92" href="#__codelineno-28-92"></a>  <span class="k">def</span><span class="w"> </span><span class="nf">extract_output</span><span class="p">(</span><span class="bp">self</span><span class="p">,</span>
+</span><span id="__span-28-93"><a id="__codelineno-28-93" name="__codelineno-28-93" href="#__codelineno-28-93"></a>                     <span class="n">accumulator</span><span class="p">:</span> <span class="nb">int</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="n">Dict</span><span class="p">[</span><span class="n">tfma</span><span class="o">.</span><span class="n">metrics</span><span class="o">.</span><span class="n">MetricKey</span><span class="p">,</span> <span class="nb">int</span><span class="p">]:</span>
+</span><span id="__span-28-94"><a id="__codelineno-28-94" name="__codelineno-28-94" href="#__codelineno-28-94"></a>    <span class="k">return</span> <span class="p">{</span><span class="bp">self</span><span class="o">.</span><span class="n">_metric_key</span><span class="p">:</span> <span class="n">accumulator</span><span class="p">}</span>
+</span></code></pre></div>
+<h4 id="derivedmetriccomputation">DerivedMetricComputation<a class="headerlink" href="#derivedmetriccomputation" title="Permanent link">&para;</a></h4>
+<p>A <code>DerivedMetricComputation</code> is made up of a result function that is used to
+calculate metric values based on the output of other metric computations. The
+result function takes a dict of computed values as its input and outputs a dict
+of additional metric results.</p>
+<p>Note that it is acceptable (recommended) to include the computations that a
+derived computation depends on in the list of computations created by a metric.
+This avoid having to pre-create and pass computations that are shared between
+multiple metrics. The evaluator will automatically de-dup computations that have
+the same definition so ony one computation is actually run.</p>
+<h5 id="example_1">Example<a class="headerlink" href="#example_1" title="Permanent link">&para;</a></h5>
+<p>The
+<a href="https://github.com/tensorflow/model-analysis/blob/master/tensorflow_model_analysis/metrics/tjur_discrimination.py">TJUR metrics</a>
+provides a good example of derived metrics.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["content.code.copy", "content.code.select", "content.action.edit"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.56ea9cef.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>
