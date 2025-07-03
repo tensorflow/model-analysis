@@ -94,7 +94,7 @@ below to use the latest.
 
 #### Jupyter Lab 1.2.x
 
-```posix-terminal
+```bash
 pip install tensorflow_model_analysis==0.27.0
 
 jupyter labextension install tensorflow_model_analysis@0.27.0
@@ -104,7 +104,7 @@ jupyter labextension install @jupyter-widgets/jupyterlab-manager@1.1
 
 #### Jupyter Lab 2
 
-```posix-terminal
+```bash
 pip install tensorflow_model_analysis==0.27.0
 
 jupyter labextension install tensorflow_model_analysis@0.27.0
@@ -116,13 +116,13 @@ jupyter labextension install @jupyter-widgets/jupyterlab-manager@2
 
 Check pip packages:
 
-```posix-terminal
+```bash
 pip list
 ```
 
 Check extensions:
 
-```posix-terminal
+```bash
 jupyter labextension list
 ```
 
@@ -152,7 +152,8 @@ combinations may also work.
 
 tensorflow-model-analysis                                                            | apache-beam[gcp] | pyarrow | tensorflow    | tensorflow-metadata | tfx-bsl
 ------------------------------------------------------------------------------------ | ---------------- | ------- | ------------- | ------------------- | -------
-[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md) | 2.60.0           | 10.0.1  | nightly (2.x) | 1.16.1              | 1.16.1
+[GitHub master](https://github.com/tensorflow/model-analysis/blob/master/RELEASE.md) | 2.65.0           | 10.0.1  | nightly (2.x) | 1.17.1              | 1.17.1
+[0.48.0](https://github.com/tensorflow/model-analysis/blob/v0.48.0/RELEASE.md)       | 2.65.0           | 10.0.1  | 2.17          | 1.17.1              | 1.17.1
 [0.47.1](https://github.com/tensorflow/model-analysis/blob/v0.47.1/RELEASE.md)       | 2.60.0           | 10.0.1  | 2.16          | 1.16.1              | 1.16.1
 [0.47.0](https://github.com/tensorflow/model-analysis/blob/v0.47.0/RELEASE.md)       | 2.60.0           | 10.0.1  | 2.16          | 1.16.1              | 1.16.1
 [0.46.0](https://github.com/tensorflow/model-analysis/blob/v0.46.0/RELEASE.md)       | 2.47.0           | 10.0.0  | 2.15          | 1.15.0              | 1.15.1

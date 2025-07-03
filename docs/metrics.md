@@ -10,13 +10,13 @@ TFMA supports the following metrics and plots:
         are computed outside of the graph in beam using the metrics classes
         directly.
 *   Standard TFMA metrics and plots
-    ([`tfma.metrics.*`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/metrics))
+    ([`tfma.metrics.*`](../api_docs/python/tfma-metrics))
 
 *   Custom keras metrics (metrics derived from
     [`tf.keras.metrics.Metric`](https://www.tensorflow.org/api_docs/python/tf/keras/metrics/Metric))
 
 *   Custom TFMA metrics (metrics derived from
-    [`tfma.metrics.Metric`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/metrics/Metric))
+    [`tfma.metrics.Metric`](../api_docs/python/tfma-metrics#tensorflow_model_analysis.metrics.Metric))
     using custom beam combiners or metrics derived from other metrics).
 
 NOTE: In TFMA, plots and metrics are both defined under the metrics library. By
@@ -38,10 +38,10 @@ classification, ranking, etc.
 ## Configuration
 
 There are two ways to configure metrics in TFMA: (1) using the
-[`tfma.MetricsSpec`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/api/MetricsSpec)
+[`tfma.MetricsSpec`](../api_docs/python/tfma#tensorflow_model_analysis.metricsSpec)
 or (2) by creating instances of `tf.keras.metrics.*` and/or `tfma.metrics.*`
 classes in python and using
-[`tfma.metrics.specs_from_metrics`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/api/metrics/specs_from_metrics)
+[`tfma.metrics.specs_from_metrics`](../api_docs/python/tfma-metrics#tensorflow_model_analysis.metrics.specs_from_metrics)
 to convert them to a list of `tfma.MetricsSpec`.
 
 The following sections describe example configurations for different types of
@@ -598,7 +598,7 @@ All the supported plots are stored in a single proto called
 ### EvalResult
 
 The return from an evaluation run is an
-[`tfma.EvalResult`](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/EvalResult).
+[`tfma.EvalResult`](../api_docs/python/tfma#tensorflow_model_analysis.EvalResult).
 This record contains `slicing_metrics` that encode the metric key as a
 multi-level dict where the levels correspond to output name, class ID, metric
 name, and metric value respectively. This is intended to be used for UI display
@@ -702,7 +702,7 @@ will be used by the combiner (see [architecture](architecture.md) for more info
 on what are extracts). All preprocessors will be executed sequentially in the
 order of the list. If the `preprocessors` is empty, then the combiner will be
 passed
-[StandardMetricInputs](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/metrics/StandardMetricInputs)
+[StandardMetricInputs](../api_docs/python/tfma-metrics#tensorflow_model_analysis.metrics.StandardMetricInputs)
 (standard metric inputs contains labels, predictions, and example_weights). The
 `combiner` is a `beam.CombineFn` that takes a tuple of (slice key, preprocessor
 output) as its input and outputs a tuple of (slice_key, metric results dict) as
@@ -713,7 +713,7 @@ Note that slicing happens between the `preprocessors` and `combiner`.
 Note that if a metric computation wants to make use of both the standard metric
 inputs, but augment it with a few of the features from the `features` extracts,
 then the special
-[FeaturePreprocessor](https://www.tensorflow.org/tfx/model_analysis/api_docs/python/tfma/metrics/FeaturePreprocessor)
+[FeaturePreprocessor](../api_docs/python/tfma-metrics#tensorflow_model_analysis.metrics.FeaturePreprocessor)
 can be used which will merge the requested features from multiple combiners into
 a single shared StandardMetricsInputs value that is passed to all the combiners
 (the combiners are responsible for reading the features they are interested in
