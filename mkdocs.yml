@@ -1,0 +1,144 @@
+site_name: TensorFlow Model Analysis
+repo_name: "model-analysis"
+repo_url: https://github.com/tensorflow/model-analysis
+
+theme:
+  logo: images/tf_full_color_primary_icon.svg
+  name: material
+  palette:
+    # Palette toggle for automatic mode
+    - media: "(prefers-color-scheme)"
+      primary: custom
+      accent: custom
+      toggle:
+        icon: material/brightness-auto
+        name: Switch to light mode
+
+    # Palette toggle for light mode
+    - media: "(prefers-color-scheme: light)"
+      primary: custom
+      accent: custom
+      scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+
+    # Palette toggle for dark mode
+    - media: "(prefers-color-scheme: dark)"
+      primary: custom
+      accent: custom
+      scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to system preference
+  favicon: images/tf_full_color_primary_icon.svg
+
+  features:
+    - content.code.copy
+    - content.code.select
+    - content.action.edit
+
+plugins:
+  - search
+  - autorefs
+  - mkdocstrings:
+      default_handler: python
+      handlers:
+        python:
+          options:
+            show_source: true
+            show_root_heading: true
+            unwrap_annotated: true
+            show_symbol_type_toc: true
+            show_if_no_docstring: true
+            show_symbol_type_heading: true
+            merge_init_into_class: true
+            show_signature_annotations: true
+            separate_signature: true
+            signature_crossrefs: true
+            group_by_category: true
+            show_category_heading: true
+            show_submodules: false
+            show_root_full_path: true
+            docstring_section_style: "spacy"
+            inherited_members: true
+            summary: false
+            filters:
+              - "!^_"
+              - "^__init__$"
+              - "^__call__$"
+              - "!^logger"
+            extensions:
+              - griffe_inherited_docstrings
+          import:
+            - https://docs.python.org/3/objects.inv
+
+extra_css:
+  - stylesheets/extra.css
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js
+
+markdown_extensions:
+  - admonition
+  - attr_list
+  - def_list
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.highlight:
+      anchor_linenums: true
+      linenums: false
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.arithmatex:
+      generic: true
+  - pymdownx.critic
+  - pymdownx.caret
+  - pymdownx.keys
+  - pymdownx.mark
+  - pymdownx.tilde
+  - md_in_html
+  - pymdownx.emoji:
+      emoji_index: !!python/name:material.extensions.emoji.twemoji
+      emoji_generator: !!python/name:material.extensions.emoji.to_svg
+watch:
+  - tensorflow_model_analysis
+
+nav:
+  - Guide:
+    - Improving Model Quality: index.md
+    - Install: install.md
+    - Get Started: get_started.md
+    - Setup: setup.md
+    - Metrics and Plots: metrics.md
+    - Visualizations: visualizations.md
+    - Model Validations: model_validations.md
+    - Using Fairness Indicators: https://tensorflow.github.io/tfx/guide/fairness_indicators/
+    - Using Fairness Indicators with Pandas DataFrames: https://tensorflow.github.io/fairness-indicators/tutorials/Fairness_Indicators_Pandas_Case_Study/
+    - Architecture: architecture.md
+    - FAQ: faq.md
+  - API:
+    - tfma: api_docs/python/tfma.md
+    # - tfma.addons: api_docs/python/tfma-addons.md
+    - tfma.constants: api_docs/python/tfma-constants.md
+    - tfma.contrib: api_docs/python/tfma-contrib.md
+    - tfma.evaluators: api_docs/python/tfma-evaluators.md
+    - tfma.experimental 🧪: api_docs/python/tfma-experimental.md
+    # - tfma.export: api_docs/python/tfma-export.md
+    # - tfma.exporter: api_docs/python/tfma-exporter.md
+    - tfma.extractors: api_docs/python/tfma-extractors.md
+    - tfma.metrics: api_docs/python/tfma-metrics.md
+    # - tfma.model_agnostic_eval: api_docs/python/tfma-model_agnostic_eval.md
+    - tfma.post_export_metrics: api_docs/python/tfma-post_export_metrics.md
+    - tfma.sdk: api_docs/python/tfma-sdk.md
+    - tfma.types: api_docs/python/tfma-types.md
+    - tfma.utils: api_docs/python/tfma-utils.md
+    - tfma.validators: api_docs/python/tfma-validators.md
+    - tfma.version: api_docs/python/tfma-version.md
+    - tfma.view: api_docs/python/tfma-view.md
+    - tfma.writers: api_docs/python/tfma-writers.md

@@ -83,3 +83,34 @@ from tensorflow_model_analysis.proto.config_pb2 import SlicingSpec
 
 # Import VERSION as VERSION_STRING for backwards compatibility.
 from tensorflow_model_analysis.version import VERSION as VERSION_STRING
+
+__all__ = [
+  "ANALYSIS_KEY",
+  "ARROW_INPUT_COLUMN",
+  "ARROW_RECORD_BATCH_KEY",
+  "ATTRIBUTIONS_KEY",
+  "BASELINE_KEY",
+  "BASELINE_SCORE_KEY",
+  "CANDIDATE_KEY",
+  "DATA_CENTRIC_MODE",
+  "EXAMPLE_SCORE_KEY",
+  "EXAMPLE_WEIGHTS_KEY",
+  "FEATURES_KEY",
+  "FEATURES_PREDICTIONS_LABELS_KEY",
+  "INPUT_KEY",
+  "LABELS_KEY",
+  "METRICS_KEY",
+  "MODEL_CENTRIC_MODE",
+  "MetricDirection",
+  "PLOTS_KEY",
+  "PREDICTIONS_KEY",
+  "SLICE_KEY_TYPES_KEY",
+  "TFMA_EVAL",
+  "TF_ESTIMATOR",
+  "TF_GENERIC",
+  "TF_JS",
+  "TF_KERAS",
+  "TF_LITE",
+  "VALIDATIONS_KEY",
+  "VERSION_STRING",
+]

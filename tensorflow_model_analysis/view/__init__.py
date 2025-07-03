@@ -19,3 +19,12 @@ from tensorflow_model_analysis.view.widget_view import render_plot
 from tensorflow_model_analysis.view.widget_view import render_slicing_attributions
 from tensorflow_model_analysis.view.widget_view import render_slicing_metrics
 from tensorflow_model_analysis.view.widget_view import render_time_series
+
+__all__ = [
+  "SlicedMetrics",
+  "SlicedPlots",
+  "render_plot",
+  "render_slicing_attributions",
+  "render_slicing_metrics",
+  "render_time_series",
+]
