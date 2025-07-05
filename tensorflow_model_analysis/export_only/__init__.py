@@ -29,5 +29,3 @@ Example usage:
   tfma_export.export.export_eval_saved_model(...)
 """
 
-from tensorflow_model_analysis.eval_saved_model import export
-from tensorflow_model_analysis.eval_saved_model import exporter

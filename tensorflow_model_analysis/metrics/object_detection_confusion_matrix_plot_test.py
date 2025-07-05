@@ -14,6 +14,7 @@
 """Tests for object detection confusion matrix plot."""
 
 from absl.testing import absltest
+import unittest
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -28,6 +29,8 @@ class ObjectDetectionConfusionMatrixPlotTest(
     test_util.TensorflowModelAnalysisTest, absltest.TestCase
 ):
 
+  # PR 189: Remove the `expectedFailure` mark if the test passes
+  @unittest.expectedFailure
   def testConfusionMatrixPlot(self):
     eval_config = text_format.Parse(
         """

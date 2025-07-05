@@ -342,6 +342,7 @@ setup_args = {
             nightly='>=1.18.0.dev',
             git_master='@git+https://github.com/tensorflow/tfx-bsl@master',
         ),
+        'tf-keras',
     ],
     'extras_require': {
         'all': [*_make_extra_packages_tfjs(), *_make_docs_packages()],
