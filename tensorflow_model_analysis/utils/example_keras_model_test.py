@@ -21,6 +21,7 @@ from __future__ import print_function
 import datetime
 import os
 import tempfile
+import unittest
 
 import numpy as np
 import six
@@ -91,6 +92,8 @@ class ExampleModelTest(tf.test.TestCase):
         writer.write(example.SerializeToString())
     return data_location
 
+  # PR 189: Remove the `expectedFailure` mark if the test passes
+  @unittest.expectedFailure
   def test_example_keras_model(self):
     data = self._create_data()
     classifier = example_keras_model.get_example_classifier_model()

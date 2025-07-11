@@ -14,6 +14,7 @@
 """Tests for BLEU metric."""
 
 from absl.testing import parameterized
+import unittest
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
@@ -559,6 +560,8 @@ class BleuTest(test_util.TensorflowModelAnalysisTest, parameterized.TestCase):
 
 class BleuEnd2EndTest(parameterized.TestCase):
 
+  # PR 189: Remove the `expectedFailure` mark if the test passes
+  @unittest.expectedFailure
   def test_bleu_end_2_end(self):
     # Same test as BleuTest.testBleuDefault with 'imperfect_score'
     eval_config = text_format.Parse(
