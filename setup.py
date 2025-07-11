@@ -308,6 +308,7 @@ setup_args = {
                 'tensorflow_model_analysis/static/vulcanized_tfma.js',
             ],
         ),
+        ("docs_reqs", ["requirements-docs.txt"]),
     ],
     # Make sure to sync the versions of common dependencies (numpy, six, and
     # protobuf) with TF.
