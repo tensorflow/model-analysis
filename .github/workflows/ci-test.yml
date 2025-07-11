@@ -34,7 +34,7 @@ jobs:
     - name: Install dependencies
       run: |
         sudo apt update
-        sudo apt install protobuf-compiler -y
+        sudo apt install -y protobuf-compiler libprotobuf-c-dev
         pip install .
 
     - name: Run unit tests
