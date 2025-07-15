@@ -20,6 +20,7 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.metrics import example_count
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
@@ -110,7 +111,7 @@ class ExampleCountEnd2EndTest(parameterized.TestCase):
           }
         }
         """,
-        tfma.EvalConfig(),
+        config_pb2.EvalConfig(),
     )
     name_list = ['example_count']
     expected_results = [0.6]

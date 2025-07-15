@@ -28,6 +28,7 @@ import six
 from tensorflow import keras
 import tensorflow.compat.v1 as tf
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import example_keras_model
 
 from google.protobuf import text_format
@@ -128,7 +129,7 @@ class ExampleModelTest(tf.test.TestCase):
           }
         }
   """,
-        tfma.EvalConfig(),
+        config_pb2.EvalConfig(),
     )
 
     validate_tf_file_path = self._write_tf_records(data)

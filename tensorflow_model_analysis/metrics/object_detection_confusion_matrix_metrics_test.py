@@ -19,6 +19,7 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.metrics import metric_types
 from google.protobuf import text_format
 
@@ -41,7 +42,7 @@ class ObjectDetectionConfusionMatrixMetricsTest(parameterized.TestCase):
                    '"max_num_detections":100, "name":"maxrecall"'
           }
         }
-        """, tfma.EvalConfig()), ['maxrecall'], [2 / 3]),
+        """, config_pb2.EvalConfig()), ['maxrecall'], [2 / 3]),
                                   ('_precision_at_recall',
                                    text_format.Parse(
                                        """
@@ -59,7 +60,7 @@ class ObjectDetectionConfusionMatrixMetricsTest(parameterized.TestCase):
                    '"max_num_detections":100, "name":"precisionatrecall"'
           }
         }
-        """, tfma.EvalConfig()), ['precisionatrecall'], [3 / 5]),
+        """, config_pb2.EvalConfig()), ['precisionatrecall'], [3 / 5]),
                                   ('_recall',
                                    text_format.Parse(
                                        """
@@ -77,7 +78,7 @@ class ObjectDetectionConfusionMatrixMetricsTest(parameterized.TestCase):
                    '"max_num_detections":100, "name":"recall"'
           }
         }
-        """, tfma.EvalConfig()), ['recall'], [2 / 3]), ('_precision',
+        """, config_pb2.EvalConfig()), ['recall'], [2 / 3]), ('_precision',
                                                         text_format.Parse(
                                                             """
         model_specs {
@@ -94,7 +95,7 @@ class ObjectDetectionConfusionMatrixMetricsTest(parameterized.TestCase):
                    '"max_num_detections":100, "name":"precision"'
           }
         }
-        """, tfma.EvalConfig()), ['precision'], [0.5]), ('_threshold_at_recall',
+        """, config_pb2.EvalConfig()), ['precision'], [0.5]), ('_threshold_at_recall',
                                                          text_format.Parse(
                                                              """
         model_specs {
@@ -111,7 +112,7 @@ class ObjectDetectionConfusionMatrixMetricsTest(parameterized.TestCase):
                    '"max_num_detections":100, "name":"thresholdatrecall"'
           }
         }
-        """, tfma.EvalConfig()), ['thresholdatrecall'], [0.3]))
+        """, config_pb2.EvalConfig()), ['thresholdatrecall'], [0.3]))
   def testObjectDetectionMetrics(self, eval_config, name_list,
                                  expected_results):
 

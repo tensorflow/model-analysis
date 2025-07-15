@@ -20,6 +20,7 @@ import unittest
 import numpy as np
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.metrics import metric_util
 from tensorflow_model_analysis.metrics import stats
@@ -324,7 +325,7 @@ class MeanEnd2EndTest(parameterized.TestCase):
           }   ,
         }
         """,
-        tfma.EvalConfig(),
+        config_pb2.EvalConfig(),
     )
 
     extractors = tfma.default_extractors(eval_config=eval_config)
@@ -400,7 +401,7 @@ class MeanEnd2EndTest(parameterized.TestCase):
           }   ,
         }
         """,
-        tfma.EvalConfig(),
+        config_pb2.EvalConfig(),
     )
 
     extractors = tfma.default_extractors(eval_config=eval_config)
