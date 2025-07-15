@@ -12,7 +12,6 @@ on:
 
 jobs:
   unit-tests:
-    if: github.actor != 'copybara-service[bot]'
     runs-on: ubuntu-latest
 
     strategy:
