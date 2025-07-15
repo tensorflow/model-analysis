@@ -1123,7 +1123,8 @@ class EvaluateTest(
       for k in expected_metrics[group]:
         self.assertIn(k, got_metrics[group])
 
-  # PR 189: Remove the `expectedFailure` mark if the test passes
+  # PR 189: Remove the `skip` mark if the test passes for all supported versions
+  # of python
   @unittest.skip('Fails for some versions of Python, including 3.9')
   def testRunModelAnalysisWithUncertainty(self):
     examples = [
