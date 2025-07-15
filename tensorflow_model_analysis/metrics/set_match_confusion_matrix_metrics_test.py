@@ -23,9 +23,6 @@ from tensorflow_model_analysis.metrics import metric_types
 from google.protobuf import text_format
 
 
-# PR 189: Remove the `expectedFailure` mark if the test passes
-# The test failures are `AttributeError: module 'tensorflow_model_analysis' has no attribute 'EvalConfig'`
-@unittest.expectedFailure
 class SetMatchConfusionMatrixMetricsTest(parameterized.TestCase):
 
   @parameterized.named_parameters(

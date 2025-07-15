@@ -29,8 +29,6 @@ class ObjectDetectionConfusionMatrixPlotTest(
     test_util.TensorflowModelAnalysisTest, absltest.TestCase
 ):
 
-  # PR 189: Remove the `expectedFailure` mark if the test passes
-  @unittest.expectedFailure
   def testConfusionMatrixPlot(self):
     eval_config = text_format.Parse(
         """

@@ -92,8 +92,6 @@ class ExampleModelTest(tf.test.TestCase):
         writer.write(example.SerializeToString())
     return data_location
 
-  # PR 189: Remove the `expectedFailure` mark if the test passes
-  @unittest.expectedFailure
   def test_example_keras_model(self):
     data = self._create_data()
     classifier = example_keras_model.get_example_classifier_model()

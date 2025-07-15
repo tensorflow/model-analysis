@@ -95,8 +95,6 @@ class ExampleCountTest(
 
 class ExampleCountEnd2EndTest(parameterized.TestCase):
 
-  # PR 189: Remove the `expectedFailure` mark if the test passes
-  @unittest.expectedFailure
   def testExampleCountsWithoutLabelPredictions(self):
     eval_config = text_format.Parse(
         """

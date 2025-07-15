@@ -291,8 +291,6 @@ class MeanTestInvalidExamples(
 
 class MeanEnd2EndTest(parameterized.TestCase):
 
-  # PR 189: Remove the `expectedFailure` mark if the test passes
-  @unittest.expectedFailure
   def testMeanEnd2End(self):
     extracts = [
         {
