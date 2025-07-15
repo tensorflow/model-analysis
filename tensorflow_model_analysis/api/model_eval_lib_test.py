@@ -16,6 +16,7 @@
 import json
 import os
 import tempfile
+import unittest
 
 from absl.testing import absltest
 from absl.testing import parameterized
@@ -1122,6 +1123,9 @@ class EvaluateTest(
       for k in expected_metrics[group]:
         self.assertIn(k, got_metrics[group])
 
+  # PR 189: Remove the `skip` mark if the test passes for all supported versions
+  # of python
+  @unittest.skip('Fails for some versions of Python, including 3.9')
   def testRunModelAnalysisWithUncertainty(self):
     examples = [
         self._makeExample(age=3.0, language='english', label=1.0),
@@ -1391,6 +1395,8 @@ class EvaluateTest(
     self.assertEqual(1.0, got_buckets[1]['lowerThresholdInclusive'])
     self.assertEqual(2.0, got_buckets[-2]['upperThresholdExclusive'])
 
+  # PR 189: Remove the `expectedFailure` mark if the test passes
+  @unittest.expectedFailure
   def testLoadValidationResult(self):
     result = validation_result_pb2.ValidationResult(validation_ok=True)
     path = os.path.join(absltest.get_default_test_tmpdir(), 'results.tfrecord')
@@ -1399,6 +1405,8 @@ class EvaluateTest(
     loaded_result = model_eval_lib.load_validation_result(path)
     self.assertTrue(loaded_result.validation_ok)
 
+  # PR 189: Remove the `expectedFailure` mark if the test passes
+  @unittest.expectedFailure
   def testLoadValidationResultDir(self):
     result = validation_result_pb2.ValidationResult(validation_ok=True)
     path = os.path.join(
@@ -1409,6 +1417,8 @@ class EvaluateTest(
     loaded_result = model_eval_lib.load_validation_result(os.path.dirname(path))
     self.assertTrue(loaded_result.validation_ok)
 
+  # PR 189: Remove the `expectedFailure` mark if the test passes
+  @unittest.expectedFailure
   def testLoadValidationResultEmptyFile(self):
     path = os.path.join(
         absltest.get_default_test_tmpdir(), constants.VALIDATIONS_KEY

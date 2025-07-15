@@ -22,6 +22,7 @@ from apache_beam.testing import util
 import numpy as np
 from PIL import Image
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.contrib.aggregates import binary_confusion_matrices
 from tensorflow_model_analysis.metrics import metric_types
@@ -102,7 +103,7 @@ class SegmentationConfusionMatrixTest(parameterized.TestCase):
                   }
                }
               """,
-              tfma.EvalConfig(),
+              config_pb2.EvalConfig(),
           ),
           name='SegConfusionMatrix',
           expected_result={
@@ -133,7 +134,7 @@ class SegmentationConfusionMatrixTest(parameterized.TestCase):
                   }
                }
               """,
-              tfma.EvalConfig(),
+              config_pb2.EvalConfig(),
           ),
           name='SegConfusionMatrix',
           expected_result={
@@ -164,7 +165,7 @@ class SegmentationConfusionMatrixTest(parameterized.TestCase):
                   }
                }
               """,
-              tfma.EvalConfig(),
+              config_pb2.EvalConfig(),
           ),
           name='SegTruePositive',
           expected_result={
@@ -195,7 +196,7 @@ class SegmentationConfusionMatrixTest(parameterized.TestCase):
                   }
                }
               """,
-              tfma.EvalConfig(),
+              config_pb2.EvalConfig(),
           ),
           name='SegFalsePositive',
           expected_result={

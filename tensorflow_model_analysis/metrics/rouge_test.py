@@ -21,6 +21,7 @@ from apache_beam.testing import util
 import numpy as np
 import tensorflow as tf
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.evaluators import metrics_plots_and_validations_evaluator
 from tensorflow_model_analysis.metrics import metric_types
@@ -659,7 +660,7 @@ class RougeEnd2EndTest(parameterized.TestCase):
           }
         }
         """,
-        tfma.EvalConfig(),
+        config_pb2.EvalConfig(),
     )
     rouge_types = ['rouge1', 'rouge2', 'rougeL', 'rougeLsum']
     example_weights = [0.5, 0.7]

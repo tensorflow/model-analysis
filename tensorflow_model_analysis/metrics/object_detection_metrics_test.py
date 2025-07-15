@@ -18,6 +18,7 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.metrics import metric_types
 from google.protobuf import text_format
 
@@ -59,7 +60,7 @@ class ObjectDetectionMetricsTest(parameterized.TestCase):
                    '"max_num_detections":100, "name":"iou0.5"'
           }
         }
-        """, tfma.EvalConfig()), ['iou0.5'], [0.916]),
+        """, config_pb2.EvalConfig()), ['iou0.5'], [0.916]),
                                   ('_average_precision_iou0.75',
                                    text_format.Parse(
                                        """
@@ -77,7 +78,7 @@ class ObjectDetectionMetricsTest(parameterized.TestCase):
                   '"max_num_detections":100, "name":"iou0.75"'
          }
        }
-       """, tfma.EvalConfig()), ['iou0.75'], [0.416]),
+       """, config_pb2.EvalConfig()), ['iou0.75'], [0.416]),
                                   ('_average_precision_ave',
                                    text_format.Parse(
                                        """
@@ -95,7 +96,7 @@ class ObjectDetectionMetricsTest(parameterized.TestCase):
                   '"max_num_detections":100, "name":"iouave"'
          }
        }
-       """, tfma.EvalConfig()), ['iouave'], [0.666]), ('_average_recall_mdet1',
+       """, config_pb2.EvalConfig()), ['iouave'], [0.666]), ('_average_recall_mdet1',
                                                        text_format.Parse(
                                                            """
        model_specs {
@@ -112,7 +113,7 @@ class ObjectDetectionMetricsTest(parameterized.TestCase):
                   '"name":"mdet1"'
          }
        }
-       """, tfma.EvalConfig()), ['mdet1'], [0.375]), ('_average_recall_mdet10',
+       """, config_pb2.EvalConfig()), ['mdet1'], [0.375]), ('_average_recall_mdet10',
                                                       text_format.Parse(
                                                           """
        model_specs {
@@ -129,7 +130,7 @@ class ObjectDetectionMetricsTest(parameterized.TestCase):
                   '"name":"mdet10"'
          }
        }
-       """, tfma.EvalConfig()), ['mdet10'], [0.533]),
+       """, config_pb2.EvalConfig()), ['mdet10'], [0.533]),
                                   ('_average_recall_mdet100',
                                    text_format.Parse(
                                        """
@@ -147,7 +148,7 @@ class ObjectDetectionMetricsTest(parameterized.TestCase):
                   '"name":"mdet100"'
          }
        }
-       """, tfma.EvalConfig()), ['mdet100'], [0.533]),
+       """, config_pb2.EvalConfig()), ['mdet100'], [0.533]),
                                   ('_average_recall_arsmall',
                                    text_format.Parse(
                                        """
@@ -165,7 +166,7 @@ class ObjectDetectionMetricsTest(parameterized.TestCase):
                   '"max_num_detections":100, "name":"arsmall"'
          }
        }
-       """, tfma.EvalConfig()), ['arsmall'], [0.500]),
+       """, config_pb2.EvalConfig()), ['arsmall'], [0.500]),
                                   ('_average_recall_armedium',
                                    text_format.Parse(
                                        """
@@ -183,7 +184,7 @@ class ObjectDetectionMetricsTest(parameterized.TestCase):
                   '"max_num_detections":100, "name":"armedium"'
          }
        }
-       """, tfma.EvalConfig()), ['armedium'], [0.300]),
+       """, config_pb2.EvalConfig()), ['armedium'], [0.300]),
                                   ('_average_recall_arlarge',
                                    text_format.Parse(
                                        """
@@ -201,7 +202,7 @@ class ObjectDetectionMetricsTest(parameterized.TestCase):
                   '"max_num_detections":100, "name":"arlarge"'
          }
        }
-       """, tfma.EvalConfig()), ['arlarge'], [0.700]))
+       """, config_pb2.EvalConfig()), ['arlarge'], [0.700]))
   def testMetricValuesWithLargerData(self, eval_config, name_list,
                                      expected_results):
 
@@ -283,7 +284,7 @@ class ObjectDetectionMetricsTest(parameterized.TestCase):
                   '"predictions_to_stack":["bbox", "class_id", "scores"]'
          }
        }
-       """, tfma.EvalConfig()), ['iou0.5'], [0.916]))
+       """, config_pb2.EvalConfig()), ['iou0.5'], [0.916]))
   def testMetricValuesWithSplittedData(self, eval_config, name_list,
                                        expected_results):
 

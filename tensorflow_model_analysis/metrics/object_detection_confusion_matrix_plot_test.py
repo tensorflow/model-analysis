@@ -18,6 +18,7 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.metrics import metric_types
 from tensorflow_model_analysis.utils import test_util
 
@@ -45,7 +46,7 @@ class ObjectDetectionConfusionMatrixPlotTest(
                    '"max_num_detections":100, "name":"iou0.5"'
           }
         }
-        """, tfma.EvalConfig())
+        """, config_pb2.EvalConfig())
     extracts = [
         # The match at iou_threshold = 0.5 is
         # gt_matches: [[0]] dt_matches: [[0, -1]]

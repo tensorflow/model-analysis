@@ -18,6 +18,7 @@ import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np
 import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.metrics import metric_types
 from google.protobuf import text_format
 
@@ -43,7 +44,7 @@ class SetMatchConfusionMatrixMetricsTest(parameterized.TestCase):
           }
         }
         """,
-              tfma.EvalConfig(),
+              config_pb2.EvalConfig(),
           ),
           ['set_match_precision'],
           [0.4],
@@ -66,7 +67,7 @@ class SetMatchConfusionMatrixMetricsTest(parameterized.TestCase):
           }
         }
         """,
-              tfma.EvalConfig(),
+              config_pb2.EvalConfig(),
           ),
           ['recall'],
           [0.5],
@@ -89,7 +90,7 @@ class SetMatchConfusionMatrixMetricsTest(parameterized.TestCase):
           }
         }
         """,
-              tfma.EvalConfig(),
+              config_pb2.EvalConfig(),
           ),
           ['precision'],
           [0.25],
@@ -112,7 +113,7 @@ class SetMatchConfusionMatrixMetricsTest(parameterized.TestCase):
           }
         }
         """,
-              tfma.EvalConfig(),
+              config_pb2.EvalConfig(),
           ),
           ['recall'],
           [0.25],
@@ -135,7 +136,7 @@ class SetMatchConfusionMatrixMetricsTest(parameterized.TestCase):
           }
         }
         """,
-              tfma.EvalConfig(),
+              config_pb2.EvalConfig(),
           ),
           ['recall'],
           [0.25],
@@ -220,7 +221,7 @@ class SetMatchConfusionMatrixMetricsTest(parameterized.TestCase):
           }
         }
         """,
-              tfma.EvalConfig(),
+              config_pb2.EvalConfig(),
           ),
           ['set_match_precision'],
           [0.25],
@@ -244,7 +245,7 @@ class SetMatchConfusionMatrixMetricsTest(parameterized.TestCase):
           }
         }
         """,
-              tfma.EvalConfig(),
+              config_pb2.EvalConfig(),
           ),
           ['recall'],
           [0.294118],
