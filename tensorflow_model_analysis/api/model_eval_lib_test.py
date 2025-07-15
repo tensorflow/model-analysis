@@ -1123,8 +1123,6 @@ class EvaluateTest(
       for k in expected_metrics[group]:
         self.assertIn(k, got_metrics[group])
 
-  # PR 189: Remove the `expectedFailure` mark if the test passes
-  @unittest.expectedFailure
   def testRunModelAnalysisWithUncertainty(self):
     examples = [
         self._makeExample(age=3.0, language='english', label=1.0),
