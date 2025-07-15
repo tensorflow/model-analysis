@@ -14,7 +14,6 @@
 """Tests for metric specs."""
 
 import json
-import unittest
 
 import tensorflow as tf
 from tensorflow_model_analysis.metrics import calibration

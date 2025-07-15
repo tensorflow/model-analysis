@@ -14,7 +14,6 @@
 """Tests for object detection confusion matrix plot."""
 
 from absl.testing import absltest
-import unittest
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np

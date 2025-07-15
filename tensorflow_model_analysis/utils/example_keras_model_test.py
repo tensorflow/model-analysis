@@ -21,7 +21,6 @@ from __future__ import print_function
 import datetime
 import os
 import tempfile
-import unittest
 
 import numpy as np
 import six

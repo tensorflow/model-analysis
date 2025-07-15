@@ -18,7 +18,6 @@ import statistics as stats
 from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
-import unittest
 import numpy as np
 import tensorflow as tf
 import tensorflow_model_analysis as tfma

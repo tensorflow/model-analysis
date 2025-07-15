@@ -14,7 +14,6 @@
 """Tests for example count metric."""
 
 from absl.testing import parameterized
-import unittest
 import apache_beam as beam
 from apache_beam.testing import util
 import numpy as np

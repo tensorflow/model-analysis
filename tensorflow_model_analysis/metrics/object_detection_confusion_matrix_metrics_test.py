@@ -13,7 +13,6 @@
 # limitations under the License.
 """Tests for object detection related confusion matrix metrics."""
 from absl.testing import absltest
-import unittest
 from absl.testing import parameterized
 import apache_beam as beam
 from apache_beam.testing import util
