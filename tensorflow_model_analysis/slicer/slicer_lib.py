@@ -18,16 +18,26 @@ Use this library for generating slices from a specification
 """
 
 import itertools
-
-from typing import Any, Callable, Dict, Generator, Iterable, List, NamedTuple, Optional, Tuple, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Generator,
+    Iterable,
+    List,
+    NamedTuple,
+    Optional,
+    Tuple,
+    Union,
+)
 
 import apache_beam as beam
 import numpy as np
 import tensorflow as tf
+
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
-from tensorflow_model_analysis.proto import config_pb2
-from tensorflow_model_analysis.proto import metrics_for_slice_pb2
+from tensorflow_model_analysis.proto import config_pb2, metrics_for_slice_pb2
 from tensorflow_model_analysis.slicer import slice_accessor
 
 # FeatureValueType represents a value that a feature could take.
@@ -47,577 +57,644 @@ CrossSliceKeyType = Tuple[SliceKeyType, SliceKeyType]  # pylint: disable=invalid
 
 SliceKeyOrCrossSliceKeyType = Union[SliceKeyType, CrossSliceKeyType]  # pylint: disable=invalid-name
 
-OVERALL_SLICE_NAME = 'Overall'
+OVERALL_SLICE_NAME = "Overall"
 # The slice key for the slice that includes all of the data.
 OVERALL_SLICE_KEY = ()
 
 
 class SingleSliceSpec:
-  """Specification for a single slice.
+    """Specification for a single slice.
 
-  This is intended to be an immutable class that specifies a single slice.
-  Use this in conjunction with get_slices_for_features_dicts to generate slices
-  for dictionaries of features.
+    This is intended to be an immutable class that specifies a single slice.
+    Use this in conjunction with get_slices_for_features_dicts to generate slices
+    for dictionaries of features.
 
-  Examples:
-    - columns = ['age'], features = []
-      This means to slice by the 'age' column.
-    - columns = ['age'], features = [('gender', 'female')]
-      This means to slice by the 'age' column if the 'gender' is 'female'.
-    - For more examples, refer to the tests in slicer_test.py.
-  """
-
-  def __eq__(self, other: 'SingleSliceSpec'):
-    # Need access to other's protected fields for comparison.
-    if isinstance(other, self.__class__):
-      # pylint: disable=protected-access
-      return (self._columns == other._columns and
-              self._features == other._features)
-      # pylint: enable=protected-access
-    else:
-      return False
-
-  def __ne__(self, other: 'SingleSliceSpec'):
-    return not self.__eq__(other)
-
-  def __hash__(self):
-    return hash((self._columns, self._features))
-
-  def __init__(self,
-               columns: Iterable[str] = (),
-               features: Iterable[Tuple[str, FeatureValueType]] = (),
-               spec: Optional[config_pb2.SlicingSpec] = None):
-    """Initialises a SingleSliceSpec.
-
-    Args:
-      columns: an iterable of column names to slice on.
-      features: an iterable of features to slice on. Each feature is a (key,
-        value) tuple. Note that strings representing ints and floats will be
-        automatically converted to ints and floats respectively and will be
-        compared against both the string versions and int or float versions of
-        the associated features.
-      spec: Initializes slicing spec from proto. If not None, overrides any
-        values passed in columns or features.
-
-    Raises:
-      ValueError: There was overlap between the columns specified in columns
-        and those in features.
-      ValueError: columns or features was a string: they should probably be a
-        singleton list containing that string.
+    Examples
+    --------
+      - columns = ['age'], features = []
+        This means to slice by the 'age' column.
+      - columns = ['age'], features = [('gender', 'female')]
+        This means to slice by the 'age' column if the 'gender' is 'female'.
+      - For more examples, refer to the tests in slicer_test.py.
     """
-    if isinstance(columns, str):
-      raise ValueError('columns is a string: it should probably be a singleton '
-                       'list containing that string')
-    if isinstance(features, str):
-      raise ValueError('features is a string: it should probably be a '
-                       'singleton list containing that string')
 
-    if spec is not None:
-      columns = spec.feature_keys
-      features = [(k, v) for k, v in spec.feature_values.items()]
-
-    features = [(k, _to_type(v)) for (k, v) in features]
-
-    self._columns = frozenset(columns)
-    self._features = frozenset(features)
-
-    # We build this up as an instance variable, instead of building it each
-    # time we call generate_slices, for efficiency reasons.
-    #
-    # This is a flat list of SingletonSliceKeyTypes,
-    # i.e. List[SingletonSliceKeyType].
-    self._value_matches = []
-
-    for (key, value) in self._features:
-      if key in self._columns:
-        raise ValueError('Columns specified in columns and in features should '
-                         'not overlap, but %s was specified in both.' % key)
-      self._value_matches.append((key, value))
-    self._value_matches = sorted(self._value_matches)
-
-  def __repr__(self):
-    return 'SingleSliceSpec(columns=%s, features=%s)' % (self._columns,
-                                                         self._features)
-
-  def to_proto(self) -> config_pb2.SlicingSpec:
-    feature_values = {k: str(v) for (k, v) in self._features}
-    return config_pb2.SlicingSpec(
-        feature_keys=self._columns, feature_values=feature_values)
-
-  def is_overall(self):
-    """Returns True if this specification represents the overall slice."""
-    return not self._columns and not self._features
-
-  def is_slice_applicable(self, slice_key: SliceKeyType):
-    """Determines if this slice spec is applicable to a slice of data.
-
-    Args:
-      slice_key: The slice as a SliceKeyType
-
-    Returns:
-      True if the slice_spec is applicable to the given slice, False otherwise.
-    """
-    columns = list(self._columns)
-    features = list(self._features)
-    for singleton_slice_key in slice_key:
-      # Convert to internal representation of slice (i.e. str -> float, etc).
-      if len(singleton_slice_key) == 2:
-        singleton_slice_key = (singleton_slice_key[0],
-                               _to_type(singleton_slice_key[1]))
-      if singleton_slice_key in features:
-        features.remove(singleton_slice_key)
-      elif singleton_slice_key[0] in columns:
-        columns.remove(singleton_slice_key[0])
-      else:
-        return False
-    return not features and not columns
-
-  def generate_slices(
-      self, accessor: slice_accessor.SliceAccessor
-  ) -> Generator[SliceKeyType, None, None]:
-    """Generates all slices that match this specification from the data.
-
-    Should only be called within this file.
-
-    Examples:
-      - columns = [], features = [] (the overall slice case)
-        slice accessor has features age=[5], gender=['f'], interest=['knitting']
-        returns [()]
-      - columns = ['age'], features = [('gender', 'f')]
-        slice accessor has features age=[5], gender=['f'], interest=['knitting']
-        returns [[('age', 5), ('gender, 'f')]]
-      - columns = ['interest'], features = [('gender', 'f')]
-        slice accessor has features age=[5], gender=['f'],
-        interest=['knitting', 'games']
-        returns [[('gender', 'f'), ('interest, 'knitting')],
-                 [('gender', 'f'), ('interest, 'games')]]
-
-    Args:
-      accessor: slice accessor.
-
-    Yields:
-      A SliceKeyType for each slice that matches this specification. Nothing
-      will be yielded if there no slices matched this specification. The entries
-      in the yielded SliceKeyTypes are guaranteed to be sorted by key names (and
-      then values, if necessary), ascending.
-    """
-    # Check all the value matches (where there's a specific value specified).
-    for (key, value) in self._features:
-      if not accessor.has_key(key):
-        return
-
-      accessor_values = accessor.get(key)
-      if value not in accessor_values:
-        if isinstance(value, str):
-          if value.encode() not in accessor_values:  # For Python3.
-            return
-        # Check that string version of int/float not in values.
-        elif str(value) not in accessor_values:
-          return
-
-    # Get all the column matches (where we're matching only the column).
-    #
-    # For each column, we generate a List[SingletonSliceKeyType] containing
-    # all pairs (column, value) for all values of the column. So this will be
-    # a List[List[SingletonSliceKeyType]].
-    #
-    # For example, column_matches might be:
-    # [[('gender', 'f'), ('gender', 'm')], [('age', 4), ('age', 5)]]
-    column_matches = []
-    for column in self._columns:
-      # If a column to slice on doesn't appear in the example, then there will
-      # be no applicable slices, so return.
-      if not accessor.has_key(column):
-        return
-
-      column_match = []
-      for value in accessor.get(column):
-        if isinstance(value, bytes):
-          try:
-            column_match.append((column, tf.compat.as_text(value)))
-          except UnicodeDecodeError as e:
-            raise ValueError('Found non-UTF8 feature value {} in '
-                             'column "{}"'.format(value, column)) from e
+    def __eq__(self, other: "SingleSliceSpec"):
+        # Need access to other's protected fields for comparison.
+        if isinstance(other, self.__class__):
+            # pylint: disable=protected-access
+            return self._columns == other._columns and self._features == other._features
+            # pylint: enable=protected-access
         else:
-          column_match.append((column, value))
-      column_matches.append(column_match)
+            return False
 
-    # We can now take the Cartesian product of the column_matches, and append
-    # the value matches to each element of that, to generate the final list of
-    # slices. Note that for the overall slice case the column_matches is [] and
-    # the Cartesian product of [] is ().
-    for column_part in itertools.product(*column_matches):
-      yield tuple(sorted(self._value_matches + list(column_part)))
+    def __ne__(self, other: "SingleSliceSpec"):
+        return not self.__eq__(other)
+
+    def __hash__(self):
+        return hash((self._columns, self._features))
+
+    def __init__(
+        self,
+        columns: Iterable[str] = (),
+        features: Iterable[Tuple[str, FeatureValueType]] = (),
+        spec: Optional[config_pb2.SlicingSpec] = None,
+    ):
+        """Initialises a SingleSliceSpec.
+
+        Args:
+        ----
+          columns: an iterable of column names to slice on.
+          features: an iterable of features to slice on. Each feature is a (key,
+            value) tuple. Note that strings representing ints and floats will be
+            automatically converted to ints and floats respectively and will be
+            compared against both the string versions and int or float versions of
+            the associated features.
+          spec: Initializes slicing spec from proto. If not None, overrides any
+            values passed in columns or features.
+
+        Raises:
+        ------
+          ValueError: There was overlap between the columns specified in columns
+            and those in features.
+          ValueError: columns or features was a string: they should probably be a
+            singleton list containing that string.
+        """
+        if isinstance(columns, str):
+            raise ValueError(
+                "columns is a string: it should probably be a singleton "
+                "list containing that string"
+            )
+        if isinstance(features, str):
+            raise ValueError(
+                "features is a string: it should probably be a "
+                "singleton list containing that string"
+            )
+
+        if spec is not None:
+            columns = spec.feature_keys
+            features = [(k, v) for k, v in spec.feature_values.items()]
+
+        features = [(k, _to_type(v)) for (k, v) in features]
+
+        self._columns = frozenset(columns)
+        self._features = frozenset(features)
+
+        # We build this up as an instance variable, instead of building it each
+        # time we call generate_slices, for efficiency reasons.
+        #
+        # This is a flat list of SingletonSliceKeyTypes,
+        # i.e. List[SingletonSliceKeyType].
+        self._value_matches = []
+
+        for key, value in self._features:
+            if key in self._columns:
+                raise ValueError(
+                    "Columns specified in columns and in features should "
+                    "not overlap, but %s was specified in both." % key
+                )
+            self._value_matches.append((key, value))
+        self._value_matches = sorted(self._value_matches)
+
+    def __repr__(self):
+        return "SingleSliceSpec(columns=%s, features=%s)" % (
+            self._columns,
+            self._features,
+        )
+
+    def to_proto(self) -> config_pb2.SlicingSpec:
+        feature_values = {k: str(v) for (k, v) in self._features}
+        return config_pb2.SlicingSpec(
+            feature_keys=self._columns, feature_values=feature_values
+        )
+
+    def is_overall(self):
+        """Returns True if this specification represents the overall slice."""
+        return not self._columns and not self._features
+
+    def is_slice_applicable(self, slice_key: SliceKeyType):
+        """Determines if this slice spec is applicable to a slice of data.
+
+        Args:
+        ----
+          slice_key: The slice as a SliceKeyType
+
+        Returns:
+        -------
+          True if the slice_spec is applicable to the given slice, False otherwise.
+        """
+        columns = list(self._columns)
+        features = list(self._features)
+        for singleton_slice_key in slice_key:
+            # Convert to internal representation of slice (i.e. str -> float, etc).
+            if len(singleton_slice_key) == 2:
+                singleton_slice_key = (
+                    singleton_slice_key[0],
+                    _to_type(singleton_slice_key[1]),
+                )
+            if singleton_slice_key in features:
+                features.remove(singleton_slice_key)
+            elif singleton_slice_key[0] in columns:
+                columns.remove(singleton_slice_key[0])
+            else:
+                return False
+        return not features and not columns
+
+    def generate_slices(
+        self, accessor: slice_accessor.SliceAccessor
+    ) -> Generator[SliceKeyType, None, None]:
+        """Generates all slices that match this specification from the data.
+
+        Should only be called within this file.
+
+        Examples:
+        --------
+          - columns = [], features = [] (the overall slice case)
+            slice accessor has features age=[5], gender=['f'], interest=['knitting']
+            returns [()]
+          - columns = ['age'], features = [('gender', 'f')]
+            slice accessor has features age=[5], gender=['f'], interest=['knitting']
+            returns [[('age', 5), ('gender, 'f')]]
+          - columns = ['interest'], features = [('gender', 'f')]
+            slice accessor has features age=[5], gender=['f'],
+            interest=['knitting', 'games']
+            returns [[('gender', 'f'), ('interest, 'knitting')],
+                     [('gender', 'f'), ('interest, 'games')]]
+
+        Args:
+        ----
+          accessor: slice accessor.
+
+        Yields:
+        ------
+          A SliceKeyType for each slice that matches this specification. Nothing
+          will be yielded if there no slices matched this specification. The entries
+          in the yielded SliceKeyTypes are guaranteed to be sorted by key names (and
+          then values, if necessary), ascending.
+        """
+        # Check all the value matches (where there's a specific value specified).
+        for key, value in self._features:
+            if not accessor.has_key(key):
+                return
+
+            accessor_values = accessor.get(key)
+            if value not in accessor_values:
+                if isinstance(value, str):
+                    if value.encode() not in accessor_values:  # For Python3.
+                        return
+                # Check that string version of int/float not in values.
+                elif str(value) not in accessor_values:
+                    return
+
+        # Get all the column matches (where we're matching only the column).
+        #
+        # For each column, we generate a List[SingletonSliceKeyType] containing
+        # all pairs (column, value) for all values of the column. So this will be
+        # a List[List[SingletonSliceKeyType]].
+        #
+        # For example, column_matches might be:
+        # [[('gender', 'f'), ('gender', 'm')], [('age', 4), ('age', 5)]]
+        column_matches = []
+        for column in self._columns:
+            # If a column to slice on doesn't appear in the example, then there will
+            # be no applicable slices, so return.
+            if not accessor.has_key(column):
+                return
+
+            column_match = []
+            for value in accessor.get(column):
+                if isinstance(value, bytes):
+                    try:
+                        column_match.append((column, tf.compat.as_text(value)))
+                    except UnicodeDecodeError as e:
+                        raise ValueError(
+                            f"Found non-UTF8 feature value {value} in "
+                            f'column "{column}"'
+                        ) from e
+                else:
+                    column_match.append((column, value))
+            column_matches.append(column_match)
+
+        # We can now take the Cartesian product of the column_matches, and append
+        # the value matches to each element of that, to generate the final list of
+        # slices. Note that for the overall slice case the column_matches is [] and
+        # the Cartesian product of [] is ().
+        for column_part in itertools.product(*column_matches):
+            yield tuple(sorted(self._value_matches + list(column_part)))
 
 
 class CrossSliceSpec(
-    NamedTuple('CrossSliceSpec', [('base_slicing_spec', SingleSliceSpec),
-                                  ('slicing_specs', Tuple[SingleSliceSpec])])):
-  """Specification for a cross slice.
+    NamedTuple(
+        "CrossSliceSpec",
+        [
+            ("base_slicing_spec", SingleSliceSpec),
+            ("slicing_specs", Tuple[SingleSliceSpec]),
+        ],
+    )
+):
+    """Specification for a cross slice.
 
-  This is intended to be an immutable class that specifies a cross slice.
-  Use this in conjunction with get_slices_for_features_dicts to generate slices
-  for dictionaries of features.
+    This is intended to be an immutable class that specifies a cross slice.
+    Use this in conjunction with get_slices_for_features_dicts to generate slices
+    for dictionaries of features.
 
-  Attributes:
-    base_slicing_spec: The baseline slicing spec.
-    slicing_specs: A tuple of slicing specs of the proto counterparts.
-  """
+    Attributes
+    ----------
+      base_slicing_spec: The baseline slicing spec.
+      slicing_specs: A tuple of slicing specs of the proto counterparts.
+    """
 
-  def __new__(cls, spec: config_pb2.CrossSlicingSpec):
-    """Create a new CrrossSliceSpec object from its Proto counnterpart."""
-    # This is organized as a Tuple(baseline_spec, Tuple(slice_specs))
-    return super(CrossSliceSpec, cls).__new__(
-        cls, SingleSliceSpec(spec=spec.baseline_spec),
-        tuple(
-            SingleSliceSpec(spec=slicing_spec)
-            for slicing_spec in spec.slicing_specs))
+    def __new__(cls, spec: config_pb2.CrossSlicingSpec):
+        """Create a new CrrossSliceSpec object from its Proto counnterpart."""
+        # This is organized as a Tuple(baseline_spec, Tuple(slice_specs))
+        return super(CrossSliceSpec, cls).__new__(
+            cls,
+            SingleSliceSpec(spec=spec.baseline_spec),
+            tuple(
+                SingleSliceSpec(spec=slicing_spec)
+                for slicing_spec in spec.slicing_specs
+            ),
+        )
 
 
 def deserialize_slice_spec(
-    slice_spec: Union[config_pb2.SlicingSpec, config_pb2.CrossSlicingSpec]
+    slice_spec: Union[config_pb2.SlicingSpec, config_pb2.CrossSlicingSpec],
 ) -> Union[SingleSliceSpec, CrossSliceSpec]:
-  """Creates the appropriate hashable slicing spec object.
+    """Creates the appropriate hashable slicing spec object.
 
-  Args:
-    slice_spec: Proto counnterpart of slicing spec.
+    Args:
+    ----
+      slice_spec: Proto counnterpart of slicing spec.
 
-  Returns:
-    The python object of single slice spec or cross slice spec.
+    Returns:
+    -------
+      The python object of single slice spec or cross slice spec.
 
-  Raises:
-    NotImplementedError: if the type of slice_spec is not supported.
-  """
-  if isinstance(slice_spec, config_pb2.SlicingSpec):
-    return SingleSliceSpec(spec=slice_spec)
-  elif isinstance(slice_spec, config_pb2.CrossSlicingSpec):
-    return CrossSliceSpec(spec=slice_spec)
-  else:
-    raise NotImplementedError(
-        f'Not implemented for slice_spec type: {type(slice_spec)}')
-
-
-def serialize_slice_key(
-    slice_key: SliceKeyType) -> metrics_for_slice_pb2.SliceKey:
-  """Converts SliceKeyType to SliceKey proto.
-
-  Args:
-    slice_key: The slice key in the format of SliceKeyType.
-
-  Returns:
-    The slice key in the format of SliceKey proto.
-
-  Raises:
-    TypeError: If the evaluate type is unrecognized.
-  """
-  result = metrics_for_slice_pb2.SliceKey()
-
-  for (col, val) in slice_key:
-    single_slice_key = result.single_slice_keys.add()
-    single_slice_key.column = col
-    if isinstance(val, (bytes, str)):
-      single_slice_key.bytes_value = tf.compat.as_bytes(val)
-    elif isinstance(val, int):
-      single_slice_key.int64_value = val
-    elif isinstance(val, float):
-      single_slice_key.float_value = val
+    Raises:
+    ------
+      NotImplementedError: if the type of slice_spec is not supported.
+    """
+    if isinstance(slice_spec, config_pb2.SlicingSpec):
+        return SingleSliceSpec(spec=slice_spec)
+    elif isinstance(slice_spec, config_pb2.CrossSlicingSpec):
+        return CrossSliceSpec(spec=slice_spec)
     else:
-      raise TypeError('unrecognized type of type %s, value %s' %
-                      (type(val), val))
+        raise NotImplementedError(
+            f"Not implemented for slice_spec type: {type(slice_spec)}"
+        )
 
-  return result
+
+def serialize_slice_key(slice_key: SliceKeyType) -> metrics_for_slice_pb2.SliceKey:
+    """Converts SliceKeyType to SliceKey proto.
+
+    Args:
+    ----
+      slice_key: The slice key in the format of SliceKeyType.
+
+    Returns:
+    -------
+      The slice key in the format of SliceKey proto.
+
+    Raises:
+    ------
+      TypeError: If the evaluate type is unrecognized.
+    """
+    result = metrics_for_slice_pb2.SliceKey()
+
+    for col, val in slice_key:
+        single_slice_key = result.single_slice_keys.add()
+        single_slice_key.column = col
+        if isinstance(val, (bytes, str)):
+            single_slice_key.bytes_value = tf.compat.as_bytes(val)
+        elif isinstance(val, int):
+            single_slice_key.int64_value = val
+        elif isinstance(val, float):
+            single_slice_key.float_value = val
+        else:
+            raise TypeError("unrecognized type of type %s, value %s" % (type(val), val))
+
+    return result
 
 
 def _to_type(v: FeatureValueType) -> FeatureValueType:
-  """Converts string versions of ints and floats to respective values."""
-  if isinstance(v, float) or isinstance(v, int):
-    return v
-  try:
-    v = str(v)
-    if '.' in v:
-      return float(v)
-    else:
-      return int(v)
-  except ValueError:
-    return v
+    """Converts string versions of ints and floats to respective values."""
+    if isinstance(v, float) or isinstance(v, int):
+        return v
+    try:
+        v = str(v)
+        if "." in v:
+            return float(v)
+        else:
+            return int(v)
+    except ValueError:
+        return v
 
 
 def serialize_cross_slice_key(
-    cross_slice_key: CrossSliceKeyType) -> metrics_for_slice_pb2.CrossSliceKey:
-  """Converts CrossSliceKeyType to CrossSliceKey proto."""
-  result = metrics_for_slice_pb2.CrossSliceKey()
-  baseline_slice_key, comparison_slice_key = cross_slice_key
-  result.baseline_slice_key.CopyFrom(serialize_slice_key(baseline_slice_key))
-  result.comparison_slice_key.CopyFrom(
-      serialize_slice_key(comparison_slice_key))
-  return result
+    cross_slice_key: CrossSliceKeyType,
+) -> metrics_for_slice_pb2.CrossSliceKey:
+    """Converts CrossSliceKeyType to CrossSliceKey proto."""
+    result = metrics_for_slice_pb2.CrossSliceKey()
+    baseline_slice_key, comparison_slice_key = cross_slice_key
+    result.baseline_slice_key.CopyFrom(serialize_slice_key(baseline_slice_key))
+    result.comparison_slice_key.CopyFrom(serialize_slice_key(comparison_slice_key))
+    return result
 
 
-def deserialize_slice_key(
-    slice_key: metrics_for_slice_pb2.SliceKey) -> SliceKeyType:
-  """Converts SliceKey proto to SliceKeyType.
+def deserialize_slice_key(slice_key: metrics_for_slice_pb2.SliceKey) -> SliceKeyType:
+    """Converts SliceKey proto to SliceKeyType.
 
-  Args:
-    slice_key: The slice key in the format of proto SliceKey.
+    Args:
+    ----
+      slice_key: The slice key in the format of proto SliceKey.
 
-  Returns:
-    The slice key in the format of SliceKeyType.
+    Returns:
+    -------
+      The slice key in the format of SliceKeyType.
 
-  Raises:
-    TypeError: If the evaluate type is unreconized.
-  """
-  result = []
-  for elem in slice_key.single_slice_keys:
-    if elem.HasField('bytes_value'):
-      value = tf.compat.as_text(elem.bytes_value)
-    elif elem.HasField('int64_value'):
-      value = elem.int64_value
-    elif elem.HasField('float_value'):
-      value = elem.float_value
-    else:
-      raise TypeError('unrecognized type of type %s, value %s' %
-                      (type(elem), elem))
-    result.append((elem.column, value))
-  return tuple(result)
+    Raises:
+    ------
+      TypeError: If the evaluate type is unreconized.
+    """
+    result = []
+    for elem in slice_key.single_slice_keys:
+        if elem.HasField("bytes_value"):
+            value = tf.compat.as_text(elem.bytes_value)
+        elif elem.HasField("int64_value"):
+            value = elem.int64_value
+        elif elem.HasField("float_value"):
+            value = elem.float_value
+        else:
+            raise TypeError(
+                "unrecognized type of type %s, value %s" % (type(elem), elem)
+            )
+        result.append((elem.column, value))
+    return tuple(result)
 
 
 def deserialize_cross_slice_key(
-    cross_slice_key: metrics_for_slice_pb2.CrossSliceKey) -> CrossSliceKeyType:
-  """Converts CrossSliceKey proto to CrossSliceKeyType.
+    cross_slice_key: metrics_for_slice_pb2.CrossSliceKey,
+) -> CrossSliceKeyType:
+    """Converts CrossSliceKey proto to CrossSliceKeyType.
 
-  Args:
-    cross_slice_key: The cross slice key in the format of proto CrossSliceKey.
+    Args:
+    ----
+      cross_slice_key: The cross slice key in the format of proto CrossSliceKey.
 
-  Returns:
-    The cross slice key in the format of CrossSliceKeyType.
+    Returns:
+    -------
+      The cross slice key in the format of CrossSliceKeyType.
 
-  Raises:
-    TypeError: If the evaluate type is unrecognized.
-  """
-  baseline_key = deserialize_slice_key(cross_slice_key.baseline_slice_key)
-  comparison_key = deserialize_slice_key(cross_slice_key.comparison_slice_key)
-  return (baseline_key, comparison_key)
+    Raises:
+    ------
+      TypeError: If the evaluate type is unrecognized.
+    """
+    baseline_key = deserialize_slice_key(cross_slice_key.baseline_slice_key)
+    comparison_key = deserialize_slice_key(cross_slice_key.comparison_slice_key)
+    return (baseline_key, comparison_key)
 
 
 def get_slices_for_features_dicts(
-    features_dicts: Iterable[Union[types.DictOfTensorValue,
-                                   types.DictOfFetchedTensorValues]],
-    default_features_dict: Union[types.DictOfTensorValue,
-                                 types.DictOfFetchedTensorValues],
-    slice_spec: List[SingleSliceSpec]) -> Iterable[SliceKeyType]:
-  """Generates the slice keys appropriate for the given features dictionaries.
+    features_dicts: Iterable[
+        Union[types.DictOfTensorValue, types.DictOfFetchedTensorValues]
+    ],
+    default_features_dict: Union[
+        types.DictOfTensorValue, types.DictOfFetchedTensorValues
+    ],
+    slice_spec: List[SingleSliceSpec],
+) -> Iterable[SliceKeyType]:
+    """Generates the slice keys appropriate for the given features dictionaries.
 
-  Args:
-    features_dicts: Features dictionaries. For example a list of transformed
-      features dictionaries.
-    default_features_dict: Additional dict to search if a match is not found in
-      features dictionaries. For example the raw features.
-    slice_spec: slice specification.
+    Args:
+    ----
+      features_dicts: Features dictionaries. For example a list of transformed
+        features dictionaries.
+      default_features_dict: Additional dict to search if a match is not found in
+        features dictionaries. For example the raw features.
+      slice_spec: slice specification.
 
-  Yields:
-    Slice keys appropriate for the given features dictionaries.
-  """
-  accessor = slice_accessor.SliceAccessor(features_dicts, default_features_dict)
-  for single_slice_spec in slice_spec:
-    for slice_key in single_slice_spec.generate_slices(accessor):
-      yield slice_key
+    Yields:
+    ------
+      Slice keys appropriate for the given features dictionaries.
+    """
+    accessor = slice_accessor.SliceAccessor(features_dicts, default_features_dict)
+    for single_slice_spec in slice_spec:
+        for slice_key in single_slice_spec.generate_slices(accessor):
+            yield slice_key
 
 
 def stringify_slice_key(slice_key: SliceKeyType) -> str:
-  """Stringifies a slice key.
+    """Stringifies a slice key.
 
-  The string representation of a SingletonSliceKeyType is "feature:value". When
-  multiple columns / features are specified, the string representation of a
-  SliceKeyType is "c1_X_c2_X_...:v1_X_v2_X_..." where c1, c2, ... are the column
-  names and v1, v2, ... are the corresponding values For example,
-  ('gender, 'f'), ('age', 5) befores age_X_gender:f_X_5. If no columns / feature
-  specified, return "Overall".
+    The string representation of a SingletonSliceKeyType is "feature:value". When
+    multiple columns / features are specified, the string representation of a
+    SliceKeyType is "c1_X_c2_X_...:v1_X_v2_X_..." where c1, c2, ... are the column
+    names and v1, v2, ... are the corresponding values For example,
+    ('gender, 'f'), ('age', 5) befores age_X_gender:f_X_5. If no columns / feature
+    specified, return "Overall".
 
-  Note that we do not perform special escaping for slice values that contain
-  '_X_'. This stringified representation is meant to be human-readbale rather
-  than a reversible encoding.
+    Note that we do not perform special escaping for slice values that contain
+    '_X_'. This stringified representation is meant to be human-readbale rather
+    than a reversible encoding.
 
-  The columns will be in the same order as in SliceKeyType. If they are
-  generated using SingleSliceSpec.generate_slices, they will be in sorted order,
-  ascending.
+    The columns will be in the same order as in SliceKeyType. If they are
+    generated using SingleSliceSpec.generate_slices, they will be in sorted order,
+    ascending.
 
-  Technically float values are not supported, but we don't check for them here.
+    Technically float values are not supported, but we don't check for them here.
 
-  Args:
-    slice_key: Slice key to stringify. The constituent SingletonSliceKeyTypes
-      should be sorted in ascending order.
+    Args:
+    ----
+      slice_key: Slice key to stringify. The constituent SingletonSliceKeyTypes
+        should be sorted in ascending order.
 
-  Returns:
-    String representation of the slice key.
-  """
-  key_count = len(slice_key)
-  if not key_count:
-    return OVERALL_SLICE_NAME
+    Returns:
+    -------
+      String representation of the slice key.
+    """
+    key_count = len(slice_key)
+    if not key_count:
+        return OVERALL_SLICE_NAME
 
-  keys = []
-  values = []
-  separator = '_X_'
+    keys = []
+    values = []
+    separator = "_X_"
 
-  for (feature, value) in slice_key:
-    # Since this is meant to be a human-readable string, we assume that the
-    # feature and feature value are valid UTF-8 strings (might not be true in
-    # cases where people store serialised protos in the features for instance).
-    keys.append(tf.compat.as_text(feature))
-    # We need to call as_str_any to convert non-string (e.g. integer) values to
-    # string first before converting to text.
-    values.append(tf.compat.as_text(tf.compat.as_str_any(value)))
+    for feature, value in slice_key:
+        # Since this is meant to be a human-readable string, we assume that the
+        # feature and feature value are valid UTF-8 strings (might not be true in
+        # cases where people store serialised protos in the features for instance).
+        keys.append(tf.compat.as_text(feature))
+        # We need to call as_str_any to convert non-string (e.g. integer) values to
+        # string first before converting to text.
+        values.append(tf.compat.as_text(tf.compat.as_str_any(value)))
 
-  # To use u'{}' instead of '{}' here to avoid encoding a unicode character with
-  # ascii codec.
-  return (separator.join([u'{}'.format(key) for key in keys]) + ':' +
-          separator.join([u'{}'.format(value) for value in values]))
+    # To use u'{}' instead of '{}' here to avoid encoding a unicode character with
+    # ascii codec.
+    return (
+        separator.join([f"{key}" for key in keys])
+        + ":"
+        + separator.join([f"{value}" for value in values])
+    )
 
 
 def slice_keys_to_numpy_array(slice_keys: List[SliceKeyType]) -> np.ndarray:
-  """Converts a list of slice keys into a numpy array.
+    """Converts a list of slice keys into a numpy array.
 
-  This must be done in a special way to avoid numpy treating the slice key
-  tuples as additional dimensions in the numpy array.
+    This must be done in a special way to avoid numpy treating the slice key
+    tuples as additional dimensions in the numpy array.
 
-  Args:
-    slice_keys: A list of SliceKeyTypes
+    Args:
+    ----
+      slice_keys: A list of SliceKeyTypes
 
-  Returns:
-    A numpy array with dtype=object where individual values are tuples.
-  """
-  result = np.empty(len(slice_keys), dtype=object)
-  for i, slice_key in enumerate(slice_keys):
-    result[i] = slice_key
-  return result
+    Returns:
+    -------
+      A numpy array with dtype=object where individual values are tuples.
+    """
+    result = np.empty(len(slice_keys), dtype=object)
+    for i, slice_key in enumerate(slice_keys):
+        result[i] = slice_key
+    return result
 
 
 def is_cross_slice_applicable(
-    cross_slice_key: CrossSliceKeyType,
-    cross_slicing_spec: config_pb2.CrossSlicingSpec) -> bool:
-  """Checks if CrossSlicingSpec is applicable to the CrossSliceKeyType."""
-  baseline_slice_key, comparison_slice_key = cross_slice_key
+    cross_slice_key: CrossSliceKeyType, cross_slicing_spec: config_pb2.CrossSlicingSpec
+) -> bool:
+    """Checks if CrossSlicingSpec is applicable to the CrossSliceKeyType."""
+    baseline_slice_key, comparison_slice_key = cross_slice_key
 
-  if not SingleSliceSpec(spec=cross_slicing_spec.baseline_spec
-                        ).is_slice_applicable(baseline_slice_key):
-    return False
-  for comparison_slicing_spec in cross_slicing_spec.slicing_specs:
-    if SingleSliceSpec(
-        spec=comparison_slicing_spec).is_slice_applicable(comparison_slice_key):
-      return True
-  return False
-
-
-def get_slice_key_type(
-    slice_key: Union[SliceKeyType, CrossSliceKeyType]) -> Any:
-  """Determines if the slice_key in SliceKeyType or CrossSliceKeyType format.
-
-  Args:
-    slice_key: The slice key which can be in SliceKeyType format or
-      CrossSliceType format.
-
-  Returns:
-    SliceKeyType object or CrossSliceKeyType object.
-
-  Raises:
-    TypeError: If slice key is not recognized.
-  """
-
-  def is_singleton_slice_key_type(
-      singleton_slice_key: SingletonSliceKeyType) -> bool:
-    try:
-      col, val = singleton_slice_key
-    except ValueError:
-      return False
-    if (isinstance(col, (bytes, str)) and
-        (isinstance(val, (bytes, str)) or isinstance(val, int) or
-         isinstance(val, float))):
-      return True
-    else:
-      return False
-
-  def is_slice_key_type(slice_key: SliceKeyType) -> bool:
-    if not slice_key:
-      return True
-
-    for single_slice_key in slice_key:
-      if not is_singleton_slice_key_type(single_slice_key):
+    if not SingleSliceSpec(spec=cross_slicing_spec.baseline_spec).is_slice_applicable(
+        baseline_slice_key
+    ):
         return False
-    return True
-
-  if is_slice_key_type(slice_key):
-    return SliceKeyType
-
-  try:
-    baseline_slice, comparison_slice = slice_key  # pytype: disable=bad-unpacking
-  except ValueError as e:
-    raise TypeError(f'Unrecognized slice type for slice_key: {slice_key}. '
-                    'Neither SliceKeyType nor CrossSliceKeyType.') from e
-
-  if (is_slice_key_type(baseline_slice) and
-      is_slice_key_type(comparison_slice)):
-    return CrossSliceKeyType
-  else:
-    raise TypeError('Unrecognized slice type. Neither SliceKeyType nor'
-                    ' CrossSliceKeyType.')
+    for comparison_slicing_spec in cross_slicing_spec.slicing_specs:
+        if SingleSliceSpec(spec=comparison_slicing_spec).is_slice_applicable(
+            comparison_slice_key
+        ):
+            return True
+    return False
 
 
-def is_cross_slice_key(
-    slice_key: Union[SliceKeyType, CrossSliceKeyType]) -> bool:
-  """Returns whether slice_key is cross_slice or not."""
-  return get_slice_key_type(slice_key) == CrossSliceKeyType
+def get_slice_key_type(slice_key: Union[SliceKeyType, CrossSliceKeyType]) -> Any:
+    """Determines if the slice_key in SliceKeyType or CrossSliceKeyType format.
+
+    Args:
+    ----
+      slice_key: The slice key which can be in SliceKeyType format or
+        CrossSliceType format.
+
+    Returns:
+    -------
+      SliceKeyType object or CrossSliceKeyType object.
+
+    Raises:
+    ------
+      TypeError: If slice key is not recognized.
+    """
+
+    def is_singleton_slice_key_type(singleton_slice_key: SingletonSliceKeyType) -> bool:
+        try:
+            col, val = singleton_slice_key
+        except ValueError:
+            return False
+        if isinstance(col, (bytes, str)) and (
+            isinstance(val, (bytes, str))
+            or isinstance(val, int)
+            or isinstance(val, float)
+        ):
+            return True
+        else:
+            return False
+
+    def is_slice_key_type(slice_key: SliceKeyType) -> bool:
+        if not slice_key:
+            return True
+
+        for single_slice_key in slice_key:
+            if not is_singleton_slice_key_type(single_slice_key):
+                return False
+        return True
+
+    if is_slice_key_type(slice_key):
+        return SliceKeyType
+
+    try:
+        baseline_slice, comparison_slice = slice_key  # pytype: disable=bad-unpacking
+    except ValueError as e:
+        raise TypeError(
+            f"Unrecognized slice type for slice_key: {slice_key}. "
+            "Neither SliceKeyType nor CrossSliceKeyType."
+        ) from e
+
+    if is_slice_key_type(baseline_slice) and is_slice_key_type(comparison_slice):
+        return CrossSliceKeyType
+    else:
+        raise TypeError(
+            "Unrecognized slice type. Neither SliceKeyType nor" " CrossSliceKeyType."
+        )
+
+
+def is_cross_slice_key(slice_key: Union[SliceKeyType, CrossSliceKeyType]) -> bool:
+    """Returns whether slice_key is cross_slice or not."""
+    return get_slice_key_type(slice_key) == CrossSliceKeyType
 
 
 def slice_key_matches_slice_specs(
-    slice_key: SliceKeyType, slice_specs: Iterable[SingleSliceSpec]) -> bool:
-  """Checks whether a slice key matches any slice spec.
+    slice_key: SliceKeyType, slice_specs: Iterable[SingleSliceSpec]
+) -> bool:
+    """Checks whether a slice key matches any slice spec.
 
-  In this setting, a slice key matches a slice spec if it could have been
-  generated by that spec.
+    In this setting, a slice key matches a slice spec if it could have been
+    generated by that spec.
 
-  Args:
-    slice_key: The slice key to check for applicability against slice specs.
-    slice_specs: Slice specs against which to check applicability of a slice
-      key.
+    Args:
+    ----
+      slice_key: The slice key to check for applicability against slice specs.
+      slice_specs: Slice specs against which to check applicability of a slice
+        key.
 
-  Returns:
-    True if the slice_key matches any slice specs, False otherwise.
-  """
-  for slice_spec in slice_specs:
-    if slice_spec.is_slice_applicable(slice_key):
-      return True
-  return False
+    Returns:
+    -------
+      True if the slice_key matches any slice specs, False otherwise.
+    """
+    for slice_spec in slice_specs:
+        if slice_spec.is_slice_applicable(slice_key):
+            return True
+    return False
 
 
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(Tuple[SliceKeyType, types.Extracts])
 class _FanoutSlicesDoFn(beam.DoFn):
-  """A DoFn that performs per-slice key fanout prior to computing aggregates."""
+    """A DoFn that performs per-slice key fanout prior to computing aggregates."""
 
-  def __init__(self, key_filter_fn: Callable[[str], bool]):
-    self._num_slices_generated_per_instance = beam.metrics.Metrics.distribution(
-        constants.METRICS_NAMESPACE, 'num_slices_generated_per_instance')
-    self._post_slice_num_instances = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'post_slice_num_instances')
-    self._key_filter_fn = key_filter_fn
+    def __init__(self, key_filter_fn: Callable[[str], bool]):
+        self._num_slices_generated_per_instance = beam.metrics.Metrics.distribution(
+            constants.METRICS_NAMESPACE, "num_slices_generated_per_instance"
+        )
+        self._post_slice_num_instances = beam.metrics.Metrics.counter(
+            constants.METRICS_NAMESPACE, "post_slice_num_instances"
+        )
+        self._key_filter_fn = key_filter_fn
 
-  def process(
-      self,
-      element: types.Extracts) -> List[Tuple[SliceKeyType, types.Extracts]]:
-    key_filter_fn = self._key_filter_fn  # Local cache.
-    filtered = {k: v for k, v in element.items() if key_filter_fn(k)}
-    slice_keys = element.get(constants.SLICE_KEY_TYPES_KEY)
-    # The query based evaluator will group slices from multiple examples, so we
-    # deduplicate to avoid overcounting. Depending on whether the rows within a
-    # batch have a variable or fixed length, either a VarLenTensorValue or a 2D
-    # np.ndarray will be created.
-    if isinstance(slice_keys, types.VarLenTensorValue):
-      slice_keys = slice_keys.values
-    elif isinstance(slice_keys, np.ndarray) and len(slice_keys.shape) == 2:
-      slice_keys = slice_keys.flatten()
-    result = [(slice_key, filtered) for slice_key in set(slice_keys)]
-    self._num_slices_generated_per_instance.update(len(result))
-    self._post_slice_num_instances.inc(len(result))
-    return result
+    def process(
+        self, element: types.Extracts
+    ) -> List[Tuple[SliceKeyType, types.Extracts]]:
+        key_filter_fn = self._key_filter_fn  # Local cache.
+        filtered = {k: v for k, v in element.items() if key_filter_fn(k)}
+        slice_keys = element.get(constants.SLICE_KEY_TYPES_KEY)
+        # The query based evaluator will group slices from multiple examples, so we
+        # deduplicate to avoid overcounting. Depending on whether the rows within a
+        # batch have a variable or fixed length, either a VarLenTensorValue or a 2D
+        # np.ndarray will be created.
+        if isinstance(slice_keys, types.VarLenTensorValue):
+            slice_keys = slice_keys.values
+        elif isinstance(slice_keys, np.ndarray) and len(slice_keys.shape) == 2:
+            slice_keys = slice_keys.flatten()
+        result = [(slice_key, filtered) for slice_key in set(slice_keys)]
+        self._num_slices_generated_per_instance.update(len(result))
+        self._post_slice_num_instances.inc(len(result))
+        return result
 
 
 # TODO(cyfoo): Possibly introduce the same telemetry in Lantern to help with
@@ -626,43 +703,46 @@ class _FanoutSlicesDoFn(beam.DoFn):
 @beam.typehints.with_input_types(Tuple[SliceKeyType, types.Extracts])
 @beam.typehints.with_output_types(int)
 def _TrackDistinctSliceKeys(  # pylint: disable=invalid-name
-    slice_keys_and_values: beam.pvalue.PCollection) -> beam.pvalue.PCollection:
-  """Gathers slice key telemetry post slicing."""
+    slice_keys_and_values: beam.pvalue.PCollection,
+) -> beam.pvalue.PCollection:
+    """Gathers slice key telemetry post slicing."""
 
-  def increment_counter(element):  # pylint: disable=invalid-name
-    num_distinct_slice_keys = beam.metrics.Metrics.counter(
-        constants.METRICS_NAMESPACE, 'num_distinct_slice_keys')
-    num_distinct_slice_keys.inc(element)
-    return element
+    def increment_counter(element):  # pylint: disable=invalid-name
+        num_distinct_slice_keys = beam.metrics.Metrics.counter(
+            constants.METRICS_NAMESPACE, "num_distinct_slice_keys"
+        )
+        num_distinct_slice_keys.inc(element)
+        return element
 
-  return (slice_keys_and_values
-          | 'ExtractSliceKeys' >> beam.Keys()
-          | 'RemoveDuplicates' >> beam.Distinct()
-          | 'Size' >> beam.combiners.Count.Globally()
-          | 'IncrementCounter' >> beam.Map(increment_counter))
+    return (
+        slice_keys_and_values
+        | "ExtractSliceKeys" >> beam.Keys()
+        | "RemoveDuplicates" >> beam.Distinct()
+        | "Size" >> beam.combiners.Count.Globally()
+        | "IncrementCounter" >> beam.Map(increment_counter)
+    )
 
 
 @beam.ptransform_fn
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(tuple[SliceKeyType, types.Extracts])
 def FanoutSlices(  # pylint: disable=invalid-name
-    pcoll: beam.pvalue.PCollection,
-    include_slice_keys_in_output: Optional[bool] = False
+    pcoll: beam.pvalue.PCollection, include_slice_keys_in_output: Optional[bool] = False
 ) -> beam.pvalue.PCollection:  # pylint: disable=invalid-name
-  """Fan out extracts based on slice keys (slice keys removed by default)."""
-  if include_slice_keys_in_output:
-    key_filter_fn = lambda k: True
-  else:
-    pruned_keys = (constants.SLICE_KEY_TYPES_KEY, constants.SLICE_KEYS_KEY)
-    key_filter_fn = lambda k: k not in pruned_keys
+    """Fan out extracts based on slice keys (slice keys removed by default)."""
+    if include_slice_keys_in_output:
+        key_filter_fn = lambda k: True
+    else:
+        pruned_keys = (constants.SLICE_KEY_TYPES_KEY, constants.SLICE_KEYS_KEY)
+        key_filter_fn = lambda k: k not in pruned_keys
 
-  result = pcoll | 'DoSlicing' >> beam.ParDo(_FanoutSlicesDoFn(key_filter_fn))
+    result = pcoll | "DoSlicing" >> beam.ParDo(_FanoutSlicesDoFn(key_filter_fn))
 
-  # pylint: disable=no-value-for-parameter
-  _ = result | 'TrackDistinctSliceKeys' >> _TrackDistinctSliceKeys()
-  # pylint: enable=no-value-for-parameter
+    # pylint: disable=no-value-for-parameter
+    _ = result | "TrackDistinctSliceKeys" >> _TrackDistinctSliceKeys()
+    # pylint: enable=no-value-for-parameter
 
-  return result
+    return result
 
 
 # TFMA v1 uses Text for its keys while TFMA v2 uses MetricKey
@@ -676,68 +756,73 @@ def FilterOutSlices(  # pylint: disable=invalid-name
     values: beam.pvalue.PCollection,
     slices_count: beam.pvalue.PCollection,
     min_slice_size: int,
-    error_metric_key: str = '__ERROR__') -> beam.pvalue.PCollection:
-  """Filter out slices with examples count lower than k_anonymization_count.
+    error_metric_key: str = "__ERROR__",
+) -> beam.pvalue.PCollection:
+    """Filter out slices with examples count lower than k_anonymization_count.
 
-  Since we might filter out certain slices to preserve privacy in the case of
-  small slices, to make end users aware of this, we will append filtered out
-  slice keys with empty data, and a debug message explaining the omission.
+    Since we might filter out certain slices to preserve privacy in the case of
+    small slices, to make end users aware of this, we will append filtered out
+    slice keys with empty data, and a debug message explaining the omission.
 
-  Args:
-    values: PCollection of aggregated data keyed at slice_key
-    slices_count: PCollection of slice keys and their example count.
-    min_slice_size: If the number of examples in a specific slice is less than
-      min_slice_size, then an error will be returned for that slice. This will
-      be useful to ensure privacy by not displaying the aggregated data for
-      smaller number of examples.
-    error_metric_key: The special metric key to indicate errors.
+    Args:
+    ----
+      values: PCollection of aggregated data keyed at slice_key
+      slices_count: PCollection of slice keys and their example count.
+      min_slice_size: If the number of examples in a specific slice is less than
+        min_slice_size, then an error will be returned for that slice. This will
+        be useful to ensure privacy by not displaying the aggregated data for
+        smaller number of examples.
+      error_metric_key: The special metric key to indicate errors.
 
-  Returns:
-    A PCollection keyed at all the possible slice_key and aggregated data for
-    slice keys with example count more than min_slice_size and error
-    message for filtered out slices.
-  """
+    Returns:
+    -------
+      A PCollection keyed at all the possible slice_key and aggregated data for
+      slice keys with example count more than min_slice_size and error
+      message for filtered out slices.
+    """
 
-  class FilterOutSmallSlicesDoFn(beam.DoFn):
-    """DoFn to filter out small slices."""
+    class FilterOutSmallSlicesDoFn(beam.DoFn):
+        """DoFn to filter out small slices."""
 
-    def __init__(self, error_metric_key: str):
-      self.error_metric_key = error_metric_key
+        def __init__(self, error_metric_key: str):
+            self.error_metric_key = error_metric_key
 
-    def process(
-        self, element: Tuple[SliceKeyType, _MetricsDict]
-    ) -> Generator[Tuple[SliceKeyType, _MetricsDict], None, None]:
-      """Filter out small slices.
+        def process(
+            self, element: Tuple[SliceKeyType, _MetricsDict]
+        ) -> Generator[Tuple[SliceKeyType, _MetricsDict], None, None]:
+            """Filter out small slices.
 
-      For slices (excluding overall slice) with examples count lower than
-      min_slice_size, it adds an error message.
+            For slices (excluding overall slice) with examples count lower than
+            min_slice_size, it adds an error message.
 
-      Args:
-        element: Tuple containing slice key and a dictionary containing
-          corresponding elements from merged pcollections.
+            Args:
+            ----
+              element: Tuple containing slice key and a dictionary containing
+                corresponding elements from merged pcollections.
 
-      Yields:
-        PCollection of (slice_key, aggregated_data or error message)
-      """
-      (slice_key, value) = element
-      if value['values']:
-        if (not slice_key or value['slices_count'][0] >= min_slice_size):
-          yield (slice_key, value['values'][0])
-        else:
-          yield (
-              slice_key,
-              {
-                  self.error_metric_key:  # LINT.IfChange
-                      'Example count for this slice key is lower than the '
-                      'minimum required value: %d. No data is aggregated for '
-                      'this slice.' % min_slice_size
-                  # LINT.ThenChange(../addons/fairness/frontend/fairness-metrics-board/fairness-metrics-board.js)
-              })
+            Yields:
+            ------
+              PCollection of (slice_key, aggregated_data or error message)
+            """
+            (slice_key, value) = element
+            if value["values"]:
+                if not slice_key or value["slices_count"][0] >= min_slice_size:
+                    yield (slice_key, value["values"][0])
+                else:
+                    yield (
+                        slice_key,
+                        {
+                            self.error_metric_key:  # LINT.IfChange
+                            "Example count for this slice key is lower than the "
+                            "minimum required value: %d. No data is aggregated for "
+                            "this slice." % min_slice_size
+                            # LINT.ThenChange(../addons/fairness/frontend/fairness-metrics-board/fairness-metrics-board.js)
+                        },
+                    )
 
-  return ({
-      'values': values,
-      'slices_count': slices_count
-  }
-          | 'CoGroupingSlicesCountAndAggregatedData' >> beam.CoGroupByKey()
-          | 'FilterOutSmallSlices' >> beam.ParDo(
-              FilterOutSmallSlicesDoFn(error_metric_key)))
+    return (
+        {"values": values, "slices_count": slices_count}
+        | "CoGroupingSlicesCountAndAggregatedData" >> beam.CoGroupByKey()
+        | "FilterOutSmallSlices"
+        >> beam.ParDo(FilterOutSmallSlicesDoFn(error_metric_key))
+    )

@@ -14,54 +14,54 @@
 """Tests for size estimator."""
 
 import tensorflow as tf
+
 from tensorflow_model_analysis.utils import size_estimator
 
 
 class SizeEstimatorTest(tf.test.TestCase):
+    def testRefCountAmortization(self):
+        estimator = size_estimator.SizeEstimator(size_threshold=10, size_fn=len)
+        self.assertEqual(estimator.get_estimate(), 0)
+        a = b"fasjg"
+        b, c = a, a
+        # The test string should not use sys reference count, which may lead to
+        # unexpected string reference increase/decrease.
+        expected_size_estimate = 4
+        estimator.update(a)
+        estimator.update(b)
+        estimator.update(c)
+        estimator.update(a)
+        self.assertEqual(estimator.get_estimate(), expected_size_estimate)
 
-  def testRefCountAmortization(self):
-    estimator = size_estimator.SizeEstimator(size_threshold=10, size_fn=len)
-    self.assertEqual(estimator.get_estimate(), 0)
-    a = b'fasjg'
-    b, c = a, a
-    # The test string should not use sys reference count, which may lead to
-    # unexpected string reference increase/decrease.
-    expected_size_estimate = 4
-    estimator.update(a)
-    estimator.update(b)
-    estimator.update(c)
-    estimator.update(a)
-    self.assertEqual(estimator.get_estimate(), expected_size_estimate)
+        self.assertFalse(estimator.should_flush())
 
-    self.assertFalse(estimator.should_flush())
+    def testFlush(self):
+        estimator = size_estimator.SizeEstimator(size_threshold=10, size_fn=len)
+        self.assertEqual(estimator.get_estimate(), 0)
+        estimator.update(b"plmjh")
+        estimator.update(b"plmjhghytfghsggssss")
+        self.assertTrue(estimator.should_flush())
+        estimator.clear()
+        self.assertEqual(estimator.get_estimate(), 0)
 
-  def testFlush(self):
-    estimator = size_estimator.SizeEstimator(size_threshold=10, size_fn=len)
-    self.assertEqual(estimator.get_estimate(), 0)
-    estimator.update(b'plmjh')
-    estimator.update(b'plmjhghytfghsggssss')
-    self.assertTrue(estimator.should_flush())
-    estimator.clear()
-    self.assertEqual(estimator.get_estimate(), 0)
+    def testMergeEstimators(self):
+        estimator1 = size_estimator.SizeEstimator(size_threshold=10, size_fn=len)
+        self.assertEqual(estimator1.get_estimate(), 0)
+        estimator2 = size_estimator.SizeEstimator(size_threshold=10, size_fn=len)
+        self.assertEqual(estimator2.get_estimate(), 0)
+        a = b"pkmiz"
+        b, c = a, a
+        # The test string should not use sys reference count, which may lead to
+        # unexpected string reference increase/decrease.
 
-  def testMergeEstimators(self):
-    estimator1 = size_estimator.SizeEstimator(size_threshold=10, size_fn=len)
-    self.assertEqual(estimator1.get_estimate(), 0)
-    estimator2 = size_estimator.SizeEstimator(size_threshold=10, size_fn=len)
-    self.assertEqual(estimator2.get_estimate(), 0)
-    a = b'pkmiz'
-    b, c = a, a
-    # The test string should not use sys reference count, which may lead to
-    # unexpected string reference increase/decrease.
-
-    expected_size_estimate = 4
-    estimator1.update(a)
-    estimator1.update(b)
-    estimator2.update(c)
-    estimator2.update(a)
-    estimator1 += estimator2
-    self.assertEqual(estimator1.get_estimate(), expected_size_estimate)
+        expected_size_estimate = 4
+        estimator1.update(a)
+        estimator1.update(b)
+        estimator2.update(c)
+        estimator2.update(a)
+        estimator1 += estimator2
+        self.assertEqual(estimator1.get_estimate(), expected_size_estimate)
 
 
-if __name__ == '__main__':
-  tf.test.main()
+if __name__ == "__main__":
+    tf.test.main()

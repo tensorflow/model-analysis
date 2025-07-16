@@ -14,84 +14,82 @@
 """Tests for analysis_table_evaluator."""
 
 import apache_beam as beam
-from apache_beam.testing import util
 import tensorflow as tf
+from apache_beam.testing import util
+
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.evaluators import analysis_table_evaluator
 from tensorflow_model_analysis.utils import test_util
 
 
 class AnalysisTableEvaulatorTest(test_util.TensorflowModelAnalysisTest):
+    def testIncludeFilter(self):
+        with beam.Pipeline() as pipeline:
+            got = (
+                pipeline
+                | "Create" >> beam.Create([{"a": 1, "b": 2}])
+                | "EvaluateExtracts"
+                >> analysis_table_evaluator.EvaluateExtracts(include=["a"])
+            )
 
-  def testIncludeFilter(self):
-    with beam.Pipeline() as pipeline:
-      got = (
-          pipeline
-          | 'Create' >> beam.Create([{'a': 1, 'b': 2}])
-          | 'EvaluateExtracts'
-          >> analysis_table_evaluator.EvaluateExtracts(include=['a'])
-      )
+            def check_result(got):
+                try:
+                    self.assertEqual(got, [{"a": 1}])
+                except AssertionError as err:
+                    raise util.BeamAssertException(err)
 
-      def check_result(got):
-        try:
-          self.assertEqual(got, [{'a': 1}])
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
+            util.assert_that(got[constants.ANALYSIS_KEY], check_result)
 
-      util.assert_that(got[constants.ANALYSIS_KEY], check_result)
+    def testExcludeFilter(self):
+        with beam.Pipeline() as pipeline:
+            got = (
+                pipeline
+                | "Create" >> beam.Create([{"a": 1, "b": 2}])
+                | "EvaluateExtracts"
+                >> analysis_table_evaluator.EvaluateExtracts(exclude=["a"])
+            )
 
-  def testExcludeFilter(self):
-    with beam.Pipeline() as pipeline:
-      got = (
-          pipeline
-          | 'Create' >> beam.Create([{'a': 1, 'b': 2}])
-          | 'EvaluateExtracts'
-          >> analysis_table_evaluator.EvaluateExtracts(exclude=['a'])
-      )
+            def check_result(got):
+                try:
+                    self.assertEqual(got, [{"b": 2}])
+                except AssertionError as err:
+                    raise util.BeamAssertException(err)
 
-      def check_result(got):
-        try:
-          self.assertEqual(got, [{'b': 2}])
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
+            util.assert_that(got[constants.ANALYSIS_KEY], check_result)
 
-      util.assert_that(got[constants.ANALYSIS_KEY], check_result)
+    def testNoIncludeOrExcludeFilters(self):
+        with beam.Pipeline() as pipeline:
+            got = (
+                pipeline
+                | "Create" >> beam.Create([{constants.INPUT_KEY: "input", "other": 2}])
+                | "EvaluateExtracts" >> analysis_table_evaluator.EvaluateExtracts()
+            )
 
-  def testNoIncludeOrExcludeFilters(self):
-    with beam.Pipeline() as pipeline:
-      got = (
-          pipeline
-          | 'Create'
-          >> beam.Create([{constants.INPUT_KEY: 'input', 'other': 2}])
-          | 'EvaluateExtracts' >> analysis_table_evaluator.EvaluateExtracts()
-      )
+            def check_result(got):
+                try:
+                    self.assertEqual(got, [{"other": 2}])
+                except AssertionError as err:
+                    raise util.BeamAssertException(err)
 
-      def check_result(got):
-        try:
-          self.assertEqual(got, [{'other': 2}])
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
+            util.assert_that(got[constants.ANALYSIS_KEY], check_result)
 
-      util.assert_that(got[constants.ANALYSIS_KEY], check_result)
+    def testEmptyExcludeFilters(self):
+        with beam.Pipeline() as pipeline:
+            got = (
+                pipeline
+                | "Create" >> beam.Create([{constants.INPUT_KEY: "input", "other": 2}])
+                | "EvaluateExtracts"
+                >> analysis_table_evaluator.EvaluateExtracts(exclude=[])
+            )
 
-  def testEmptyExcludeFilters(self):
-    with beam.Pipeline() as pipeline:
-      got = (
-          pipeline
-          | 'Create'
-          >> beam.Create([{constants.INPUT_KEY: 'input', 'other': 2}])
-          | 'EvaluateExtracts'
-          >> analysis_table_evaluator.EvaluateExtracts(exclude=[])
-      )
+            def check_result(got):
+                try:
+                    self.assertEqual(got, [{constants.INPUT_KEY: "input", "other": 2}])
+                except AssertionError as err:
+                    raise util.BeamAssertException(err)
 
-      def check_result(got):
-        try:
-          self.assertEqual(got, [{constants.INPUT_KEY: 'input', 'other': 2}])
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
-
-      util.assert_that(got[constants.ANALYSIS_KEY], check_result)
+            util.assert_that(got[constants.ANALYSIS_KEY], check_result)
 
 
-if __name__ == '__main__':
-  tf.test.main()
+if __name__ == "__main__":
+    tf.test.main()

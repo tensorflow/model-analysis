@@ -13,102 +13,107 @@
 # limitations under the License.
 """Tests for sample_metrics."""
 
-from absl.testing import absltest
 import apache_beam as beam
-from apache_beam.testing import util
 import numpy as np
+from absl.testing import absltest
+from apache_beam.testing import util
+
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.metrics import metric_types
-from tensorflow_model_analysis.metrics import metric_util
-from tensorflow_model_analysis.metrics import sample_metrics
+from tensorflow_model_analysis.metrics import metric_types, metric_util, sample_metrics
 
 
 class SampleTest(absltest.TestCase):
+    def testFixedSizeSample(self):
+        metric = sample_metrics.FixedSizeSample(
+            sampled_key="sampled_key", size=2, random_seed=0
+        ).computations()[0]
 
-  def testFixedSizeSample(self):
-    metric = sample_metrics.FixedSizeSample(
-        sampled_key='sampled_key', size=2, random_seed=0).computations()[0]
+        examples = []
+        for i in range(5):
+            examples.append(
+                {
+                    constants.LABELS_KEY: np.array([0]),
+                    constants.PREDICTIONS_KEY: np.array([1]),
+                    constants.FEATURES_KEY: {"sampled_key": i},
+                }
+            )
 
-    examples = []
-    for i in range(5):
-      examples.append({
-          constants.LABELS_KEY: np.array([0]),
-          constants.PREDICTIONS_KEY: np.array([1]),
-          constants.FEATURES_KEY: {
-              'sampled_key': i
-          }
-      })
+        with beam.Pipeline() as pipeline:
+            # pylint: disable=no-value-for-parameter
+            result = (
+                pipeline
+                | "Create" >> beam.Create(examples, reshuffle=False)
+                | "PreProcess" >> beam.ParDo(metric.preprocessors[0])
+                | "Process" >> beam.Map(metric_util.to_standard_metric_inputs)
+                | "AddSlice" >> beam.Map(lambda x: ((), x))
+                | "ComputeMetric" >> beam.CombinePerKey(metric.combiner)
+            )
 
-    with beam.Pipeline() as pipeline:
-      # pylint: disable=no-value-for-parameter
-      result = (
-          pipeline
-          | 'Create' >> beam.Create(examples, reshuffle=False)
-          | 'PreProcess' >> beam.ParDo(metric.preprocessors[0])
-          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
-          | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'ComputeMetric' >> beam.CombinePerKey(metric.combiner))
+            # pylint: enable=no-value-for-parameter
 
-      # pylint: enable=no-value-for-parameter
+            def check_result(got):
+                try:
+                    self.assertLen(got, 1)
+                    got_slice_key, got_metrics = got[0]
+                    self.assertEqual(got_slice_key, ())
+                    fixed_sized_sample_key = metric_types.MetricKey(
+                        name="fixed_size_sample"
+                    )
+                    np.testing.assert_equal(
+                        got_metrics, {fixed_sized_sample_key: np.array([4, 0])}
+                    )
 
-      def check_result(got):
-        try:
-          self.assertLen(got, 1)
-          got_slice_key, got_metrics = got[0]
-          self.assertEqual(got_slice_key, ())
-          fixed_sized_sample_key = metric_types.MetricKey(
-              name='fixed_size_sample')
-          np.testing.assert_equal(got_metrics,
-                                  {fixed_sized_sample_key: np.array([4, 0])})
+                except AssertionError as err:
+                    raise util.BeamAssertException(err)
 
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
+            util.assert_that(result, check_result)
 
-      util.assert_that(result, check_result)
+    def testFixedSizeSampleWeighted(self):
+        metric = sample_metrics.FixedSizeSample(
+            sampled_key="sampled_key", size=2, random_seed=0
+        ).computations(example_weighted=True)[0]
 
-  def testFixedSizeSampleWeighted(self):
-    metric = sample_metrics.FixedSizeSample(
-        sampled_key='sampled_key', size=2,
-        random_seed=0).computations(example_weighted=True)[0]
+        examples = []
+        for i in range(5):
+            examples.append(
+                {
+                    constants.LABELS_KEY: np.array([0]),
+                    constants.PREDICTIONS_KEY: np.array([1]),
+                    constants.EXAMPLE_WEIGHTS_KEY: np.array([10**i]),
+                    constants.FEATURES_KEY: {"sampled_key": i},
+                }
+            )
 
-    examples = []
-    for i in range(5):
-      examples.append({
-          constants.LABELS_KEY: np.array([0]),
-          constants.PREDICTIONS_KEY: np.array([1]),
-          constants.EXAMPLE_WEIGHTS_KEY: np.array([10**i]),
-          constants.FEATURES_KEY: {
-              'sampled_key': i
-          }
-      })
+        with beam.Pipeline() as pipeline:
+            # pylint: disable=no-value-for-parameter
+            result = (
+                pipeline
+                | "Create" >> beam.Create(examples, reshuffle=False)
+                # | 'Process' >> beam.ParDo(metric.preprocessors[0])
+                | "Process" >> beam.Map(metric_util.to_standard_metric_inputs)
+                | "AddSlice" >> beam.Map(lambda x: ((), x))
+                | "ComputeMetric" >> beam.CombinePerKey(metric.combiner)
+            )
 
-    with beam.Pipeline() as pipeline:
-      # pylint: disable=no-value-for-parameter
-      result = (
-          pipeline
-          | 'Create' >> beam.Create(examples, reshuffle=False)
-          # | 'Process' >> beam.ParDo(metric.preprocessors[0])
-          | 'Process' >> beam.Map(metric_util.to_standard_metric_inputs)
-          | 'AddSlice' >> beam.Map(lambda x: ((), x))
-          | 'ComputeMetric' >> beam.CombinePerKey(metric.combiner))
+            # pylint: enable=no-value-for-parameter
 
-      # pylint: enable=no-value-for-parameter
+            def check_result(got):
+                try:
+                    self.assertLen(got, 1)
+                    got_slice_key, got_metrics = got[0]
+                    self.assertEqual(got_slice_key, ())
+                    fixed_sized_sample_key = metric_types.MetricKey(
+                        name="fixed_size_sample", example_weighted=True
+                    )
+                    np.testing.assert_equal(
+                        got_metrics, {fixed_sized_sample_key: np.array([4, 3])}
+                    )
 
-      def check_result(got):
-        try:
-          self.assertLen(got, 1)
-          got_slice_key, got_metrics = got[0]
-          self.assertEqual(got_slice_key, ())
-          fixed_sized_sample_key = metric_types.MetricKey(
-              name='fixed_size_sample', example_weighted=True)
-          np.testing.assert_equal(got_metrics,
-                                  {fixed_sized_sample_key: np.array([4, 3])})
+                except AssertionError as err:
+                    raise util.BeamAssertException(err)
 
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
-
-      util.assert_that(result, check_result)
+            util.assert_that(result, check_result)
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

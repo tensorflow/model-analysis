@@ -16,34 +16,37 @@
 import copy
 
 import apache_beam as beam
+
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import model_util
 
-LABELS_EXTRACTOR_STAGE_NAME = 'ExtractLabels'
+LABELS_EXTRACTOR_STAGE_NAME = "ExtractLabels"
 
 
 def LabelsExtractor(eval_config: config_pb2.EvalConfig) -> extractor.Extractor:
-  """Creates an extractor for extracting labels.
+    """Creates an extractor for extracting labels.
 
-  The extractor's PTransform uses the config's ModelSpec.label_key(s) to lookup
-  the associated label values stored as features under the tfma.FEATURES_KEY
-  (and optionally tfma.TRANSFORMED_FEATURES_KEY) in extracts. The resulting
-  values are then added to the extracts under the key tfma.LABELS_KEY.
+    The extractor's PTransform uses the config's ModelSpec.label_key(s) to lookup
+    the associated label values stored as features under the tfma.FEATURES_KEY
+    (and optionally tfma.TRANSFORMED_FEATURES_KEY) in extracts. The resulting
+    values are then added to the extracts under the key tfma.LABELS_KEY.
 
-  Args:
-    eval_config: Eval config.
+    Args:
+    ----
+      eval_config: Eval config.
 
-  Returns:
-    Extractor for extracting labels.
-  """
-  # pylint: disable=no-value-for-parameter
-  return extractor.Extractor(
-      stage_name=LABELS_EXTRACTOR_STAGE_NAME,
-      ptransform=_ExtractLabels(eval_config=eval_config),
-  )
+    Returns:
+    -------
+      Extractor for extracting labels.
+    """
+    # pylint: disable=no-value-for-parameter
+    return extractor.Extractor(
+        stage_name=LABELS_EXTRACTOR_STAGE_NAME,
+        ptransform=_ExtractLabels(eval_config=eval_config),
+    )
 
 
 @beam.ptransform_fn
@@ -52,31 +55,33 @@ def LabelsExtractor(eval_config: config_pb2.EvalConfig) -> extractor.Extractor:
 def _ExtractLabels(
     extracts: beam.pvalue.PCollection, eval_config: config_pb2.EvalConfig
 ) -> beam.pvalue.PCollection:
-  """Extracts labels from features extracts.
+    """Extracts labels from features extracts.
 
-  Args:
-    extracts: PCollection containing features under tfma.FEATURES_KEY.
-    eval_config: Eval config.
+    Args:
+    ----
+      extracts: PCollection containing features under tfma.FEATURES_KEY.
+      eval_config: Eval config.
 
-  Returns:
-    PCollection of extracts with additional labels added under the key
-    tfma.LABELS_KEY.
-  """
+    Returns:
+    -------
+      PCollection of extracts with additional labels added under the key
+      tfma.LABELS_KEY.
+    """
 
-  def extract_labels(  # pylint: disable=invalid-name
-      batched_extracts: types.Extracts,
-  ) -> types.Extracts:
-    """Extract labels from extracts containing features."""
-    result = copy.copy(batched_extracts)
-    result[constants.LABELS_KEY] = (
-        model_util.get_feature_values_for_model_spec_field(
-            list(eval_config.model_specs),
-            'label_key',
-            'label_keys',
-            result,
-            True,
+    def extract_labels(  # pylint: disable=invalid-name
+        batched_extracts: types.Extracts,
+    ) -> types.Extracts:
+        """Extract labels from extracts containing features."""
+        result = copy.copy(batched_extracts)
+        result[constants.LABELS_KEY] = (
+            model_util.get_feature_values_for_model_spec_field(
+                list(eval_config.model_specs),
+                "label_key",
+                "label_keys",
+                result,
+                True,
+            )
         )
-    )
-    return result
+        return result
 
-  return extracts | 'ExtractLabels' >> beam.Map(extract_labels)
+    return extracts | "ExtractLabels" >> beam.Map(extract_labels)

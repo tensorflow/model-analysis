@@ -27,4 +27,3 @@
   }
   plot.data = input;
 })();
-

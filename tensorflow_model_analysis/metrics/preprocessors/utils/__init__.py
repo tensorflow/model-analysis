@@ -12,5 +12,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Init module for TensorFlow Model Analysis CV related utilities."""
-from tensorflow_model_analysis.metrics.preprocessors.utils import bounding_box
-from tensorflow_model_analysis.metrics.preprocessors.utils import box_match
+
+from tensorflow_model_analysis.metrics.preprocessors.utils import (
+    bounding_box,
+    box_match,
+)

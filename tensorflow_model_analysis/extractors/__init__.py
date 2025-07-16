@@ -13,33 +13,46 @@
 # limitations under the License.
 """Init module for TensorFlow Model Analysis extractors."""
 
-from tensorflow_model_analysis.extractors import legacy_meta_feature_extractor as meta_feature_extractor
-from tensorflow_model_analysis.extractors.example_weights_extractor import ExampleWeightsExtractor
-from tensorflow_model_analysis.extractors.extractor import Extractor
-from tensorflow_model_analysis.extractors.extractor import Filter
+from tensorflow_model_analysis.extractors import (
+    legacy_meta_feature_extractor as meta_feature_extractor,
+)
+from tensorflow_model_analysis.extractors.example_weights_extractor import (
+    ExampleWeightsExtractor,
+)
+from tensorflow_model_analysis.extractors.extractor import Extractor, Filter
 from tensorflow_model_analysis.extractors.features_extractor import FeaturesExtractor
 from tensorflow_model_analysis.extractors.labels_extractor import LabelsExtractor
-from tensorflow_model_analysis.extractors.legacy_feature_extractor import FeatureExtractor
+from tensorflow_model_analysis.extractors.legacy_feature_extractor import (
+    FeatureExtractor,
+)
 from tensorflow_model_analysis.extractors.legacy_input_extractor import InputExtractor
-from tensorflow_model_analysis.extractors.legacy_predict_extractor import PredictExtractor
-from tensorflow_model_analysis.extractors.predictions_extractor import PredictionsExtractor
-from tensorflow_model_analysis.extractors.slice_key_extractor import SLICE_KEY_EXTRACTOR_STAGE_NAME
-from tensorflow_model_analysis.extractors.slice_key_extractor import SliceKeyExtractor
-from tensorflow_model_analysis.extractors.transformed_features_extractor import TransformedFeaturesExtractor
+from tensorflow_model_analysis.extractors.legacy_predict_extractor import (
+    PredictExtractor,
+)
+from tensorflow_model_analysis.extractors.predictions_extractor import (
+    PredictionsExtractor,
+)
+from tensorflow_model_analysis.extractors.slice_key_extractor import (
+    SLICE_KEY_EXTRACTOR_STAGE_NAME,
+    SliceKeyExtractor,
+)
+from tensorflow_model_analysis.extractors.transformed_features_extractor import (
+    TransformedFeaturesExtractor,
+)
 from tensorflow_model_analysis.extractors.unbatch_extractor import UnbatchExtractor
 
 __all__ = [
-  "ExampleWeightsExtractor",
-  "Extractor",
-  "FeatureExtractor",
-  "FeaturesExtractor",
-  "Filter",
-  "InputExtractor",
-  "LabelsExtractor",
-  "PredictExtractor",
-  "PredictionsExtractor",
-  "SliceKeyExtractor",
-  "SLICE_KEY_EXTRACTOR_STAGE_NAME",
-  "TransformedFeaturesExtractor",
-  "UnbatchExtractor",
+    "ExampleWeightsExtractor",
+    "Extractor",
+    "FeatureExtractor",
+    "FeaturesExtractor",
+    "Filter",
+    "InputExtractor",
+    "LabelsExtractor",
+    "PredictExtractor",
+    "PredictionsExtractor",
+    "SliceKeyExtractor",
+    "SLICE_KEY_EXTRACTOR_STAGE_NAME",
+    "TransformedFeaturesExtractor",
+    "UnbatchExtractor",
 ]

@@ -87,7 +87,7 @@ pip3 install tensorflow_model_analysis-<version>-py3-none-any.whl
 
 ### Running tests
 
-To run tests, run 
+To run tests, run
 
 ```
 python -m unittest discover -p *_test.py

@@ -17,17 +17,15 @@ from typing import Dict, NamedTuple
 
 import apache_beam as beam
 
+
 # A validator takes a set of alternative evaluations as input and compares them
 # to produce a Validation output. A typical example of a validator is the
 # MetricsValidator that compares 'baseline' and 'candidate' Evaluations produced
 # by separate runs of the MetricsAndPlotsEvaluator.
-Validator = NamedTuple(  # pylint: disable=invalid-name
-    'Validator',
-    [
-        ('stage_name', str),
-        # Dict[Text, Evaluation] -> Validation (e.g. 'baseline', 'candidate').
-        ('ptransform', beam.PTransform)
-    ])
+class Validator(NamedTuple):
+    stage_name: str
+    ptransform: beam.PTransform
+
 
 # A Validation represents the output from verifying alternative Evaluations.
 # The validation outputs are keyed by their associated output type. For example,

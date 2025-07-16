@@ -16,6 +16,7 @@
 from typing import Any, Dict, Iterable, Optional, Union
 
 import apache_beam as beam
+
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.evaluators import evaluator
@@ -28,42 +29,45 @@ def AnalysisTableEvaluator(  # pylint: disable=invalid-name
     include: Optional[Union[Iterable[str], Dict[str, Any]]] = None,
     exclude: Optional[Union[Iterable[str], Dict[str, Any]]] = None,
 ) -> evaluator.Evaluator:
-  """Creates an Evaluator for returning Extracts data for analysis.
+    """Creates an Evaluator for returning Extracts data for analysis.
 
-  If both include and exclude are None then tfma.INPUT_KEY extracts will be
-  excluded by default.
+    If both include and exclude are None then tfma.INPUT_KEY extracts will be
+    excluded by default.
 
-  Args:
-    key: Name to use for key in Evaluation output.
-    run_after: Extractor to run after (None means before any extractors).
-    include: List or map of keys to include in output. Keys starting with '_'
-      are automatically filtered out at write time. If a map of keys is passed
-      then the keys and sub-keys that exist in the map will be included in the
-      output. An empty dict behaves as a wildcard matching all keys or the value
-      itself. Since matching on feature values is not currently supported, an
-      empty dict must be used to represent the leaf nodes. For example: {'key1':
-      {'key1-subkey': {}}, 'key2': {}}.
-    exclude: List or map of keys to exclude from output. If a map of keys is
-      passed then the keys and sub-keys that exist in the map will be excluded
-      from the output. An empty dict behaves as a wildcard matching all keys or
-      the value itself. Since matching on feature values is not currently
-      supported, an empty dict must be used to represent the leaf nodes. For
-      example, {'key1': {'key1-subkey': {}}, 'key2': {}}.
+    Args:
+    ----
+      key: Name to use for key in Evaluation output.
+      run_after: Extractor to run after (None means before any extractors).
+      include: List or map of keys to include in output. Keys starting with '_'
+        are automatically filtered out at write time. If a map of keys is passed
+        then the keys and sub-keys that exist in the map will be included in the
+        output. An empty dict behaves as a wildcard matching all keys or the value
+        itself. Since matching on feature values is not currently supported, an
+        empty dict must be used to represent the leaf nodes. For example: {'key1':
+        {'key1-subkey': {}}, 'key2': {}}.
+      exclude: List or map of keys to exclude from output. If a map of keys is
+        passed then the keys and sub-keys that exist in the map will be excluded
+        from the output. An empty dict behaves as a wildcard matching all keys or
+        the value itself. Since matching on feature values is not currently
+        supported, an empty dict must be used to represent the leaf nodes. For
+        example, {'key1': {'key1-subkey': {}}, 'key2': {}}.
 
-  Returns:
-    Evaluator for collecting analysis data. The output is stored under the key
-    'analysis'.
+    Returns:
+    -------
+      Evaluator for collecting analysis data. The output is stored under the key
+      'analysis'.
 
-  Raises:
-    ValueError: If both include and exclude are used.
-  """
-  # pylint: disable=no-value-for-parameter
-  return evaluator.Evaluator(
-      stage_name='EvaluateExtracts',
-      run_after=run_after,
-      ptransform=EvaluateExtracts(key=key, include=include, exclude=exclude),
-  )
-  # pylint: enable=no-value-for-parameter
+    Raises:
+    ------
+      ValueError: If both include and exclude are used.
+    """
+    # pylint: disable=no-value-for-parameter
+    return evaluator.Evaluator(
+        stage_name="EvaluateExtracts",
+        run_after=run_after,
+        ptransform=EvaluateExtracts(key=key, include=include, exclude=exclude),
+    )
+    # pylint: enable=no-value-for-parameter
 
 
 @beam.ptransform_fn
@@ -75,34 +79,36 @@ def EvaluateExtracts(  # pylint: disable=invalid-name
     include: Optional[Union[Iterable[str], Dict[str, Any]]] = None,
     exclude: Optional[Union[Iterable[str], Dict[str, Any]]] = None,
 ) -> evaluator.Evaluation:
-  """Creates Evaluation output for extracts.
+    """Creates Evaluation output for extracts.
 
-  If both include and exclude are None then tfma.INPUT_KEY extracts will be
-  excluded by default.
+    If both include and exclude are None then tfma.INPUT_KEY extracts will be
+    excluded by default.
 
-  Args:
-    extracts: PCollection of Extracts.
-    key: Name to use for key in Evaluation output.
-    include: List or map of keys to include in output. Keys starting with '_'
-      are automatically filtered out at write time. If a map of keys is passed
-      then the keys and sub-keys that exist in the map will be included in the
-      output. An empty dict behaves as a wildcard matching all keys or the value
-      itself. Since matching on feature values is not currently supported, an
-      empty dict must be used to represent the leaf nodes. For example: {'key1':
-      {'key1-subkey': {}}, 'key2': {}}.
-    exclude: List or map of keys to exclude from output. If a map of keys is
-      passed then the keys and sub-keys that exist in the map will be excluded
-      from the output. An empty dict behaves as a wildcard matching all keys or
-      the value itself. Since matching on feature values is not currently
-      supported, an empty dict must be used to represent the leaf nodes. For
-      example, {'key1': {'key1-subkey': {}}, 'key2': {}}.
+    Args:
+    ----
+      extracts: PCollection of Extracts.
+      key: Name to use for key in Evaluation output.
+      include: List or map of keys to include in output. Keys starting with '_'
+        are automatically filtered out at write time. If a map of keys is passed
+        then the keys and sub-keys that exist in the map will be included in the
+        output. An empty dict behaves as a wildcard matching all keys or the value
+        itself. Since matching on feature values is not currently supported, an
+        empty dict must be used to represent the leaf nodes. For example: {'key1':
+        {'key1-subkey': {}}, 'key2': {}}.
+      exclude: List or map of keys to exclude from output. If a map of keys is
+        passed then the keys and sub-keys that exist in the map will be excluded
+        from the output. An empty dict behaves as a wildcard matching all keys or
+        the value itself. Since matching on feature values is not currently
+        supported, an empty dict must be used to represent the leaf nodes. For
+        example, {'key1': {'key1-subkey': {}}, 'key2': {}}.
 
-  Returns:
-    Evaluation containing PCollection of Extracts.
-  """
-  if include is None and exclude is None:
-    exclude = [constants.INPUT_KEY]
-  filtered = extracts
-  if include or exclude:
-    filtered = extracts | extractor.Filter(include=include, exclude=exclude)
-  return {key: filtered}
+    Returns:
+    -------
+      Evaluation containing PCollection of Extracts.
+    """
+    if include is None and exclude is None:
+        exclude = [constants.INPUT_KEY]
+    filtered = extracts
+    if include or exclude:
+        filtered = extracts | extractor.Filter(include=include, exclude=exclude)
+    return {key: filtered}

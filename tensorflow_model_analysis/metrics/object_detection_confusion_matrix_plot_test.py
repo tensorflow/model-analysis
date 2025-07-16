@@ -13,25 +13,24 @@
 # limitations under the License.
 """Tests for object detection confusion matrix plot."""
 
-from absl.testing import absltest
 import apache_beam as beam
-from apache_beam.testing import util
 import numpy as np
-import tensorflow_model_analysis as tfma
-from tensorflow_model_analysis.proto import config_pb2
-from tensorflow_model_analysis.metrics import metric_types
-from tensorflow_model_analysis.utils import test_util
-
+from absl.testing import absltest
+from apache_beam.testing import util
 from google.protobuf import text_format
+
+import tensorflow_model_analysis as tfma
+from tensorflow_model_analysis.metrics import metric_types
+from tensorflow_model_analysis.proto import config_pb2
+from tensorflow_model_analysis.utils import test_util
 
 
 class ObjectDetectionConfusionMatrixPlotTest(
     test_util.TensorflowModelAnalysisTest, absltest.TestCase
 ):
-
-  def testConfusionMatrixPlot(self):
-    eval_config = text_format.Parse(
-        """
+    def testConfusionMatrixPlot(self):
+        eval_config = text_format.Parse(
+            """
         model_specs {
           signature_name: "serving_default"
           prediction_key: "predictions"
@@ -46,71 +45,81 @@ class ObjectDetectionConfusionMatrixPlotTest(
                    '"max_num_detections":100, "name":"iou0.5"'
           }
         }
-        """, config_pb2.EvalConfig())
-    extracts = [
-        # The match at iou_threshold = 0.5 is
-        # gt_matches: [[0]] dt_matches: [[0, -1]]
-        # Results after preprocess:
-        #   'labels': np.asarray([1., 0.]),
-        #   'predictions': np.asarray([0.7, 0.3])
-        {
-            'features': {
-                'labels':
-                    np.asarray([[[30, 100, 70, 300, 0], [50, 100, 80, 200,
-                                                         1]]]),
-                'predictions':
-                    np.asarray([[[20, 130, 60, 290, 0, 0.7],
-                                 [30, 100, 70, 300, 0, 0.3],
-                                 [500, 100, 800, 300, 1, 0.1]]])
-            }
-        },
-        # This is a binary classification case, the iou matrix should be:
-        # [[0., 2/3], [0., 4/11]]
-        # The match at iou_threshold = 0.5 is
-        # gt_matches: [[-1, 0]] dt_matches: [[1, -1]]
-        # Results after preprocess:
-        #   'labels': np.asarray([1., 1., 0.]),
-        #   'predictions': np.asarray([0., 0.4, 0.3])
-        #    thresholds=[-1e-7, 0.5, 1.0 + 1e-7],
-        #    tp=[3.0, 1.0, 0.0],
-        #    fp=[2.0, 0.0, 0.0],
-        #    tn=[0.0, 2.0, 2.0],
-        #    fn=[0.0, 2.0, 3.0])
-        # Precision: [3/5, 1.0, 'nan']
-        # Recall: [1.0, 1/3, 0.0]
-        {
-            'features': {
-                'labels':
-                    np.asarray([[[30, 100, 70, 400, 0], [10, 200, 80, 300,
-                                                         0]]]),
-                'predictions':
-                    np.asarray([[[100, 130, 160, 290, 0, 0.4],
-                                 [30, 100, 70, 300, 0, 0.3]]])
-            }
-        }
-    ]
-    evaluators = tfma.default_evaluators(eval_config=eval_config)
-    extractors = tfma.default_extractors(
-        eval_shared_model=None, eval_config=eval_config)
+        """,
+            config_pb2.EvalConfig(),
+        )
+        extracts = [
+            # The match at iou_threshold = 0.5 is
+            # gt_matches: [[0]] dt_matches: [[0, -1]]
+            # Results after preprocess:
+            #   'labels': np.asarray([1., 0.]),
+            #   'predictions': np.asarray([0.7, 0.3])
+            {
+                "features": {
+                    "labels": np.asarray(
+                        [[[30, 100, 70, 300, 0], [50, 100, 80, 200, 1]]]
+                    ),
+                    "predictions": np.asarray(
+                        [
+                            [
+                                [20, 130, 60, 290, 0, 0.7],
+                                [30, 100, 70, 300, 0, 0.3],
+                                [500, 100, 800, 300, 1, 0.1],
+                            ]
+                        ]
+                    ),
+                }
+            },
+            # This is a binary classification case, the iou matrix should be:
+            # [[0., 2/3], [0., 4/11]]
+            # The match at iou_threshold = 0.5 is
+            # gt_matches: [[-1, 0]] dt_matches: [[1, -1]]
+            # Results after preprocess:
+            #   'labels': np.asarray([1., 1., 0.]),
+            #   'predictions': np.asarray([0., 0.4, 0.3])
+            #    thresholds=[-1e-7, 0.5, 1.0 + 1e-7],
+            #    tp=[3.0, 1.0, 0.0],
+            #    fp=[2.0, 0.0, 0.0],
+            #    tn=[0.0, 2.0, 2.0],
+            #    fn=[0.0, 2.0, 3.0])
+            # Precision: [3/5, 1.0, 'nan']
+            # Recall: [1.0, 1/3, 0.0]
+            {
+                "features": {
+                    "labels": np.asarray(
+                        [[[30, 100, 70, 400, 0], [10, 200, 80, 300, 0]]]
+                    ),
+                    "predictions": np.asarray(
+                        [[[100, 130, 160, 290, 0, 0.4], [30, 100, 70, 300, 0, 0.3]]]
+                    ),
+                }
+            },
+        ]
+        evaluators = tfma.default_evaluators(eval_config=eval_config)
+        extractors = tfma.default_extractors(
+            eval_shared_model=None, eval_config=eval_config
+        )
 
-    with beam.Pipeline() as p:
-      result = (
-          p | 'LoadData' >> beam.Create(extracts)
-          | 'ExtractEval' >> tfma.ExtractAndEvaluate(
-              extractors=extractors, evaluators=evaluators))
+        with beam.Pipeline() as p:
+            result = (
+                p
+                | "LoadData" >> beam.Create(extracts)
+                | "ExtractEval"
+                >> tfma.ExtractAndEvaluate(extractors=extractors, evaluators=evaluators)
+            )
 
-      def check_result(got):
-        try:
-          self.assertLen(got, 1)
-          got_slice_key, got_plots = got[0]
-          self.assertEqual(got_slice_key, ())
-          key = metric_types.PlotKey(
-              name='iou0.5', sub_key=metric_types.SubKey(class_id=1)
-          )
-          self.assertIn(key, got_plots)
-          got_plot = got_plots[key]
-          self.assertProtoEquals(
-              """
+            def check_result(got):
+                try:
+                    self.assertLen(got, 1)
+                    got_slice_key, got_plots = got[0]
+                    self.assertEqual(got_slice_key, ())
+                    key = metric_types.PlotKey(
+                        name="iou0.5", sub_key=metric_types.SubKey(class_id=1)
+                    )
+                    self.assertIn(key, got_plots)
+                    got_plot = got_plots[key]
+                    self.assertProtoEquals(
+                        """
               matrices {
                 threshold: -1e-06
                 false_positives: 1.0
@@ -173,14 +182,14 @@ class ObjectDetectionConfusionMatrixPlotTest(
                 false_omission_rate: 0.5
               }
           """,
-              got_plot,
-          )
-        except AssertionError as err:
-          raise util.BeamAssertException(err)
+                        got_plot,
+                    )
+                except AssertionError as err:
+                    raise util.BeamAssertException(err)
 
-      self.assertIn('plots', result)
-      util.assert_that(result['plots'], check_result, label='result')
+            self.assertIn("plots", result)
+            util.assert_that(result["plots"], check_result, label="result")
 
 
-if __name__ == '__main__':
-  absltest.main()
+if __name__ == "__main__":
+    absltest.main()

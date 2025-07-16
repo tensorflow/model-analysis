@@ -15,24 +15,23 @@
 
 from tfx_bsl.telemetry import util
 
-
 # Mode for multiple model analysis runs
-UNKNOWN_EVAL_MODE = 'unknown_eval_mode'
-MODEL_CENTRIC_MODE = 'model_centric_mode'
-DATA_CENTRIC_MODE = 'data_centric_mode'
+UNKNOWN_EVAL_MODE = "unknown_eval_mode"
+MODEL_CENTRIC_MODE = "model_centric_mode"
+DATA_CENTRIC_MODE = "data_centric_mode"
 
 # Types of placeholders
-PLACEHOLDER = 'placeholder'
-SPARSE_PLACEHOLDER = 'sparse_placeholder'
+PLACEHOLDER = "placeholder"
+SPARSE_PLACEHOLDER = "sparse_placeholder"
 
 # Types of TF models
-TFMA_EVAL = 'tfma_eval'
-TF_ESTIMATOR = 'tf_estimator'
-TF_KERAS = 'tf_keras'
-TF_GENERIC = 'tf_generic'
-TF_LITE = 'tf_lite'
-TF_JS = 'tf_js'
-MATERIALIZED_PREDICTION = 'materialized_prediction'
+TFMA_EVAL = "tfma_eval"
+TF_ESTIMATOR = "tf_estimator"
+TF_KERAS = "tf_keras"
+TF_GENERIC = "tf_generic"
+TF_LITE = "tf_lite"
+TF_JS = "tf_js"
+MATERIALIZED_PREDICTION = "materialized_prediction"
 VALID_TF_MODEL_TYPES = (
     TFMA_EVAL,
     TF_GENERIC,
@@ -44,71 +43,71 @@ VALID_TF_MODEL_TYPES = (
 )
 
 # This constant is only used for telemetry
-MODEL_AGNOSTIC = 'model_agnostic'
+MODEL_AGNOSTIC = "model_agnostic"
 
 # LINT.IfChange
-METRICS_NAMESPACE = util.MakeTfxNamespace(['ModelAnalysis'])
+METRICS_NAMESPACE = util.MakeTfxNamespace(["ModelAnalysis"])
 # LINT.ThenChange(../../../learning/fairness/infra/plx/scripts/tfma_metrics_computed_tracker_macros.sql)
 
 # Keys for Extracts dictionary (keys starting with _ will not be materialized).
 
 # Input key. Could be a serialized tf.train.Example, a CSV row, JSON data, etc
 # depending on what the EvalInputReceiver was configured to accept as input.
-INPUT_KEY = 'input'
+INPUT_KEY = "input"
 
 # This holds an Arrow RecordBatch representing a batch of examples.
-ARROW_RECORD_BATCH_KEY = 'arrow_record_batch'
+ARROW_RECORD_BATCH_KEY = "arrow_record_batch"
 
 # This holds the column name containing the raw input (Could be a serialized
 # tf.train.Example, a CSV row, JSON data, etc) in an Arrow RecordBatch.
-ARROW_INPUT_COLUMN = '__raw_record__'
+ARROW_INPUT_COLUMN = "__raw_record__"
 
 # Features, predictions, and labels key.
-FEATURES_PREDICTIONS_LABELS_KEY = '_fpl'
+FEATURES_PREDICTIONS_LABELS_KEY = "_fpl"
 # Contains SliceKeyTypes that are used to fanout and aggregate.
-SLICE_KEY_TYPES_KEY = '_slice_key_types'
+SLICE_KEY_TYPES_KEY = "_slice_key_types"
 # Human-readable slice strings that are written to the diagnostic table for
 # analysis.
-SLICE_KEYS_KEY = 'slice_keys'
+SLICE_KEYS_KEY = "slice_keys"
 # Features key.
-FEATURES_KEY = 'features'
+FEATURES_KEY = "features"
 # Transformed features key.
-TRANSFORMED_FEATURES_KEY = 'transformed_features'
+TRANSFORMED_FEATURES_KEY = "transformed_features"
 # Labels key.
-LABELS_KEY = 'labels'
+LABELS_KEY = "labels"
 # Predictions key.
-PREDICTIONS_KEY = 'predictions'
+PREDICTIONS_KEY = "predictions"
 # Example weights key.
-EXAMPLE_WEIGHTS_KEY = 'example_weights'
+EXAMPLE_WEIGHTS_KEY = "example_weights"
 # Attributions key.
-ATTRIBUTIONS_KEY = 'attributions'
+ATTRIBUTIONS_KEY = "attributions"
 # Prediction log key.
-SPLIT_KEY = 'split'
+SPLIT_KEY = "split"
 
 # Keys used for standard attribution scores
-BASELINE_SCORE_KEY = 'baseline_score'
-EXAMPLE_SCORE_KEY = 'example_score'
+BASELINE_SCORE_KEY = "baseline_score"
+EXAMPLE_SCORE_KEY = "example_score"
 
 # Keys for Evaluation/Validation dictionaries
 
 # Metrics output key.
-METRICS_KEY = 'metrics'
+METRICS_KEY = "metrics"
 # Plots output key.
-PLOTS_KEY = 'plots'
+PLOTS_KEY = "plots"
 
 # Validations key.
-VALIDATIONS_KEY = 'validations'
+VALIDATIONS_KEY = "validations"
 # Analysis output key.
-ANALYSIS_KEY = 'analysis'
+ANALYSIS_KEY = "analysis"
 
 # Keys for validation alternatives
-BASELINE_KEY = 'baseline'
-CANDIDATE_KEY = 'candidate'
+BASELINE_KEY = "baseline"
+CANDIDATE_KEY = "candidate"
 
-MATERIALIZE_COLUMNS = 'materialize'
+MATERIALIZE_COLUMNS = "materialize"
 
 # Key used to save and store prediction logs.
-PREDICTION_LOG_KEY = 'prediction_log'
+PREDICTION_LOG_KEY = "prediction_log"
 
 # Not actually for any metric, just used for communicating errors.
-ERROR_METRIC_NAME = '__ERROR__'
+ERROR_METRIC_NAME = "__ERROR__"

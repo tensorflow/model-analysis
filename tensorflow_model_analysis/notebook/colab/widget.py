@@ -17,15 +17,18 @@
 # The following empty classes are used for
 # pytype in tensorflow_model_analysis/view/widget_view.py.
 class SlicingMetricsViewer:
-  """Empty viewer class for slicing metrics."""
-  pass
+    """Empty viewer class for slicing metrics."""
+
+    pass
 
 
 class TimeSeriesViewer:
-  """Empty viewer class for time series."""
-  pass
+    """Empty viewer class for time series."""
+
+    pass
 
 
 class PlotViewer:
-  """Empty viewer class for plot."""
-  pass
+    """Empty viewer class for plot."""
+
+    pass
