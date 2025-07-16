@@ -1,0 +1,1686 @@
+
+<!doctype html>
+<html lang="en" class="no-js">
+  <head>
+    
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      
+      
+      
+      
+        <link rel="prev" href="../model_validations/">
+      
+      
+        <link rel="next" href="../faq/">
+      
+      
+      <link rel="icon" href="../images/tf_full_color_primary_icon.svg">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.6.15">
+    
+    
+      
+        <title>Architecture - TensorFlow Model Analysis</title>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/stylesheets/main.342714a4.min.css">
+      
+        
+        <link rel="stylesheet" href="../assets/stylesheets/palette.06af60db.min.css">
+      
+      
+
+
+    
+    
+      
+    
+    
+      
+        
+        
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Roboto:300,300i,400,400i,700,700i%7CRoboto+Mono:400,400i,700,700i&display=fallback">
+        <style>:root{--md-text-font:"Roboto";--md-code-font:"Roboto Mono"}</style>
+      
+    
+    
+      <link rel="stylesheet" href="../assets/_mkdocstrings.css">
+    
+      <link rel="stylesheet" href="../stylesheets/extra.css">
+    
+    <script>__md_scope=new URL("..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    
+      
+
+    
+    
+    
+  </head>
+  
+  
+    
+    
+      
+    
+    
+    
+    
+    <body dir="ltr" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom">
+  
+    
+    <input class="md-toggle" data-md-toggle="drawer" type="checkbox" id="__drawer" autocomplete="off">
+    <input class="md-toggle" data-md-toggle="search" type="checkbox" id="__search" autocomplete="off">
+    <label class="md-overlay" for="__drawer"></label>
+    <div data-md-component="skip">
+      
+        
+        <a href="#tensorflow-model-analysis-architecture" class="md-skip">
+          Skip to content
+        </a>
+      
+    </div>
+    <div data-md-component="announce">
+      
+    </div>
+    
+    
+      
+
+  
+
+<header class="md-header md-header--shadow" data-md-component="header">
+  <nav class="md-header__inner md-grid" aria-label="Header">
+    <a href=".." title="TensorFlow Model Analysis" class="md-header__button md-logo" aria-label="TensorFlow Model Analysis" data-md-component="logo">
+      
+  <img src="../images/tf_full_color_primary_icon.svg" alt="logo">
+
+    </a>
+    <label class="md-header__button md-icon" for="__drawer">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 6h18v2H3zm0 5h18v2H3zm0 5h18v2H3z"/></svg>
+    </label>
+    <div class="md-header__title" data-md-component="header-title">
+      <div class="md-header__ellipsis">
+        <div class="md-header__topic">
+          <span class="md-ellipsis">
+            TensorFlow Model Analysis
+          </span>
+        </div>
+        <div class="md-header__topic" data-md-component="header-topic">
+          <span class="md-ellipsis">
+            
+              Architecture
+            
+          </span>
+        </div>
+      </div>
+    </div>
+    
+      
+        <form class="md-header__option" data-md-component="palette">
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to light mode"  type="radio" name="__palette" id="__palette_0">
+    
+      <label class="md-header__button md-icon" title="Switch to light mode" for="__palette_1" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="m14.3 16-.7-2h-3.2l-.7 2H7.8L11 7h2l3.2 9zM20 8.69V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12zm-9.15 3.96h2.3L12 9z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: light)" data-md-color-scheme="default" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to dark mode"  type="radio" name="__palette" id="__palette_1">
+    
+      <label class="md-header__button md-icon" title="Switch to dark mode" for="__palette_2" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 8a4 4 0 0 0-4 4 4 4 0 0 0 4 4 4 4 0 0 0 4-4 4 4 0 0 0-4-4m0 10a6 6 0 0 1-6-6 6 6 0 0 1 6-6 6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+    
+    
+    
+    <input class="md-option" data-md-color-media="(prefers-color-scheme: dark)" data-md-color-scheme="slate" data-md-color-primary="custom" data-md-color-accent="custom"  aria-label="Switch to system preference"  type="radio" name="__palette" id="__palette_2">
+    
+      <label class="md-header__button md-icon" title="Switch to system preference" for="__palette_0" hidden>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M12 18c-.89 0-1.74-.2-2.5-.55C11.56 16.5 13 14.42 13 12s-1.44-4.5-3.5-5.45C10.26 6.2 11.11 6 12 6a6 6 0 0 1 6 6 6 6 0 0 1-6 6m8-9.31V4h-4.69L12 .69 8.69 4H4v4.69L.69 12 4 15.31V20h4.69L12 23.31 15.31 20H20v-4.69L23.31 12z"/></svg>
+      </label>
+    
+  
+</form>
+      
+    
+    
+      <script>var palette=__md_get("__palette");if(palette&&palette.color){if("(prefers-color-scheme)"===palette.color.media){var media=matchMedia("(prefers-color-scheme: light)"),input=document.querySelector(media.matches?"[data-md-color-media='(prefers-color-scheme: light)']":"[data-md-color-media='(prefers-color-scheme: dark)']");palette.color.media=input.getAttribute("data-md-color-media"),palette.color.scheme=input.getAttribute("data-md-color-scheme"),palette.color.primary=input.getAttribute("data-md-color-primary"),palette.color.accent=input.getAttribute("data-md-color-accent")}for(var[key,value]of Object.entries(palette.color))document.body.setAttribute("data-md-color-"+key,value)}</script>
+    
+    
+    
+      
+      
+        <label class="md-header__button md-icon" for="__search">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        </label>
+        <div class="md-search" data-md-component="search" role="dialog">
+  <label class="md-search__overlay" for="__search"></label>
+  <div class="md-search__inner" role="search">
+    <form class="md-search__form" name="search">
+      <input type="text" class="md-search__input" name="query" aria-label="Search" placeholder="Search" autocapitalize="off" autocorrect="off" autocomplete="off" spellcheck="false" data-md-component="search-query" required>
+      <label class="md-search__icon md-icon" for="__search">
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M9.5 3A6.5 6.5 0 0 1 16 9.5c0 1.61-.59 3.09-1.56 4.23l.27.27h.79l5 5-1.5 1.5-5-5v-.79l-.27-.27A6.52 6.52 0 0 1 9.5 16 6.5 6.5 0 0 1 3 9.5 6.5 6.5 0 0 1 9.5 3m0 2C7 5 5 7 5 9.5S7 14 9.5 14 14 12 14 9.5 12 5 9.5 5"/></svg>
+        
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+      </label>
+      <nav class="md-search__options" aria-label="Search">
+        
+        <button type="reset" class="md-search__icon md-icon" title="Clear" aria-label="Clear" tabindex="-1">
+          
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+        </button>
+      </nav>
+      
+    </form>
+    <div class="md-search__output">
+      <div class="md-search__scrollwrap" tabindex="0" data-md-scrollfix>
+        <div class="md-search-result" data-md-component="search-result">
+          <div class="md-search-result__meta">
+            Initializing search
+          </div>
+          <ol class="md-search-result__list" role="presentation"></ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+      
+    
+    
+      <div class="md-header__source">
+        <a href="https://github.com/tensorflow/model-analysis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    model-analysis
+  </div>
+</a>
+      </div>
+    
+  </nav>
+  
+</header>
+    
+    <div class="md-container" data-md-component="container">
+      
+      
+        
+          
+        
+      
+      <main class="md-main" data-md-component="main">
+        <div class="md-main__inner md-grid">
+          
+            
+              
+              <div class="md-sidebar md-sidebar--primary" data-md-component="sidebar" data-md-type="navigation" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+
+
+<nav class="md-nav md-nav--primary" aria-label="Navigation" data-md-level="0">
+  <label class="md-nav__title" for="__drawer">
+    <a href=".." title="TensorFlow Model Analysis" class="md-nav__button md-logo" aria-label="TensorFlow Model Analysis" data-md-component="logo">
+      
+  <img src="../images/tf_full_color_primary_icon.svg" alt="logo">
+
+    </a>
+    TensorFlow Model Analysis
+  </label>
+  
+    <div class="md-nav__source">
+      <a href="https://github.com/tensorflow/model-analysis" title="Go to repository" class="md-source" data-md-component="source">
+  <div class="md-source__icon md-icon">
+    
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><!--! Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2024 Fonticons, Inc.--><path d="M439.55 236.05 244 40.45a28.87 28.87 0 0 0-40.81 0l-40.66 40.63 51.52 51.52c27.06-9.14 52.68 16.77 43.39 43.68l49.66 49.66c34.23-11.8 61.18 31 35.47 56.69-26.49 26.49-70.21-2.87-56-37.34L240.22 199v121.85c25.3 12.54 22.26 41.85 9.08 55a34.34 34.34 0 0 1-48.55 0c-17.57-17.6-11.07-46.91 11.25-56v-123c-20.8-8.51-24.6-30.74-18.64-45L142.57 101 8.45 235.14a28.86 28.86 0 0 0 0 40.81l195.61 195.6a28.86 28.86 0 0 0 40.8 0l194.69-194.69a28.86 28.86 0 0 0 0-40.81"/></svg>
+  </div>
+  <div class="md-source__repository">
+    model-analysis
+  </div>
+</a>
+    </div>
+  
+  <ul class="md-nav__list" data-md-scrollfix>
+    
+      
+      
+  
+  
+    
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_1" checked>
+        
+          
+          <label class="md-nav__link" for="__nav_1" id="__nav_1_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    Guide
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_1_label" aria-expanded="true">
+          <label class="md-nav__title" for="__nav_1">
+            <span class="md-nav__icon md-icon"></span>
+            Guide
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href=".." class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Improving Model Quality
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../install/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Install
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../get_started/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Get Started
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../setup/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Setup
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Metrics and Plots
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../visualizations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Visualizations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../model_validations/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Model Validations
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://tensorflow.github.io/tfx/guide/fairness_indicators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Using Fairness Indicators
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="https://tensorflow.github.io/fairness-indicators/tutorials/Fairness_Indicators_Pandas_Case_Study/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    Using Fairness Indicators with Pandas DataFrames
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    Architecture
+    
+  </span>
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#read-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Read Inputs
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extraction
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extraction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inputextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      InputExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#predictextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      PredictExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#slicekeyextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      SliceKeyExtractor
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Evaluation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Evaluation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metricsandplotsevaluator" class="md-nav__link">
+    <span class="md-ellipsis">
+      MetricsAndPlotsEvaluator
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#write-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      Write Results
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Write Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metricsandplotswriter" class="md-nav__link">
+    <span class="md-ellipsis">
+      MetricsAndPlotsWriter
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Customization
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Customization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-extractors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Extractors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-evaluators" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Evaluators
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-writers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Writers
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-by-step-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step by Step Example
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../faq/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    FAQ
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    
+    
+    
+    
+    
+    <li class="md-nav__item md-nav__item--nested">
+      
+        
+        
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_2" >
+        
+          
+          <label class="md-nav__link" for="__nav_2" id="__nav_2_label" tabindex="0">
+            
+  
+  
+  <span class="md-ellipsis">
+    API
+    
+  </span>
+  
+
+            <span class="md-nav__icon md-icon"></span>
+          </label>
+        
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_2_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_2">
+            <span class="md-nav__icon md-icon"></span>
+            API
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-constants/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.constants
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-contrib/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.contrib
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-evaluators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.evaluators
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-experimental/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.experimental 🧪
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-extractors/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.extractors
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.metrics
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-post_export_metrics/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.post_export_metrics
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-sdk/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.sdk
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-types/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.types
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-utils/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.utils
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-validators/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.validators
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-version/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.version
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-view/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.view
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../api_docs/python/tfma-writers/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    tfma.writers
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+    
+  </ul>
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+            
+              
+              <div class="md-sidebar md-sidebar--secondary" data-md-component="sidebar" data-md-type="toc" >
+                <div class="md-sidebar__scrollwrap">
+                  <div class="md-sidebar__inner">
+                    
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#overview" class="md-nav__link">
+    <span class="md-ellipsis">
+      Overview
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#read-inputs" class="md-nav__link">
+    <span class="md-ellipsis">
+      Read Inputs
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#extraction" class="md-nav__link">
+    <span class="md-ellipsis">
+      Extraction
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Extraction">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#inputextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      InputExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#predictextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      PredictExtractor
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#slicekeyextractor" class="md-nav__link">
+    <span class="md-ellipsis">
+      SliceKeyExtractor
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#evaluation" class="md-nav__link">
+    <span class="md-ellipsis">
+      Evaluation
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Evaluation">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metricsandplotsevaluator" class="md-nav__link">
+    <span class="md-ellipsis">
+      MetricsAndPlotsEvaluator
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#write-results" class="md-nav__link">
+    <span class="md-ellipsis">
+      Write Results
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Write Results">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#metricsandplotswriter" class="md-nav__link">
+    <span class="md-ellipsis">
+      MetricsAndPlotsWriter
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#customization" class="md-nav__link">
+    <span class="md-ellipsis">
+      Customization
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Customization">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#custom-extractors" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Extractors
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-evaluators" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Evaluators
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#custom-writers" class="md-nav__link">
+    <span class="md-ellipsis">
+      Custom Writers
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#step-by-step-example" class="md-nav__link">
+    <span class="md-ellipsis">
+      Step by Step Example
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+                  </div>
+                </div>
+              </div>
+            
+          
+          
+            <div class="md-content" data-md-component="content">
+              <article class="md-content__inner md-typeset">
+                
+                  
+
+
+  
+    <a href="https://github.com/tensorflow/model-analysis/edit/master/docs/architecture.md" title="Edit this page" class="md-content__button md-icon" rel="edit">
+      
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M10 20H6V4h7v5h5v3.1l2-2V8l-6-6H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h4zm10.2-7c.1 0 .3.1.4.2l1.3 1.3c.2.2.2.6 0 .8l-1 1-2.1-2.1 1-1c.1-.1.2-.2.4-.2m0 3.9L14.1 23H12v-2.1l6.1-6.1z"/></svg>
+    </a>
+  
+  
+
+
+<h1 id="tensorflow-model-analysis-architecture">Tensorflow Model Analysis Architecture<a class="headerlink" href="#tensorflow-model-analysis-architecture" title="Permanent link">&para;</a></h1>
+<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">&para;</a></h2>
+<p>The TensorFlow Model Analysis (TFMA) pipeline is depicted as follows:</p>
+<p><img alt="TFMA Pipeline" src="../images/tfma_pipeline.png" /></p>
+<p>The pipeline is made up of four main components:</p>
+<ul>
+<li>Read Inputs</li>
+<li>Extraction</li>
+<li>Evaluation</li>
+<li>Write Results</li>
+</ul>
+<p>These components make use of two primary types: <code>tfma.Extracts</code> and
+<code>tfma.evaluators.Evaluation</code>. The type <code>tfma.Extracts</code> represents data that is
+extracted during pipeline processing and may correspond to one or more examples
+for the model. <code>tfma.evaluators.Evaluation</code> represents the output from
+evaluating the extracts at various points during the process of extraction. In
+order to provide a flexible API, these types are just dicts where the keys are
+defined (reserved for use) by different implementations. The types are defined
+as follows:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-0-1"><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># Extracts represent data extracted during pipeline processing.</span>
+</span><span id="__span-0-2"><a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="c1"># For example, the PredictExtractor stores the data for the</span>
+</span><span id="__span-0-3"><a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="c1"># features, labels, and predictions under the keys &quot;features&quot;,</span>
+</span><span id="__span-0-4"><a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="c1"># &quot;labels&quot;, and &quot;predictions&quot;.</span>
+</span><span id="__span-0-5"><a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="n">Extracts</span> <span class="o">=</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Text</span><span class="p">,</span> <span class="n">Any</span><span class="p">]</span>
+</span><span id="__span-0-6"><a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a>
+</span><span id="__span-0-7"><a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="c1"># Evaluation represents the output from evaluating extracts at</span>
+</span><span id="__span-0-8"><a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1"># particular point in the pipeline. The evaluation outputs are</span>
+</span><span id="__span-0-9"><a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># keyed by their associated output type. For example, the metric / plot</span>
+</span><span id="__span-0-10"><a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1"># dictionaries from evaluating metrics and plots will be stored under</span>
+</span><span id="__span-0-11"><a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a><span class="c1"># &quot;metrics&quot; and &quot;plots&quot; respectively.</span>
+</span><span id="__span-0-12"><a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="n">Evaluation</span> <span class="o">=</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Text</span><span class="p">,</span> <span class="n">beam</span><span class="o">.</span><span class="n">pvalue</span><span class="o">.</span><span class="n">PCollection</span><span class="p">]</span>
+</span></code></pre></div>
+<p>Note that <code>tfma.Extracts</code> are never written out directly they must always go
+through an evaluator to produce a <code>tfma.evaluators.Evaluation</code> that is then
+written out. Also note that <code>tfma.Extracts</code> are dicts that are stored in a
+<code>beam.pvalue.PCollection</code> (i.e. <code>beam.PTransform</code>s take as input
+<code>beam.pvalue.PCollection[tfma.Extracts]</code>) whereas a <code>tfma.evaluators.Evaluation</code>
+is a dict whose values are <code>beam.pvalue.PCollection</code>s (i.e. <code>beam.PTransform</code>s
+take the dict itself as the argument for the <code>beam.value.PCollection</code> input). In
+other words the <code>tfma.evaluators.Evaluation</code> is used at pipeline construction
+time, but the <code>tfma.Extracts</code> are used at pipeline runtime.</p>
+<h2 id="read-inputs">Read Inputs<a class="headerlink" href="#read-inputs" title="Permanent link">&para;</a></h2>
+<p>The <code>ReadInputs</code> stage is made up of a transform that takes raw inputs
+(tf.train.Example, CSV, ...) and converts them into extracts. Today the extracts
+are represented as raw input bytes stored under <code>tfma.INPUT_KEY</code>, however the
+extracts can be in any form that is compatible with the extraction pipeline --
+meaning that it creates <code>tfma.Extracts</code> as output, and that those extracts are
+compatible with downstream extractors. It is up to the different extractors to
+clearly document what they require.</p>
+<h2 id="extraction">Extraction<a class="headerlink" href="#extraction" title="Permanent link">&para;</a></h2>
+<p>The extraction process is a list of <code>beam.PTransform</code>s that are run in series.
+The extractors take <code>tfma.Extracts</code> as input and return <code>tfma.Extracts</code> as
+output. The proto-typical extractor is the <code>tfma.extractors.PredictExtractor</code>
+which uses the input extract produced by the read inputs transform and runs it
+through a model to produce predictions extracts. Customized extractors can be
+inserted at any point provided their transforms conform to the <code>tfma.Extracts</code>
+in and <code>tfma.Extracts</code> out API. An extractor is defined as follows:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-1-1"><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1"># An Extractor is a PTransform that takes Extracts as input and returns</span>
+</span><span id="__span-1-2"><a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="c1"># Extracts as output. A typical example is a PredictExtractor that receives</span>
+</span><span id="__span-1-3"><a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="c1"># an &#39;input&#39; placeholder for input and adds additional &#39;predictions&#39; extracts.</span>
+</span><span id="__span-1-4"><a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="n">Extractor</span> <span class="o">=</span> <span class="n">NamedTuple</span><span class="p">(</span><span class="s1">&#39;Extractor&#39;</span><span class="p">,</span> <span class="p">[</span>
+</span><span id="__span-1-5"><a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a>    <span class="p">(</span><span class="s1">&#39;stage_name&#39;</span><span class="p">,</span> <span class="n">Text</span><span class="p">),</span>
+</span><span id="__span-1-6"><a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a>    <span class="p">(</span><span class="s1">&#39;ptransform&#39;</span><span class="p">,</span> <span class="n">beam</span><span class="o">.</span><span class="n">PTransform</span><span class="p">)])</span>  <span class="c1"># Extracts -&gt; Extracts</span>
+</span></code></pre></div>
+<h3 id="inputextractor">InputExtractor<a class="headerlink" href="#inputextractor" title="Permanent link">&para;</a></h3>
+<p>The <code>tfma.extractors.InputExtractor</code> is used to extract raw features, raw
+labels, and raw example weights from <code>tf.train.Example</code> records for using in
+metrics slicing and computations. By default the values are stored under the
+extract keys <code>features</code>, <code>labels</code>, and <code>example_weights</code> respectively.
+Single-output model labels and example weights are stored directly as
+<code>np.ndarray</code> values. Multi-output model labels and example weights are stored as
+dicts of <code>np.ndarray</code> values (keyed by output name). If multi-model evaluation
+is performed the labels and example weights will be further embedded within
+another dict (keyed by model name).</p>
+<h3 id="predictextractor">PredictExtractor<a class="headerlink" href="#predictextractor" title="Permanent link">&para;</a></h3>
+<p>The <code>tfma.extractors.PredictExtractor</code> runs model predictions and stores
+them under the key <code>predictions</code> in the <code>tfma.Extracts</code> dict. Single-output
+model predictions are stored directly as the predicted output values.
+Multi-output model predictions are stored as a dict of output values (keyed by
+output name).  If multi-model evaluation is performed the prediction will be
+further embedded within another dict (keyed by model name). The actual output
+value used depends on the model (e.g. TF estimator's return outputs in the form
+of a dict whereas keras returns <code>np.ndarray</code> values).</p>
+<h3 id="slicekeyextractor">SliceKeyExtractor<a class="headerlink" href="#slicekeyextractor" title="Permanent link">&para;</a></h3>
+<p>The <code>tfma.extractors.SliceKeyExtractor</code> uses the slicing spec to determine which
+slices apply to each example input based on the extracted features and adds the
+coresponding slicing values to the extracts for later use by the evaluators.</p>
+<h2 id="evaluation">Evaluation<a class="headerlink" href="#evaluation" title="Permanent link">&para;</a></h2>
+<p>Evaluation is the process of taking an extract and evaluating it. While it is
+common to perform evaluation at the end of the extraction pipeline, there are
+use-cases that require evaluation earlier in the extraction process. As such
+evaluators are associated with the extractors whose output they should be
+evaluated against. An evaluator is defined as follows:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-2-1"><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1"># An evaluator is a PTransform that takes Extracts as input and</span>
+</span><span id="__span-2-2"><a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="c1"># produces an Evaluation as output. A typical example of an evaluator</span>
+</span><span id="__span-2-3"><a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="c1"># is the MetricsAndPlotsEvaluator that takes the &#39;features&#39;, &#39;labels&#39;,</span>
+</span><span id="__span-2-4"><a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="c1"># and &#39;predictions&#39; extracts from the PredictExtractor and evaluates</span>
+</span><span id="__span-2-5"><a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a><span class="c1"># them using post export metrics to produce metrics and plots dictionaries.</span>
+</span><span id="__span-2-6"><a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">Evaluator</span> <span class="o">=</span> <span class="n">NamedTuple</span><span class="p">(</span><span class="s1">&#39;Evaluator&#39;</span><span class="p">,</span> <span class="p">[</span>
+</span><span id="__span-2-7"><a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a>  <span class="p">(</span><span class="s1">&#39;stage_name&#39;</span><span class="p">,</span> <span class="n">Text</span><span class="p">),</span>
+</span><span id="__span-2-8"><a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a>  <span class="p">(</span><span class="s1">&#39;run_after&#39;</span><span class="p">,</span> <span class="n">Text</span><span class="p">),</span>              <span class="c1"># Extractor.stage_name</span>
+</span><span id="__span-2-9"><a id="__codelineno-2-9" name="__codelineno-2-9" href="#__codelineno-2-9"></a>  <span class="p">(</span><span class="s1">&#39;ptransform&#39;</span><span class="p">,</span> <span class="n">beam</span><span class="o">.</span><span class="n">PTransform</span><span class="p">)])</span> <span class="c1"># Extracts -&gt; Evaluation</span>
+</span></code></pre></div>
+<p>Notice that an evaluator is a <code>beam.PTransform</code> that takes <code>tfma.Extracts</code> as
+inputs. There is nothing stopping an implementation from performing additional
+transformations on the extracts as part of the evaluation process. Unlike
+extractors that must return a <code>tfma.Extracts</code> dict, there are no restrictions on
+the types of outputs an evaluator can produce though most evaluators also return
+a dict (e.g. of metric names and values).</p>
+<h3 id="metricsandplotsevaluator">MetricsAndPlotsEvaluator<a class="headerlink" href="#metricsandplotsevaluator" title="Permanent link">&para;</a></h3>
+<p>The <code>tfma.evaluators.MetricsAndPlotsEvaluator</code> takes <code>features</code>, <code>labels</code>, and
+<code>predictions</code> as input, runs them through <code>tfma.slicer.FanoutSlices</code> to group
+them by slices, and then performs metrics and plots computations. It produces
+outputs in the form of dictionaries of metrics and plots keys and values (these
+are later converted to serialized protos for output by
+<code>tfma.writers.MetricsAndPlotsWriter</code>).</p>
+<h2 id="write-results">Write Results<a class="headerlink" href="#write-results" title="Permanent link">&para;</a></h2>
+<p>The <code>WriteResults</code> stage is where the evaluation output gets written out to
+disk. WriteResults uses writers to write out the data based on the output keys.
+For example, an <code>tfma.evaluators.Evaluation</code> may contain keys for <code>metrics</code> and
+<code>plots</code>. These would then be associated with the metrics and plots dictionaries
+called 'metrics' and 'plots'. The writers specify how to write out each file:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-3-1"><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># A writer is a PTransform that takes evaluation output as input and</span>
+</span><span id="__span-3-2"><a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="c1"># serializes the associated PCollections of data to a sink.</span>
+</span><span id="__span-3-3"><a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="n">Writer</span> <span class="o">=</span> <span class="n">NamedTuple</span><span class="p">(</span><span class="s1">&#39;Writer&#39;</span><span class="p">,</span> <span class="p">[</span>
+</span><span id="__span-3-4"><a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>  <span class="p">(</span><span class="s1">&#39;stage_name&#39;</span><span class="p">,</span> <span class="n">Text</span><span class="p">),</span>
+</span><span id="__span-3-5"><a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>  <span class="p">(</span><span class="s1">&#39;ptransform&#39;</span><span class="p">,</span> <span class="n">beam</span><span class="o">.</span><span class="n">PTransform</span><span class="p">)])</span>    <span class="c1"># Evaluation -&gt; PDone</span>
+</span></code></pre></div>
+<h3 id="metricsandplotswriter">MetricsAndPlotsWriter<a class="headerlink" href="#metricsandplotswriter" title="Permanent link">&para;</a></h3>
+<p>We provide a <code>tfma.writers.MetricsAndPlotsWriter</code> that converts the metrics and
+plots dictionaries to serialized protos and writes them to disk.</p>
+<p>If you wish to use a different serialization format, you can create a custom
+writer and use that instead. Since the <code>tfma.evaluators.Evaluation</code> passed to
+the writers contains the output for all of the evaluators combined, a
+<code>tfma.writers.Write</code> helper transform is provided that writers can use in their
+<code>ptransform</code> implementations to select the appropriate <code>beam.PCollection</code>s based
+on an output key (see below for an example).</p>
+<h2 id="customization">Customization<a class="headerlink" href="#customization" title="Permanent link">&para;</a></h2>
+<p>The <code>tfma.run_model_analysis</code> method takes <code>extractors</code>, <code>evaluators</code>, and
+<code>writers</code> arguments for customing the extractors, evaluators, and writers used
+by the pipeline. If no arguments are provided then <code>tfma.default_extractors</code>,
+<code>tfma.default_evaluators</code>, and <code>tfma.default_writers</code> are used by default.</p>
+<h3 id="custom-extractors">Custom Extractors<a class="headerlink" href="#custom-extractors" title="Permanent link">&para;</a></h3>
+<p>To create a custom extractor, create a <code>tfma.extractors.Extractor</code> type that
+wraps a <code>beam.PTransform</code> taking <code>tfma.Extracts</code> as input and returning
+<code>tfma.Extracts</code> as output. Examples of extractors are available under
+<code>tfma.extractors</code>.</p>
+<h3 id="custom-evaluators">Custom Evaluators<a class="headerlink" href="#custom-evaluators" title="Permanent link">&para;</a></h3>
+<p>To create a custom evaluator, create a <code>tfma.evaluators.Evaluator</code> type that
+wraps a <code>beam.PTransform</code> taking <code>tfma.Extracts</code> as input and returning
+<code>tfma.evaluators.Evaluation</code> as output. A very basic evaluator might just take
+the incoming <code>tfma.Extracts</code> and output them for storing in a table. This is
+exactly what the <code>tfma.evaluators.AnalysisTableEvaluator</code> does. A more
+complicated evaluator might perform additional processing and data aggregation.
+See the <code>tfma.evaluators.MetricsAndPlotsEvaluator</code> as an example.</p>
+<p>Note that the <code>tfma.evaluators.MetricsAndPlotsEvaluator</code> itself can be
+customized to support custom metrics (see <a href="../metrics/">metrics</a> for more
+details).</p>
+<h3 id="custom-writers">Custom Writers<a class="headerlink" href="#custom-writers" title="Permanent link">&para;</a></h3>
+<p>To create a custom writer, create a <code>tfma.writers.Writer</code> type that wraps a
+<code>beam.PTransform</code> taking <code>tfma.evaluators.Evaluation</code> as input and returning
+<code>beam.pvalue.PDone</code> as output. The following is a basic example of a writer for
+writing out TFRecords containing metrics:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-4-1"><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">tfma</span><span class="o">.</span><span class="n">writers</span><span class="o">.</span><span class="n">Writer</span><span class="p">(</span>
+</span><span id="__span-4-2"><a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a>  <span class="n">stage_name</span><span class="o">=</span><span class="s1">&#39;WriteTFRecord(</span><span class="si">%s</span><span class="s1">)&#39;</span> <span class="o">%</span> <span class="n">tfma</span><span class="o">.</span><span class="n">METRICS_KEY</span><span class="p">,</span>
+</span><span id="__span-4-3"><a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a>  <span class="n">ptransform</span><span class="o">=</span><span class="n">tfma</span><span class="o">.</span><span class="n">writers</span><span class="o">.</span><span class="n">Write</span><span class="p">(</span>
+</span><span id="__span-4-4"><a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a>    <span class="n">key</span><span class="o">=</span><span class="n">tfma</span><span class="o">.</span><span class="n">METRICS_KEY</span><span class="p">,</span>
+</span><span id="__span-4-5"><a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a>    <span class="n">ptransform</span><span class="o">=</span><span class="n">beam</span><span class="o">.</span><span class="n">io</span><span class="o">.</span><span class="n">WriteToTFRecord</span><span class="p">(</span><span class="n">file_path_prefix</span><span class="o">=</span><span class="n">output_file</span><span class="p">))</span>
+</span></code></pre></div>
+<p>A writer's inputs depend on the output of the associated evaluator. For the
+above example, the output is a serialized proto produced by the
+<code>tfma.evaluators.MetricsAndPlotsEvaluator</code>. A writer for the
+<code>tfma.evaluators.AnalysisTableEvaluator</code> would be responsible for writing out a
+<code>beam.pvalue.PCollection</code> of <code>tfma.Extracts</code>.</p>
+<p>Note that a writer is associated with the output of an evaluator via the output
+key used (e.g. <code>tfma.METRICS_KEY</code>, <code>tfma.ANALYSIS_KEY</code>, etc).</p>
+<h2 id="step-by-step-example">Step by Step Example<a class="headerlink" href="#step-by-step-example" title="Permanent link">&para;</a></h2>
+<p>The following is an example of the steps involved in the extraction and
+evaluation pipeline when both the <code>tfma.evaluators.MetricsAndPlotsEvaluator</code> and
+<code>tfma.evaluators.AnalysisTableEvaluator</code> are used:</p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-5-1"><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="n">run_model_analysis</span><span class="p">(</span>
+</span><span id="__span-5-2"><a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a>    <span class="o">...</span>
+</span><span id="__span-5-3"><a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>    <span class="n">extractors</span><span class="o">=</span><span class="p">[</span>
+</span><span id="__span-5-4"><a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a>        <span class="n">tfma</span><span class="o">.</span><span class="n">extractors</span><span class="o">.</span><span class="n">InputExtractor</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+</span><span id="__span-5-5"><a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a>        <span class="n">tfma</span><span class="o">.</span><span class="n">extractors</span><span class="o">.</span><span class="n">PredictExtractor</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+</span><span id="__span-5-6"><a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a>        <span class="n">tfma</span><span class="o">.</span><span class="n">extractors</span><span class="o">.</span><span class="n">SliceKeyExtrator</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</span><span id="__span-5-7"><a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a>    <span class="p">],</span>
+</span><span id="__span-5-8"><a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>    <span class="n">evaluators</span><span class="o">=</span><span class="p">[</span>
+</span><span id="__span-5-9"><a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a>        <span class="n">tfma</span><span class="o">.</span><span class="n">evaluators</span><span class="o">.</span><span class="n">MetricsAndPlotsEvaluator</span><span class="p">(</span><span class="o">...</span><span class="p">),</span>
+</span><span id="__span-5-10"><a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a>        <span class="n">tfma</span><span class="o">.</span><span class="n">evaluators</span><span class="o">.</span><span class="n">AnalysisTableEvaluator</span><span class="p">(</span><span class="o">...</span><span class="p">)</span>
+</span><span id="__span-5-11"><a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a>    <span class="p">])</span>
+</span></code></pre></div>
+<p><code>ReadInputs</code></p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-6-1"><a id="__codelineno-6-1" name="__codelineno-6-1" href="#__codelineno-6-1"></a><span class="c1"># Out</span>
+</span><span id="__span-6-2"><a id="__codelineno-6-2" name="__codelineno-6-2" href="#__codelineno-6-2"></a><span class="n">Extracts</span> <span class="p">{</span>
+</span><span id="__span-6-3"><a id="__codelineno-6-3" name="__codelineno-6-3" href="#__codelineno-6-3"></a>  <span class="s1">&#39;input&#39;</span><span class="p">:</span> <span class="nb">bytes</span>                 <span class="c1"># CSV, Proto, ...</span>
+</span><span id="__span-6-4"><a id="__codelineno-6-4" name="__codelineno-6-4" href="#__codelineno-6-4"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><code>ExtractAndEvaluate</code></p>
+<ul>
+<li><code>tfma.extractors.InputExtractor</code></li>
+</ul>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-7-1"><a id="__codelineno-7-1" name="__codelineno-7-1" href="#__codelineno-7-1"></a><span class="c1"># In:  ReadInputs Extracts</span>
+</span><span id="__span-7-2"><a id="__codelineno-7-2" name="__codelineno-7-2" href="#__codelineno-7-2"></a><span class="c1"># Out:</span>
+</span><span id="__span-7-3"><a id="__codelineno-7-3" name="__codelineno-7-3" href="#__codelineno-7-3"></a><span class="n">Extracts</span> <span class="p">{</span>
+</span><span id="__span-7-4"><a id="__codelineno-7-4" name="__codelineno-7-4" href="#__codelineno-7-4"></a>  <span class="s1">&#39;input&#39;</span><span class="p">:</span> <span class="nb">bytes</span>                    <span class="c1"># CSV, Proto, ...</span>
+</span><span id="__span-7-5"><a id="__codelineno-7-5" name="__codelineno-7-5" href="#__codelineno-7-5"></a>  <span class="s1">&#39;features&#39;</span><span class="p">:</span> <span class="n">tensor_like</span>           <span class="c1"># Raw features</span>
+</span><span id="__span-7-6"><a id="__codelineno-7-6" name="__codelineno-7-6" href="#__codelineno-7-6"></a>  <span class="s1">&#39;labels&#39;</span><span class="p">:</span> <span class="n">tensor_like</span>             <span class="c1"># Labels</span>
+</span><span id="__span-7-7"><a id="__codelineno-7-7" name="__codelineno-7-7" href="#__codelineno-7-7"></a>  <span class="s1">&#39;example_weights&#39;</span><span class="p">:</span> <span class="n">tensor_like</span>    <span class="c1"># Example weights</span>
+</span><span id="__span-7-8"><a id="__codelineno-7-8" name="__codelineno-7-8" href="#__codelineno-7-8"></a><span class="p">}</span>
+</span></code></pre></div>
+<ul>
+<li><code>tfma.extractors.PredictExtractor</code></li>
+</ul>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-8-1"><a id="__codelineno-8-1" name="__codelineno-8-1" href="#__codelineno-8-1"></a><span class="c1"># In:  InputExtractor Extracts</span>
+</span><span id="__span-8-2"><a id="__codelineno-8-2" name="__codelineno-8-2" href="#__codelineno-8-2"></a><span class="c1"># Out:</span>
+</span><span id="__span-8-3"><a id="__codelineno-8-3" name="__codelineno-8-3" href="#__codelineno-8-3"></a><span class="n">Extracts</span> <span class="p">{</span>
+</span><span id="__span-8-4"><a id="__codelineno-8-4" name="__codelineno-8-4" href="#__codelineno-8-4"></a>  <span class="s1">&#39;input&#39;</span><span class="p">:</span> <span class="nb">bytes</span>                    <span class="c1"># CSV, Proto, ...</span>
+</span><span id="__span-8-5"><a id="__codelineno-8-5" name="__codelineno-8-5" href="#__codelineno-8-5"></a>  <span class="s1">&#39;features&#39;</span><span class="p">:</span> <span class="n">tensor_like</span>           <span class="c1"># Raw features</span>
+</span><span id="__span-8-6"><a id="__codelineno-8-6" name="__codelineno-8-6" href="#__codelineno-8-6"></a>  <span class="s1">&#39;labels&#39;</span><span class="p">:</span> <span class="n">tensor_like</span>             <span class="c1"># Labels</span>
+</span><span id="__span-8-7"><a id="__codelineno-8-7" name="__codelineno-8-7" href="#__codelineno-8-7"></a>  <span class="s1">&#39;example_weights&#39;</span><span class="p">:</span> <span class="n">tensor_like</span>    <span class="c1"># Example weights</span>
+</span><span id="__span-8-8"><a id="__codelineno-8-8" name="__codelineno-8-8" href="#__codelineno-8-8"></a>  <span class="s1">&#39;predictions&#39;</span><span class="p">:</span> <span class="n">tensor_like</span>        <span class="c1"># Predictions</span>
+</span><span id="__span-8-9"><a id="__codelineno-8-9" name="__codelineno-8-9" href="#__codelineno-8-9"></a><span class="p">}</span>
+</span></code></pre></div>
+<ul>
+<li><code>tfma.extractors.SliceKeyExtractor</code></li>
+</ul>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-9-1"><a id="__codelineno-9-1" name="__codelineno-9-1" href="#__codelineno-9-1"></a><span class="c1"># In: PredictExtractor Extracts</span>
+</span><span id="__span-9-2"><a id="__codelineno-9-2" name="__codelineno-9-2" href="#__codelineno-9-2"></a><span class="c1"># Out:</span>
+</span><span id="__span-9-3"><a id="__codelineno-9-3" name="__codelineno-9-3" href="#__codelineno-9-3"></a><span class="n">Extracts</span> <span class="p">{</span>
+</span><span id="__span-9-4"><a id="__codelineno-9-4" name="__codelineno-9-4" href="#__codelineno-9-4"></a>  <span class="s1">&#39;features&#39;</span><span class="p">:</span> <span class="n">tensor_like</span>           <span class="c1"># Raw features</span>
+</span><span id="__span-9-5"><a id="__codelineno-9-5" name="__codelineno-9-5" href="#__codelineno-9-5"></a>  <span class="s1">&#39;labels&#39;</span><span class="p">:</span> <span class="n">tensor_like</span>             <span class="c1"># Labels</span>
+</span><span id="__span-9-6"><a id="__codelineno-9-6" name="__codelineno-9-6" href="#__codelineno-9-6"></a>  <span class="s1">&#39;example_weights&#39;</span><span class="p">:</span> <span class="n">tensor_like</span>    <span class="c1"># Example weights</span>
+</span><span id="__span-9-7"><a id="__codelineno-9-7" name="__codelineno-9-7" href="#__codelineno-9-7"></a>  <span class="s1">&#39;predictions&#39;</span><span class="p">:</span> <span class="n">tensor_like</span>        <span class="c1"># Predictions</span>
+</span><span id="__span-9-8"><a id="__codelineno-9-8" name="__codelineno-9-8" href="#__codelineno-9-8"></a>  <span class="s1">&#39;slice_key&#39;</span><span class="p">:</span> <span class="n">Tuple</span><span class="p">[</span><span class="nb">bytes</span><span class="o">...</span><span class="p">]</span>      <span class="c1"># Slice</span>
+</span><span id="__span-9-9"><a id="__codelineno-9-9" name="__codelineno-9-9" href="#__codelineno-9-9"></a><span class="p">}</span>
+</span></code></pre></div>
+<ul>
+<li><code>tfma.evaluators.MetricsAndPlotsEvaluator</code> (run_after: <code>SLICE_KEY_EXTRACTOR_STAGE_NAME</code>)</li>
+</ul>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-10-1"><a id="__codelineno-10-1" name="__codelineno-10-1" href="#__codelineno-10-1"></a><span class="c1"># In: SliceKeyExtractor Extracts</span>
+</span><span id="__span-10-2"><a id="__codelineno-10-2" name="__codelineno-10-2" href="#__codelineno-10-2"></a><span class="c1"># Out:</span>
+</span><span id="__span-10-3"><a id="__codelineno-10-3" name="__codelineno-10-3" href="#__codelineno-10-3"></a><span class="n">Evaluation</span> <span class="p">{</span>
+</span><span id="__span-10-4"><a id="__codelineno-10-4" name="__codelineno-10-4" href="#__codelineno-10-4"></a>  <span class="s1">&#39;metrics&#39;</span><span class="p">:</span> <span class="n">PCollection</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">slicer</span><span class="o">.</span><span class="n">SliceKeyType</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Text</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span>  <span class="c1"># Tuples of (slice key, dictionary from metric key to metric values)</span>
+</span><span id="__span-10-5"><a id="__codelineno-10-5" name="__codelineno-10-5" href="#__codelineno-10-5"></a>  <span class="s1">&#39;plots&#39;</span><span class="p">:</span> <span class="n">PCollection</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">slicer</span><span class="o">.</span><span class="n">SliceKeyType</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Text</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span>  <span class="c1"># Tuples of (slice key, dictionary from plot key to plot values)</span>
+</span><span id="__span-10-6"><a id="__codelineno-10-6" name="__codelineno-10-6" href="#__codelineno-10-6"></a><span class="p">}</span>
+</span></code></pre></div>
+<ul>
+<li><code>tfma.evaluators.AnalysisTableEvaluator</code> (run_after: <code>LAST_EXTRACTOR_STAGE_NAME</code>)</li>
+</ul>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-11-1"><a id="__codelineno-11-1" name="__codelineno-11-1" href="#__codelineno-11-1"></a><span class="c1"># In: SliceKeyExtractor Extracts</span>
+</span><span id="__span-11-2"><a id="__codelineno-11-2" name="__codelineno-11-2" href="#__codelineno-11-2"></a><span class="c1"># Out:</span>
+</span><span id="__span-11-3"><a id="__codelineno-11-3" name="__codelineno-11-3" href="#__codelineno-11-3"></a><span class="n">Evaluation</span> <span class="p">{</span>
+</span><span id="__span-11-4"><a id="__codelineno-11-4" name="__codelineno-11-4" href="#__codelineno-11-4"></a>  <span class="s1">&#39;analysis&#39;</span><span class="p">:</span> <span class="n">PCollection</span><span class="p">[</span><span class="n">Extracts</span><span class="p">]</span> <span class="c1"># Final Extracts</span>
+</span><span id="__span-11-5"><a id="__codelineno-11-5" name="__codelineno-11-5" href="#__codelineno-11-5"></a><span class="p">}</span>
+</span></code></pre></div>
+<p><code>WriteResults</code></p>
+<div class="language-python highlight"><pre><span></span><code><span id="__span-12-1"><a id="__codelineno-12-1" name="__codelineno-12-1" href="#__codelineno-12-1"></a><span class="c1"># In:</span>
+</span><span id="__span-12-2"><a id="__codelineno-12-2" name="__codelineno-12-2" href="#__codelineno-12-2"></a><span class="n">Evaluation</span> <span class="p">{</span>
+</span><span id="__span-12-3"><a id="__codelineno-12-3" name="__codelineno-12-3" href="#__codelineno-12-3"></a>  <span class="s1">&#39;metrics&#39;</span><span class="p">:</span> <span class="n">PCollection</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">slicer</span><span class="o">.</span><span class="n">SliceKeyType</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Text</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span>  <span class="c1"># Tuples of (slice key, dictionary from metric key to metric values)</span>
+</span><span id="__span-12-4"><a id="__codelineno-12-4" name="__codelineno-12-4" href="#__codelineno-12-4"></a>  <span class="s1">&#39;plots&#39;</span><span class="p">:</span> <span class="n">PCollection</span><span class="p">[</span><span class="n">Tuple</span><span class="p">[</span><span class="n">slicer</span><span class="o">.</span><span class="n">SliceKeyType</span><span class="p">,</span> <span class="n">Dict</span><span class="p">[</span><span class="n">Text</span><span class="p">,</span> <span class="n">Any</span><span class="p">]]]</span>  <span class="c1"># Tuples of (slice key, dictionary from plot key to plot values)</span>
+</span><span id="__span-12-5"><a id="__codelineno-12-5" name="__codelineno-12-5" href="#__codelineno-12-5"></a>  <span class="s1">&#39;analysis&#39;</span><span class="p">:</span> <span class="n">PCollection</span><span class="p">[</span><span class="n">Extracts</span><span class="p">]</span> <span class="c1"># Final Extracts</span>
+</span><span id="__span-12-6"><a id="__codelineno-12-6" name="__codelineno-12-6" href="#__codelineno-12-6"></a><span class="p">}</span>
+</span><span id="__span-12-7"><a id="__codelineno-12-7" name="__codelineno-12-7" href="#__codelineno-12-7"></a><span class="c1"># Out: metrics, plots, and analysis files</span>
+</span></code></pre></div>
+
+
+
+
+
+
+
+
+
+
+
+
+                
+              </article>
+            </div>
+          
+          
+<script>var target=document.getElementById(location.hash.slice(1));target&&target.name&&(target.checked=target.name.startsWith("__tabbed_"))</script>
+        </div>
+        
+      </main>
+      
+        <footer class="md-footer">
+  
+  <div class="md-footer-meta md-typeset">
+    <div class="md-footer-meta__inner md-grid">
+      <div class="md-copyright">
+  
+  
+    Made with
+    <a href="https://squidfunk.github.io/mkdocs-material/" target="_blank" rel="noopener">
+      Material for MkDocs
+    </a>
+  
+</div>
+      
+    </div>
+  </div>
+</footer>
+      
+    </div>
+    <div class="md-dialog" data-md-component="dialog">
+      <div class="md-dialog__inner md-typeset"></div>
+    </div>
+    
+    
+    
+      
+      <script id="__config" type="application/json">{"base": "..", "features": ["content.code.copy", "content.code.select", "content.action.edit"], "search": "../assets/javascripts/workers/search.d50fe291.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
+    
+    
+      <script src="../assets/javascripts/bundle.56ea9cef.min.js"></script>
+      
+        <script src="../javascripts/mathjax.js"></script>
+      
+        <script src="https://unpkg.com/mathjax@3/es5/tex-mml-chtml.js"></script>
+      
+    
+  </body>
+</html>

@@ -1,0 +1,7 @@
+redirects:
+- from: /tfx/model_analysis/api_docs/python/tfma/EvalSharedModel
+  to: /tfx/model_analysis/api_docs/python/tfma/types/EvalSharedModel
+- from: /tfx/model_analysis/api_docs/python/tfma/FeaturesPredictionsLabels
+  to: /tfx/model_analysis/api_docs/python/tfma/types/FeaturesPredictionsLabels
+- from: /tfx/model_analysis/api_docs/python/tfma/MaterializedColumn
+  to: /tfx/model_analysis/api_docs/python/tfma/types/MaterializedColumn

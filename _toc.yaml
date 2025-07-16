@@ -1,0 +1,23 @@
+toc:
+- title: "Improving Model Quality"
+  path: /tfx/guide/tfma
+- title: "Install"
+  path: /tfx/model_analysis/install
+- title: "Get started"
+  path: /tfx/model_analysis/get_started
+- title: "Setup"
+  path: /tfx/model_analysis/setup
+- title: "Metrics and Plots"
+  path: /tfx/model_analysis/metrics
+- title: "Visualizations"
+  path: /tfx/model_analysis/visualizations
+- title: "Model Validations"
+  path: /tfx/model_analysis/model_validations
+- title: "Using Fairness Indicators"
+  path: /tfx/guide/fairness_indicators
+- title: "Using Fairness Indicators with Pandas DataFrames"
+  path: /responsible_ai/fairness_indicators/tutorials/Fairness_Indicators_Pandas_Case_Study
+- title: "Architecture"
+  path: /tfx/model_analysis/architecture
+- title: "FAQ"
+  path: /tfx/model_analysis/faq
