@@ -106,6 +106,7 @@ ignore = [
     "E741",   # Ambiguous variable name
     "ERA001", # Found commented-out code
     "F403",   # `from module import *` used; unable to detect undefined names
+    "F405",   # import module may be undefined, or defined from star imports
     "F841",   # Local variable is assigned to but never used
     "FIX002", # Line contains TODO, consider resolving the issue
     "N801",   # Class name should use CapWords convention
