@@ -14,36 +14,36 @@
 """Test for evaluator."""
 
 import tensorflow as tf
+
 from tensorflow_model_analysis.evaluators import evaluator
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.utils import test_util
 
 
 class EvaluatorTest(test_util.TensorflowModelAnalysisTest):
+    def testVerifyEvaluatorRaisesValueError(self):
+        extractors = [
+            extractor.Extractor(stage_name="ExtractorThatExists", ptransform=None)
+        ]
+        evaluator.verify_evaluator(
+            evaluator.Evaluator(
+                stage_name="EvaluatorWithoutError",
+                run_after="ExtractorThatExists",
+                ptransform=None,
+            ),
+            extractors,
+        )
 
-  def testVerifyEvaluatorRaisesValueError(self):
-    extractors = [
-        extractor.Extractor(stage_name='ExtractorThatExists', ptransform=None)
-    ]
-    evaluator.verify_evaluator(
-        evaluator.Evaluator(
-            stage_name='EvaluatorWithoutError',
-            run_after='ExtractorThatExists',
-            ptransform=None,
-        ),
-        extractors,
-    )
-
-    with self.assertRaises(ValueError):
-      evaluator.verify_evaluator(
-          evaluator.Evaluator(
-              stage_name='EvaluatorWithError',
-              run_after='ExtractorThatDoesNotExist',
-              ptransform=None,
-          ),
-          extractors,
-      )
+        with self.assertRaises(ValueError):
+            evaluator.verify_evaluator(
+                evaluator.Evaluator(
+                    stage_name="EvaluatorWithError",
+                    run_after="ExtractorThatDoesNotExist",
+                    ptransform=None,
+                ),
+                extractors,
+            )
 
 
-if __name__ == '__main__':
-  tf.test.main()
+if __name__ == "__main__":
+    tf.test.main()

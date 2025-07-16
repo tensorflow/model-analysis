@@ -14,15 +14,16 @@
 """Init module for TensorFlow Model Analysis writers."""
 
 from tensorflow_model_analysis.writers.eval_config_writer import EvalConfigWriter
-from tensorflow_model_analysis.writers.metrics_plots_and_validations_writer import convert_slice_metrics_to_proto
-from tensorflow_model_analysis.writers.metrics_plots_and_validations_writer import MetricsPlotsAndValidationsWriter
-from tensorflow_model_analysis.writers.writer import Write
-from tensorflow_model_analysis.writers.writer import Writer
+from tensorflow_model_analysis.writers.metrics_plots_and_validations_writer import (
+    MetricsPlotsAndValidationsWriter,
+    convert_slice_metrics_to_proto,
+)
+from tensorflow_model_analysis.writers.writer import Write, Writer
 
 __all__ = [
-  "EvalConfigWriter",
-  "MetricsPlotsAndValidationsWriter",
-  "Write",
-  "Writer",
-  "convert_slice_metrics_to_proto",
+    "EvalConfigWriter",
+    "MetricsPlotsAndValidationsWriter",
+    "Write",
+    "Writer",
+    "convert_slice_metrics_to_proto",
 ]

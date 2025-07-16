@@ -15,6 +15,7 @@
 
 import re
 import string
+
 import tensorflow as tf
 
 _ESCAPED_PUNCTUATIONS = re.escape(string.punctuation)
@@ -22,8 +23,8 @@ _ESCAPED_PUNCTUATIONS = re.escape(string.punctuation)
 
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=tf.string)])
 def whitespace_tokenization(input_data):
-  standardized = tf.strings.regex_replace(
-      tf.strings.lower(input_data), '[%s]' % _ESCAPED_PUNCTUATIONS, ''
-  )
-  tokens = tf.strings.split(standardized)
-  return tf.map_fn(fn=lambda t: tf.unique(t)[0], elems=tokens)
+    standardized = tf.strings.regex_replace(
+        tf.strings.lower(input_data), "[%s]" % _ESCAPED_PUNCTUATIONS, ""
+    )
+    tokens = tf.strings.split(standardized)
+    return tf.map_fn(fn=lambda t: tf.unique(t)[0], elems=tokens)

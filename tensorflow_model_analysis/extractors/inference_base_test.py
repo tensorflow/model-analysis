@@ -18,65 +18,62 @@ tfx_bsl_predictions_extractor_test.py.
 """
 
 import os
+import unittest
 
 import tensorflow as tf
+from google.protobuf import text_format
+from tensorflow.core.protobuf import (
+    saved_model_pb2,  # pylint: disable=g-direct-tensorflow-import
+)
+from tensorflow_metadata.proto.v0 import schema_pb2
+from tensorflow_serving.apis import logging_pb2, prediction_log_pb2
+from tfx_bsl.tfxio import tensor_adapter, test_util
+
 from tensorflow_model_analysis import constants
-from tensorflow_model_analysis.extractors import features_extractor
-from tensorflow_model_analysis.extractors import inference_base
+from tensorflow_model_analysis.extractors import features_extractor, inference_base
 from tensorflow_model_analysis.proto import config_pb2
 from tensorflow_model_analysis.utils import test_util as testutil
-from tfx_bsl.tfxio import tensor_adapter
-from tfx_bsl.tfxio import test_util
-
-from google.protobuf import text_format
-from tensorflow.core.protobuf import saved_model_pb2  # pylint: disable=g-direct-tensorflow-import
-from tensorflow_metadata.proto.v0 import schema_pb2
-from tensorflow_serving.apis import logging_pb2
-from tensorflow_serving.apis import prediction_log_pb2
-
-import unittest
 
 
 class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
+    def setUp(self):
+        super().setUp()
+        log_metadata1 = logging_pb2.LogMetadata(timestamp_secs=1)
+        predict_log1 = prediction_log_pb2.PredictLog()
+        self.prediction_log1 = prediction_log_pb2.PredictionLog(
+            predict_log=predict_log1, log_metadata=log_metadata1
+        )
 
-  def setUp(self):
-    super().setUp()
-    log_metadata1 = logging_pb2.LogMetadata(timestamp_secs=1)
-    predict_log1 = prediction_log_pb2.PredictLog()
-    self.prediction_log1 = prediction_log_pb2.PredictionLog(
-        predict_log=predict_log1, log_metadata=log_metadata1
-    )
+        log_metadata2 = logging_pb2.LogMetadata(timestamp_secs=2)
+        predict_log2 = prediction_log_pb2.PredictLog()
+        self.prediction_log2 = prediction_log_pb2.PredictionLog(
+            predict_log=predict_log2, log_metadata=log_metadata2
+        )
 
-    log_metadata2 = logging_pb2.LogMetadata(timestamp_secs=2)
-    predict_log2 = prediction_log_pb2.PredictLog()
-    self.prediction_log2 = prediction_log_pb2.PredictionLog(
-        predict_log=predict_log2, log_metadata=log_metadata2
-    )
+    def _getExportDir(self):
+        return os.path.join(self._getTempDir(), "export_dir")
 
-  def _getExportDir(self):
-    return os.path.join(self._getTempDir(), 'export_dir')
+    def _create_tfxio_and_feature_extractor(
+        self, eval_config: config_pb2.EvalConfig, schema: schema_pb2.Schema
+    ):
+        tfx_io = test_util.InMemoryTFExampleRecord(
+            schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN
+        )
+        tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
+            arrow_schema=tfx_io.ArrowSchema(),
+            tensor_representations=tfx_io.TensorRepresentations(),
+        )
+        feature_extractor = features_extractor.FeaturesExtractor(
+            eval_config=eval_config,
+            tensor_representations=tensor_adapter_config.tensor_representations,
+        )
+        return tfx_io, feature_extractor
 
-  def _create_tfxio_and_feature_extractor(
-      self, eval_config: config_pb2.EvalConfig, schema: schema_pb2.Schema
-  ):
-    tfx_io = test_util.InMemoryTFExampleRecord(
-        schema=schema, raw_record_column_name=constants.ARROW_INPUT_COLUMN
-    )
-    tensor_adapter_config = tensor_adapter.TensorAdapterConfig(
-        arrow_schema=tfx_io.ArrowSchema(),
-        tensor_representations=tfx_io.TensorRepresentations(),
-    )
-    feature_extractor = features_extractor.FeaturesExtractor(
-        eval_config=eval_config,
-        tensor_representations=tensor_adapter_config.tensor_representations,
-    )
-    return tfx_io, feature_extractor
-
-  # PR 189: Remove the `expectedFailure` mark if the test passes
-  @unittest.expectedFailure
-  def testIsValidConfigForBulkInferencePass(self):
-    saved_model_proto = text_format.Parse(
-        """
+    # PR 189: Remove the `expectedFailure` mark if the test passes
+    @unittest.expectedFailure
+    def testIsValidConfigForBulkInferencePass(self):
+        saved_model_proto = text_format.Parse(
+            """
       saved_model_schema_version: 1
       meta_graphs {
         meta_info_def {
@@ -107,37 +104,35 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
       }
       """,
-        saved_model_pb2.SavedModel(),
-    )
-    temp_dir = self.create_tempdir()
-    temp_dir.create_file(
-        'saved_model.pb', content=saved_model_proto.SerializeToString()
-    )
-    eval_config = config_pb2.EvalConfig(
-        model_specs=[
-            config_pb2.ModelSpec(
-                name='model_1', signature_name='serving_default'
+            saved_model_pb2.SavedModel(),
+        )
+        temp_dir = self.create_tempdir()
+        temp_dir.create_file(
+            "saved_model.pb", content=saved_model_proto.SerializeToString()
+        )
+        eval_config = config_pb2.EvalConfig(
+            model_specs=[
+                config_pb2.ModelSpec(name="model_1", signature_name="serving_default")
+            ]
+        )
+        eval_shared_model = self.createTestEvalSharedModel(
+            model_path=temp_dir.full_path,
+            model_name="model_1",
+            tags=[tf.saved_model.SERVING],
+            model_type=constants.TF_GENERIC,
+        )
+
+        self.assertTrue(
+            inference_base.is_valid_config_for_bulk_inference(
+                eval_config, eval_shared_model
             )
-        ]
-    )
-    eval_shared_model = self.createTestEvalSharedModel(
-        model_path=temp_dir.full_path,
-        model_name='model_1',
-        tags=[tf.saved_model.SERVING],
-        model_type=constants.TF_GENERIC,
-    )
-
-    self.assertTrue(
-        inference_base.is_valid_config_for_bulk_inference(
-            eval_config, eval_shared_model
         )
-    )
 
-  # PR 189: Remove the `expectedFailure` mark if the test passes
-  @unittest.expectedFailure
-  def testIsValidConfigForBulkInferencePassDefaultSignatureLookUp(self):
-    saved_model_proto = text_format.Parse(
-        """
+    # PR 189: Remove the `expectedFailure` mark if the test passes
+    @unittest.expectedFailure
+    def testIsValidConfigForBulkInferencePassDefaultSignatureLookUp(self):
+        saved_model_proto = text_format.Parse(
+            """
       saved_model_schema_version: 1
       meta_graphs {
         meta_info_def {
@@ -168,149 +163,147 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
       }
       """,
-        saved_model_pb2.SavedModel(),
-    )
-    temp_dir = self.create_tempdir()
-    temp_dir.create_file(
-        'saved_model.pb', content=saved_model_proto.SerializeToString()
-    )
-    eval_config = config_pb2.EvalConfig(
-        model_specs=[config_pb2.ModelSpec(name='model_1')]
-    )
-    eval_shared_model = self.createTestEvalSharedModel(
-        model_path=temp_dir.full_path,
-        model_name='model_1',
-        tags=[tf.saved_model.SERVING],
-        model_type=constants.TF_GENERIC,
-    )
-
-    self.assertTrue(
-        inference_base.is_valid_config_for_bulk_inference(
-            eval_config, eval_shared_model
+            saved_model_pb2.SavedModel(),
         )
-    )
-
-  # PR 189: Remove the `expectedFailure` mark if the test passes
-  @unittest.expectedFailure
-  def testIsValidConfigForBulkInferenceFailNoSignatureFound(self):
-    saved_model_proto = text_format.Parse(
-        """
-      saved_model_schema_version: 1
-      meta_graphs {
-        meta_info_def {
-          tags: "serve"
-        }
-        signature_def: {
-          key: "serving_default"
-          value: {
-            inputs: {
-              key: "inputs"
-              value {
-                dtype: DT_STRING
-                name: "input_node:0"
-              }
-            }
-            method_name: "predict"
-            outputs: {
-              key: "outputs"
-              value {
-                dtype: DT_FLOAT
-                tensor_shape {
-                  dim { size: -1 }
-                  dim { size: 100 }
-                }
-              }
-            }
-          }
-        }
-      }
-      """,
-        saved_model_pb2.SavedModel(),
-    )
-    temp_dir = self.create_tempdir()
-    temp_dir.create_file(
-        'saved_model.pb', content=saved_model_proto.SerializeToString()
-    )
-    eval_config = config_pb2.EvalConfig(
-        model_specs=[
-            config_pb2.ModelSpec(name='model_1', signature_name='not_found')
-        ]
-    )
-    eval_shared_model = self.createTestEvalSharedModel(
-        model_path=temp_dir.full_path,
-        model_name='model_1',
-        model_type=constants.TF_GENERIC,
-    )
-    self.assertFalse(
-        inference_base.is_valid_config_for_bulk_inference(
-            eval_config, eval_shared_model
+        temp_dir = self.create_tempdir()
+        temp_dir.create_file(
+            "saved_model.pb", content=saved_model_proto.SerializeToString()
         )
-    )
+        eval_config = config_pb2.EvalConfig(
+            model_specs=[config_pb2.ModelSpec(name="model_1")]
+        )
+        eval_shared_model = self.createTestEvalSharedModel(
+            model_path=temp_dir.full_path,
+            model_name="model_1",
+            tags=[tf.saved_model.SERVING],
+            model_type=constants.TF_GENERIC,
+        )
 
-  # PR 189: Remove the `expectedFailure` mark if the test passes
-  @unittest.expectedFailure
-  def testIsValidConfigForBulkInferenceFailKerasModel(self):
-    saved_model_proto = text_format.Parse(
-        """
-      saved_model_schema_version: 1
-      meta_graphs {
-        meta_info_def {
-          tags: "serve"
-        }
-        signature_def: {
-          key: "serving_default"
-          value: {
-            inputs: {
-              key: "inputs"
-              value {
-                dtype: DT_STRING
-                name: "input_node:0"
-              }
-            }
-            method_name: "predict"
-            outputs: {
-              key: "outputs"
-              value {
-                dtype: DT_FLOAT
-                tensor_shape {
-                  dim { size: -1 }
-                  dim { size: 100 }
-                }
-              }
-            }
-          }
-        }
-      }
-      """,
-        saved_model_pb2.SavedModel(),
-    )
-    temp_dir = self.create_tempdir()
-    temp_dir.create_file(
-        'saved_model.pb', content=saved_model_proto.SerializeToString()
-    )
-    eval_config = config_pb2.EvalConfig(
-        model_specs=[
-            config_pb2.ModelSpec(
-                name='model_1', signature_name='serving_default'
+        self.assertTrue(
+            inference_base.is_valid_config_for_bulk_inference(
+                eval_config, eval_shared_model
             )
-        ]
-    )
-    eval_shared_model = self.createTestEvalSharedModel(
-        model_path=temp_dir.full_path,
-        model_name='model_1',
-        model_type=constants.TF_KERAS,
-    )
-    self.assertFalse(
-        inference_base.is_valid_config_for_bulk_inference(
-            eval_config, eval_shared_model
         )
-    )
 
-  # PR 189: Remove the `expectedFailure` mark if the test passes
-  @unittest.expectedFailure
-  def testIsValidConfigForBulkInferenceFailWrongInputType(self):
-    saved_model_proto = text_format.Parse(
-        """
+    # PR 189: Remove the `expectedFailure` mark if the test passes
+    @unittest.expectedFailure
+    def testIsValidConfigForBulkInferenceFailNoSignatureFound(self):
+        saved_model_proto = text_format.Parse(
+            """
+      saved_model_schema_version: 1
+      meta_graphs {
+        meta_info_def {
+          tags: "serve"
+        }
+        signature_def: {
+          key: "serving_default"
+          value: {
+            inputs: {
+              key: "inputs"
+              value {
+                dtype: DT_STRING
+                name: "input_node:0"
+              }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape {
+                  dim { size: -1 }
+                  dim { size: 100 }
+                }
+              }
+            }
+          }
+        }
+      }
+      """,
+            saved_model_pb2.SavedModel(),
+        )
+        temp_dir = self.create_tempdir()
+        temp_dir.create_file(
+            "saved_model.pb", content=saved_model_proto.SerializeToString()
+        )
+        eval_config = config_pb2.EvalConfig(
+            model_specs=[
+                config_pb2.ModelSpec(name="model_1", signature_name="not_found")
+            ]
+        )
+        eval_shared_model = self.createTestEvalSharedModel(
+            model_path=temp_dir.full_path,
+            model_name="model_1",
+            model_type=constants.TF_GENERIC,
+        )
+        self.assertFalse(
+            inference_base.is_valid_config_for_bulk_inference(
+                eval_config, eval_shared_model
+            )
+        )
+
+    # PR 189: Remove the `expectedFailure` mark if the test passes
+    @unittest.expectedFailure
+    def testIsValidConfigForBulkInferenceFailKerasModel(self):
+        saved_model_proto = text_format.Parse(
+            """
+      saved_model_schema_version: 1
+      meta_graphs {
+        meta_info_def {
+          tags: "serve"
+        }
+        signature_def: {
+          key: "serving_default"
+          value: {
+            inputs: {
+              key: "inputs"
+              value {
+                dtype: DT_STRING
+                name: "input_node:0"
+              }
+            }
+            method_name: "predict"
+            outputs: {
+              key: "outputs"
+              value {
+                dtype: DT_FLOAT
+                tensor_shape {
+                  dim { size: -1 }
+                  dim { size: 100 }
+                }
+              }
+            }
+          }
+        }
+      }
+      """,
+            saved_model_pb2.SavedModel(),
+        )
+        temp_dir = self.create_tempdir()
+        temp_dir.create_file(
+            "saved_model.pb", content=saved_model_proto.SerializeToString()
+        )
+        eval_config = config_pb2.EvalConfig(
+            model_specs=[
+                config_pb2.ModelSpec(name="model_1", signature_name="serving_default")
+            ]
+        )
+        eval_shared_model = self.createTestEvalSharedModel(
+            model_path=temp_dir.full_path,
+            model_name="model_1",
+            model_type=constants.TF_KERAS,
+        )
+        self.assertFalse(
+            inference_base.is_valid_config_for_bulk_inference(
+                eval_config, eval_shared_model
+            )
+        )
+
+    # PR 189: Remove the `expectedFailure` mark if the test passes
+    @unittest.expectedFailure
+    def testIsValidConfigForBulkInferenceFailWrongInputType(self):
+        saved_model_proto = text_format.Parse(
+            """
       saved_model_schema_version: 1
       meta_graphs {
         meta_info_def {
@@ -341,79 +334,75 @@ class TfxBslPredictionsExtractorTest(testutil.TensorflowModelAnalysisTest):
         }
       }
       """,
-        saved_model_pb2.SavedModel(),
-    )
-    temp_dir = self.create_tempdir()
-    temp_dir.create_file(
-        'saved_model.pb', content=saved_model_proto.SerializeToString()
-    )
-    eval_config = config_pb2.EvalConfig(
-        model_specs=[
-            config_pb2.ModelSpec(
-                name='model_1', signature_name='serving_default'
-            )
-        ]
-    )
-    eval_shared_model = self.createTestEvalSharedModel(
-        model_path=temp_dir.full_path,
-        model_name='model_1',
-        model_type=constants.TF_GENERIC,
-    )
-    self.assertFalse(
-        inference_base.is_valid_config_for_bulk_inference(
-            eval_config, eval_shared_model
+            saved_model_pb2.SavedModel(),
         )
-    )
+        temp_dir = self.create_tempdir()
+        temp_dir.create_file(
+            "saved_model.pb", content=saved_model_proto.SerializeToString()
+        )
+        eval_config = config_pb2.EvalConfig(
+            model_specs=[
+                config_pb2.ModelSpec(name="model_1", signature_name="serving_default")
+            ]
+        )
+        eval_shared_model = self.createTestEvalSharedModel(
+            model_path=temp_dir.full_path,
+            model_name="model_1",
+            model_type=constants.TF_GENERIC,
+        )
+        self.assertFalse(
+            inference_base.is_valid_config_for_bulk_inference(
+                eval_config, eval_shared_model
+            )
+        )
 
-  def testInsertSinglePredictionLogIntoExtract(self):
-    model_names_to_prediction_logs = {'prediction_log1': self.prediction_log1}
-    inference_tuple = ({}, model_names_to_prediction_logs)
-    output_extracts = inference_base.insert_predictions_into_extracts(
-        inference_tuple=inference_tuple,
-        prediction_log_keypath=[constants.PREDICTION_LOG_KEY],
-    )
+    def testInsertSinglePredictionLogIntoExtract(self):
+        model_names_to_prediction_logs = {"prediction_log1": self.prediction_log1}
+        inference_tuple = ({}, model_names_to_prediction_logs)
+        output_extracts = inference_base.insert_predictions_into_extracts(
+            inference_tuple=inference_tuple,
+            prediction_log_keypath=[constants.PREDICTION_LOG_KEY],
+        )
 
-    ref_extracts = {constants.PREDICTION_LOG_KEY: self.prediction_log1}
+        ref_extracts = {constants.PREDICTION_LOG_KEY: self.prediction_log1}
 
-    self.assertEqual(
-        output_extracts[constants.PREDICTION_LOG_KEY],
-        ref_extracts[constants.PREDICTION_LOG_KEY],
-    )
+        self.assertEqual(
+            output_extracts[constants.PREDICTION_LOG_KEY],
+            ref_extracts[constants.PREDICTION_LOG_KEY],
+        )
 
-  def testInsertTwoPredictionLogsIntoExtracts(self):
-    model_names_to_prediction_logs = {
-        'prediction_log1': self.prediction_log1,
-        'prediction_log2': self.prediction_log2,
-    }
-    inference_tuple = ({}, model_names_to_prediction_logs)
-    extracts = inference_base.insert_predictions_into_extracts(
-        inference_tuple,
-        prediction_log_keypath=[constants.PREDICTION_LOG_KEY],
-    )
+    def testInsertTwoPredictionLogsIntoExtracts(self):
+        model_names_to_prediction_logs = {
+            "prediction_log1": self.prediction_log1,
+            "prediction_log2": self.prediction_log2,
+        }
+        inference_tuple = ({}, model_names_to_prediction_logs)
+        extracts = inference_base.insert_predictions_into_extracts(
+            inference_tuple,
+            prediction_log_keypath=[constants.PREDICTION_LOG_KEY],
+        )
 
-    ref_extracts = {
-        constants.PREDICTION_LOG_KEY: model_names_to_prediction_logs
-    }
+        ref_extracts = {constants.PREDICTION_LOG_KEY: model_names_to_prediction_logs}
 
-    self.assertEqual(
-        extracts[constants.PREDICTION_LOG_KEY],
-        ref_extracts[constants.PREDICTION_LOG_KEY],
-    )
+        self.assertEqual(
+            extracts[constants.PREDICTION_LOG_KEY],
+            ref_extracts[constants.PREDICTION_LOG_KEY],
+        )
 
-  def testInsertPredictionLogsWithCustomPathIntoExtracts(self):
-    model_names_to_prediction_logs = {
-        'prediction_log1': self.prediction_log1,
-        'prediction_log2': self.prediction_log2,
-    }
-    inference_tuple = ({}, model_names_to_prediction_logs)
-    extracts = inference_base.insert_predictions_into_extracts(
-        inference_tuple,
-        prediction_log_keypath=['foo', 'bar'],
-    )
+    def testInsertPredictionLogsWithCustomPathIntoExtracts(self):
+        model_names_to_prediction_logs = {
+            "prediction_log1": self.prediction_log1,
+            "prediction_log2": self.prediction_log2,
+        }
+        inference_tuple = ({}, model_names_to_prediction_logs)
+        extracts = inference_base.insert_predictions_into_extracts(
+            inference_tuple,
+            prediction_log_keypath=["foo", "bar"],
+        )
 
-    ref_extracts = {'foo': {'bar': model_names_to_prediction_logs}}
-    self.assertEqual(extracts['foo']['bar'], ref_extracts['foo']['bar'])
+        ref_extracts = {"foo": {"bar": model_names_to_prediction_logs}}
+        self.assertEqual(extracts["foo"]["bar"], ref_extracts["foo"]["bar"])
 
 
-if __name__ == '__main__':
-  tf.test.main()
+if __name__ == "__main__":
+    tf.test.main()

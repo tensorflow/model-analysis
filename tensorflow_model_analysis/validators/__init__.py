@@ -13,10 +13,9 @@
 # limitations under the License.
 """Init module for TensorFlow Model Analysis validators."""
 
-from tensorflow_model_analysis.validators.validator import Validation
-from tensorflow_model_analysis.validators.validator import Validator
+from tensorflow_model_analysis.validators.validator import Validation, Validator
 
 __all__ = [
-  "Validation",
-  "Validator",
+    "Validation",
+    "Validator",
 ]

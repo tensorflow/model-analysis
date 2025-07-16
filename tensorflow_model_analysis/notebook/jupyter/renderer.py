@@ -17,60 +17,66 @@ from tensorflow_model_analysis.notebook.jupyter import tfma_widget
 
 
 def render_slicing_metrics(data, config, event_handlers=None):
-  """Renders the slicing metrics view in Jupyter.
+    """Renders the slicing metrics view in Jupyter.
 
-  Args:
-    data: A list of dictionary containing metrics for correpsonding slices.
-    config: A dictionary of the configuration.
-    event_handlers: A dictionary of where keys are event types and values are
-      event handlers.
+    Args:
+    ----
+      data: A list of dictionary containing metrics for correpsonding slices.
+      config: A dictionary of the configuration.
+      event_handlers: A dictionary of where keys are event types and values are
+        event handlers.
 
-  Returns:
-    A SlicingMetricsViewer.
-  """
-  if tfma_widget.SlicingMetricsViewer is None:
-    raise ValueError("tfma_widget.SlicingMetricsViewer is None.")
-  view = tfma_widget.SlicingMetricsViewer()
-  view.data = data
-  view.config = config
-  view.event_handlers = event_handlers
+    Returns:
+    -------
+      A SlicingMetricsViewer.
+    """
+    if tfma_widget.SlicingMetricsViewer is None:
+        raise ValueError("tfma_widget.SlicingMetricsViewer is None.")
+    view = tfma_widget.SlicingMetricsViewer()
+    view.data = data
+    view.config = config
+    view.event_handlers = event_handlers
 
-  return view
+    return view
 
 
 def render_time_series(data, config):
-  """Renders the time series view in Jupyter.
+    """Renders the time series view in Jupyter.
 
-  Args:
-    data: A list of dictionary containing metrics for different evaluation runs.
-    config: A dictionary of the configuration.
+    Args:
+    ----
+      data: A list of dictionary containing metrics for different evaluation runs.
+      config: A dictionary of the configuration.
 
-  Returns:
-    A TimeSeriesViewer.
-  """
-  if tfma_widget.TimeSeriesViewer is None:
-    raise ValueError("tfma_widget.TimeSeriesViewer is None.")
-  view = tfma_widget.TimeSeriesViewer()
-  view.data = data
-  view.config = config
+    Returns:
+    -------
+      A TimeSeriesViewer.
+    """
+    if tfma_widget.TimeSeriesViewer is None:
+        raise ValueError("tfma_widget.TimeSeriesViewer is None.")
+    view = tfma_widget.TimeSeriesViewer()
+    view.data = data
+    view.config = config
 
-  return view
+    return view
 
 
 def render_plot(data, config):
-  """Renders the plot view in Jupyter.
+    """Renders the plot view in Jupyter.
 
-  Args:
-    data: A dictionary containing plot data.
-    config: A dictionary of the configuration.
+    Args:
+    ----
+      data: A dictionary containing plot data.
+      config: A dictionary of the configuration.
 
-  Returns:
-    A PlotViewer.
-  """
-  if tfma_widget.PlotViewer is None:
-    raise ValueError("tfma_widget.PlotViewer is None.")
-  view = tfma_widget.PlotViewer()
-  view.data = data
-  view.config = config
+    Returns:
+    -------
+      A PlotViewer.
+    """
+    if tfma_widget.PlotViewer is None:
+        raise ValueError("tfma_widget.PlotViewer is None.")
+    view = tfma_widget.PlotViewer()
+    view.data = data
+    view.config = config
 
-  return view
+    return view

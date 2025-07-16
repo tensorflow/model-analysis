@@ -23,118 +23,120 @@ evaluation set, the final output will be zero.
 from typing import Any, Dict, Iterable, NamedTuple
 
 import apache_beam as beam
+
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.evaluators.query_metrics import query_types
 from tensorflow_model_analysis.post_export_metrics import metric_keys
 from tensorflow_model_analysis.utils import util
 
-_State = NamedTuple('_State', [('min_pos_sum', float), ('weight_sum', float)])
+
+class _State(NamedTuple):
+    min_pos_sum: float
+    weight_sum: float
 
 
 def _get_feature_value(fpl: query_types.FPL, key: str) -> float:
-  """Get value of the given feature from the features dictionary.
+    """Get value of the given feature from the features dictionary.
 
-  The feature must have exactly one value.
+    The feature must have exactly one value.
 
-  Args:
-    fpl: FPL
-    key: Key of feature to retrieve in features dictionary.
+    Args:
+    ----
+      fpl: FPL
+      key: Key of feature to retrieve in features dictionary.
 
-  Returns:
-    The singular value of the feature.
-  """
-  feature = fpl['features'].get(key)
-  if feature is None:
-    raise ValueError(
-        'feature %s not found in features %s' % (key, fpl['features'])
-    )
-  if feature.size != 1:
-    raise ValueError(
-        'feature %s did not contain exactly 1 value. value was: %s'
-        % (key, feature)
-    )
-  return feature[0][0]
+    Returns:
+    -------
+      The singular value of the feature.
+    """
+    feature = fpl["features"].get(key)
+    if feature is None:
+        raise ValueError("feature %s not found in features %s" % (key, fpl["features"]))
+    if feature.size != 1:
+        raise ValueError(
+            "feature %s did not contain exactly 1 value. value was: %s" % (key, feature)
+        )
+    return feature[0][0]
 
 
 class MinLabelPositionCombineFn(beam.CombineFn):
-  """Computes minimum label position."""
+    """Computes minimum label position."""
 
-  def __init__(self, label_key: str, weight_key: str):
-    """Initialize.
+    def __init__(self, label_key: str, weight_key: str):
+        """Initialize.
 
-    Args:
-      label_key: The key in the labels dictionary which holds the label. Set
-        this to empty to if labels is a Tensor and not a dictionary.
-      weight_key: The key in the features dictionary which holds the weights.
-        Note that the weight value must be identical across all examples in the
-        same query. If set to empty, uses 1.0 instead.
-    """
-    if not label_key:
-      # If label_key is set to the empty string, the user is telling us
-      # that their Estimator returns a labels Tensor rather than a
-      # dictionary. Set the key to the magic key we use in that case.
-      self._label_key = util.default_dict_key(constants.LABELS_KEY)
-    else:
-      self._label_key = label_key
-    self._weight_key = weight_key
+        Args:
+        ----
+          label_key: The key in the labels dictionary which holds the label. Set
+            this to empty to if labels is a Tensor and not a dictionary.
+          weight_key: The key in the features dictionary which holds the weights.
+            Note that the weight value must be identical across all examples in the
+            same query. If set to empty, uses 1.0 instead.
+        """
+        if not label_key:
+            # If label_key is set to the empty string, the user is telling us
+            # that their Estimator returns a labels Tensor rather than a
+            # dictionary. Set the key to the magic key we use in that case.
+            self._label_key = util.default_dict_key(constants.LABELS_KEY)
+        else:
+            self._label_key = label_key
+        self._weight_key = weight_key
 
-  def _get_label(self, fpl: query_types.FPL) -> float:
-    result = fpl['labels'].get(self._label_key)
-    if result is None:
-      return 0.0
-    return result
+    def _get_label(self, fpl: query_types.FPL) -> float:
+        result = fpl["labels"].get(self._label_key)
+        if result is None:
+            return 0.0
+        return result
 
-  def create_accumulator(self):
-    return _State(min_pos_sum=0.0, weight_sum=0.0)
+    def create_accumulator(self):
+        return _State(min_pos_sum=0.0, weight_sum=0.0)
 
-  def _add_states(self, left: _State, right: _State) -> _State:
-    return _State(
-        min_pos_sum=left.min_pos_sum + right.min_pos_sum,
-        weight_sum=left.weight_sum + right.weight_sum,
-    )
+    def _add_states(self, left: _State, right: _State) -> _State:
+        return _State(
+            min_pos_sum=left.min_pos_sum + right.min_pos_sum,
+            weight_sum=left.weight_sum + right.weight_sum,
+        )
 
-  def add_input(
-      self, accumulator: _State, query_fpl: query_types.QueryFPL
-  ) -> _State:
-    weight = 1.0
-    if self._weight_key:
-      weights = [
-          float(_get_feature_value(fpl, self._weight_key))
-          for fpl in query_fpl.fpls
-      ]
-      if weights:
-        if min(weights) != max(weights):
-          raise ValueError(
-              'weights were not identical for all examples in the '
-              'query. query_id was: %s, weights were: %s'
-              % (query_fpl.query_id, weights)
-          )
-        weight = weights[0]
+    def add_input(self, accumulator: _State, query_fpl: query_types.QueryFPL) -> _State:
+        weight = 1.0
+        if self._weight_key:
+            weights = [
+                float(_get_feature_value(fpl, self._weight_key))
+                for fpl in query_fpl.fpls
+            ]
+            if weights:
+                if min(weights) != max(weights):
+                    raise ValueError(
+                        "weights were not identical for all examples in the "
+                        "query. query_id was: %s, weights were: %s"
+                        % (query_fpl.query_id, weights)
+                    )
+                weight = weights[0]
 
-    min_label_pos = None
-    for pos, fpl in enumerate(query_fpl.fpls):
-      if self._get_label(fpl) > 0:
-        min_label_pos = pos + 1  # Use 1-indexed positions
-        break
+        min_label_pos = None
+        for pos, fpl in enumerate(query_fpl.fpls):
+            if self._get_label(fpl) > 0:
+                min_label_pos = pos + 1  # Use 1-indexed positions
+                break
 
-    state_to_add = _State(min_pos_sum=0.0, weight_sum=0.0)
-    if min_label_pos:
-      state_to_add = _State(min_pos_sum=min_label_pos, weight_sum=weight)
+        state_to_add = _State(min_pos_sum=0.0, weight_sum=0.0)
+        if min_label_pos:
+            state_to_add = _State(min_pos_sum=min_label_pos, weight_sum=weight)
 
-    return self._add_states(accumulator, state_to_add)
+        return self._add_states(accumulator, state_to_add)
 
-  def merge_accumulators(self, accumulators: Iterable[_State]) -> _State:
-    accumulators = iter(accumulators)
-    result = next(accumulators)
-    for accumulator in accumulators:
-      result = self._add_states(result, accumulator)
-    return result
+    def merge_accumulators(self, accumulators: Iterable[_State]) -> _State:
+        accumulators = iter(accumulators)
+        result = next(accumulators)
+        for accumulator in accumulators:
+            result = self._add_states(result, accumulator)
+        return result
 
-  def extract_output(self, accumulator: _State) -> Dict[str, Any]:
-    if accumulator.weight_sum > 0:
-      return {
-          metric_keys.base_key(
-              'average_min_label_position/%s' % self._label_key
-          ): (accumulator.min_pos_sum / accumulator.weight_sum)
-      }
-    return {}
+    def extract_output(self, accumulator: _State) -> Dict[str, Any]:
+        if accumulator.weight_sum > 0:
+            return {
+                metric_keys.base_key(
+                    "average_min_label_position/%s" % self._label_key
+                ): (accumulator.min_pos_sum / accumulator.weight_sum)
+            }
+        return {}

@@ -16,6 +16,7 @@
 from typing import Any, Dict, List
 
 import apache_beam as beam
+
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.validators import validator
 
@@ -28,25 +29,27 @@ def Validate(  # pylint: disable=invalid-name
     alternatives: Dict[str, beam.PTransform],
     validators: List[validator.Validator],
 ) -> validator.Validation:
-  """Performs validation of alternative evaluations.
+    """Performs validation of alternative evaluations.
 
-  Args:
-    extracts: PCollection of extracts.
-    alternatives: Dict of PTransforms (Extracts -> Evaluation) whose output will
-      be compared for validation purposes (e.g. 'baseline' vs 'candidate').
-    validators: List of validators for validating the output from running the
-      alternatives. The Validation outputs produced by the validators will be
-      merged into a single output. If there are overlapping output keys, later
-      outputs will replace earlier outputs sharing the same key.
+    Args:
+    ----
+      extracts: PCollection of extracts.
+      alternatives: Dict of PTransforms (Extracts -> Evaluation) whose output will
+        be compared for validation purposes (e.g. 'baseline' vs 'candidate').
+      validators: List of validators for validating the output from running the
+        alternatives. The Validation outputs produced by the validators will be
+        merged into a single output. If there are overlapping output keys, later
+        outputs will replace earlier outputs sharing the same key.
 
-  Returns:
-    Validation dict.
-  """
-  evaluations = {}
-  for key in alternatives:
-    evaluations[key] = extracts | 'Evaluate(%s)' % key >> alternatives[key]
+    Returns:
+    -------
+      Validation dict.
+    """
+    evaluations = {}
+    for key in alternatives:
+        evaluations[key] = extracts | "Evaluate(%s)" % key >> alternatives[key]
 
-  validation = {}
-  for v in validators:
-    validation.update(evaluations | v.stage_name >> v.ptransform)
-  return validation
+    validation = {}
+    for v in validators:
+        validation.update(evaluations | v.stage_name >> v.ptransform)
+    return validation

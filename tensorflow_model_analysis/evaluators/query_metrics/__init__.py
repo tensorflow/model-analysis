@@ -13,6 +13,10 @@
 # limitations under the License.
 """Init module for TensorFlow Model Analysis query metrics."""
 
-from tensorflow_model_analysis.evaluators.query_metrics.min_label_position import MinLabelPositionCombineFn
+from tensorflow_model_analysis.evaluators.query_metrics.min_label_position import (
+    MinLabelPositionCombineFn,
+)
 from tensorflow_model_analysis.evaluators.query_metrics.ndcg import NdcgMetricCombineFn
-from tensorflow_model_analysis.evaluators.query_metrics.query_statistics import QueryStatisticsCombineFn
+from tensorflow_model_analysis.evaluators.query_metrics.query_statistics import (
+    QueryStatisticsCombineFn,
+)

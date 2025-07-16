@@ -19,4 +19,4 @@ import tensorflow as tf
 # A simple plus one mostly for testing.
 @tf.function(input_signature=[tf.TensorSpec(shape=[None], dtype=tf.float32)])
 def _plus_one(input_data):
-  return input_data + 1
+    return input_data + 1

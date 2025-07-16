@@ -17,200 +17,200 @@ import collections
 import copy
 from typing import Callable, Dict, Sequence, Union
 
-from absl import logging
 import apache_beam as beam
 import numpy as np
 import tensorflow as tf
+from absl import logging
+
 from tensorflow_model_analysis import constants
 from tensorflow_model_analysis.api import types
 from tensorflow_model_analysis.extractors import extractor
 from tensorflow_model_analysis.proto import config_pb2
-from tensorflow_model_analysis.utils import model_util
-from tensorflow_model_analysis.utils import util
+from tensorflow_model_analysis.utils import model_util, util
 
 _OpResolverType = tf.lite.experimental.OpResolverType
-_TFLITE_PREDICT_EXTRACTOR_STAGE_NAME = 'ExtractTFLitePredictions'
+_TFLITE_PREDICT_EXTRACTOR_STAGE_NAME = "ExtractTFLitePredictions"
 
-_QUANTIZATION_PARAMETERS = 'quantization_parameters'
-_INDEX = 'index'
-_SCALES = 'scales'
-_ZERO_POINTS = 'zero_points'
-_DTYPE = 'dtype'
+_QUANTIZATION_PARAMETERS = "quantization_parameters"
+_INDEX = "index"
+_SCALES = "scales"
+_ZERO_POINTS = "zero_points"
+_DTYPE = "dtype"
 
 
 # TODO(b/149981535) Determine if we should merge with RunInference.
 @beam.typehints.with_input_types(types.Extracts)
 @beam.typehints.with_output_types(types.Extracts)
 class TFLitePredictionDoFn(model_util.BatchReducibleBatchedDoFnWithModels):
-  """A DoFn that loads tflite models and predicts."""
+    """A DoFn that loads tflite models and predicts."""
 
-  def __init__(
-      self,
-      eval_config: config_pb2.EvalConfig,
-      eval_shared_models: Dict[str, types.EvalSharedModel],
-  ) -> None:
-    super().__init__({k: v.model_loader for k, v in eval_shared_models.items()})
-    self._eval_config = eval_config
+    def __init__(
+        self,
+        eval_config: config_pb2.EvalConfig,
+        eval_shared_models: Dict[str, types.EvalSharedModel],
+    ) -> None:
+        super().__init__({k: v.model_loader for k, v in eval_shared_models.items()})
+        self._eval_config = eval_config
 
-  def setup(self):
-    super().setup()
-    self._interpreters = {}
+    def setup(self):
+        super().setup()
+        self._interpreters = {}
 
-    major, minor, _ = tf.version.VERSION.split('.')
-    op_resolver_type = _OpResolverType.AUTO
-    # TODO(b/207600661): drop BUILTIN_WITHOUT_DEFAULT_DELEGATES once the issue
-    # is fixed.
-    if int(major) > 2 or (int(major) == 2 and int(minor) >= 5):
-      op_resolver_type = _OpResolverType.BUILTIN_WITHOUT_DEFAULT_DELEGATES
-    for model_name, model_contents in self._loaded_models.items():
-      self._interpreters[model_name] = self._make_interpreter(
-          model_content=model_contents.contents,
-          experimental_op_resolver_type=op_resolver_type,
-      )
-
-  def _make_interpreter(self, **kwargs) -> tf.lite.Interpreter:
-    return tf.lite.Interpreter(**kwargs)
-
-  def _post_process_result(self, input_tensor: np.ndarray) -> np.ndarray:
-    """Custom post processor for TFLite predictions, default is no-op."""
-    return input_tensor
-
-  def _get_input_name_from_input_detail(self, input_detail):
-    """Get input name from input detail.
-
-    Args:
-      input_detail: the details for a model input.
-
-    Returns:
-      Input name. The signature key prefix and argument postfix will be removed.
-    """
-    input_name = input_detail['name']
-    # TFLite saved model converter inserts the signature key name at beginning
-    # of the input names. TFLite rewriter assumes that the default signature key
-    # ('serving_default') will be used as an exported name when saving.
-    if input_name.startswith('serving_default_'):
-      input_name = input_name[len('serving_default_') :]
-    # Remove argument that starts with ':'.
-    input_name = input_name.split(':')[0]
-    return input_name
-
-  # TODO: cr/540071949 - Consider deduplicating this code.
-  def _dequantize(
-      self, tensor: np.ndarray, scale: np.ndarray, zero_point: np.ndarray
-  ) -> np.ndarray:
-    """Performs dequantization according to the spec: http://shortn/_QPyWQx5mhW."""
-    if scale.size == 0 or zero_point.size == 0:
-      return tensor.astype(np.float64)
-    return (tensor - zero_point) * scale
-
-  def _quantize(
-      self,
-      tensor: np.ndarray,
-      scale: np.ndarray,
-      zero_point: np.ndarray,
-      dtype: np.dtype,
-  ) -> np.ndarray:
-    """Performs quantization according to the spec: http://shortn/_QPyWQx5mhW."""
-    if scale.size == 0 or zero_point.size == 0:
-      return tensor
-    return (tensor / scale + zero_point).astype(dtype)
-
-  def _batch_reducible_process(
-      self, element: types.Extracts
-  ) -> Sequence[types.Extracts]:
-    """Invokes the tflite model on the provided inputs and stores the result."""
-    result = copy.copy(element)
-
-    batched_features = element[constants.FEATURES_KEY]
-    batch_size = util.batch_size(batched_features)
-
-    for spec in self._eval_config.model_specs:
-      model_name = spec.name if len(self._eval_config.model_specs) > 1 else ''
-      if model_name not in self._loaded_models:
-        raise ValueError(
-            'model for "{}" not found: eval_config={}'.format(
-                spec.name, self._eval_config
+        major, minor, _ = tf.version.VERSION.split(".")
+        op_resolver_type = _OpResolverType.AUTO
+        # TODO(b/207600661): drop BUILTIN_WITHOUT_DEFAULT_DELEGATES once the issue
+        # is fixed.
+        if int(major) > 2 or (int(major) == 2 and int(minor) >= 5):
+            op_resolver_type = _OpResolverType.BUILTIN_WITHOUT_DEFAULT_DELEGATES
+        for model_name, model_contents in self._loaded_models.items():
+            self._interpreters[model_name] = self._make_interpreter(
+                model_content=model_contents.contents,
+                experimental_op_resolver_type=op_resolver_type,
             )
-        )
 
-      interpreter = self._interpreters[model_name]
+    def _make_interpreter(self, **kwargs) -> tf.lite.Interpreter:
+        return tf.lite.Interpreter(**kwargs)
 
-      input_details = interpreter.get_input_details()
-      output_details = interpreter.get_output_details()
+    def _post_process_result(self, input_tensor: np.ndarray) -> np.ndarray:
+        """Custom post processor for TFLite predictions, default is no-op."""
+        return input_tensor
 
-      input_features = collections.defaultdict(list)
-      for i in input_details:
-        input_name = self._get_input_name_from_input_detail(i)
-        # The batch dimension is the specific batch size of the last time the
-        # model was invoked. Set it to 1 to "reset".
-        input_shape = [1] + list(i['shape'])[1:]
-        input_type = i[_DTYPE]
-        for idx in range(batch_size):
-          if input_name in batched_features:
-            value = batched_features[input_name][idx]
-          else:
-            value = None
-          if value is None or np.any(np.equal(value, None)):
-            default = -1 if input_type in [np.float32, np.int64] else ''
-            value = np.full(input_shape, default, dtype=input_type)
-            logging.log_every_n(
-                logging.WARNING,
-                'Feature %s not found. Setting default value.',
-                100,
-                input_name,
-            )
-          else:
-            value = np.reshape(value, input_shape)
-          input_features[input_name].append(value)
-        # Concatenate with numpy to avoid implicit conversion to tf.Tensor
-        # which causes byte-string inputs to fail the set_tensor call.
-        input_features[input_name] = np.concatenate(
-            input_features[input_name], axis=0
-        )
-        if np.shape(input_features[input_name]) != tuple(i['shape']):
-          interpreter.resize_tensor_input(
-              i[_INDEX], np.shape(input_features[input_name])
-          )
-      interpreter.allocate_tensors()
+    def _get_input_name_from_input_detail(self, input_detail):
+        """Get input name from input detail.
 
-      for i in input_details:
-        input_name = self._get_input_name_from_input_detail(i)
-        params = i[_QUANTIZATION_PARAMETERS]
-        interpreter.set_tensor(
-            i[_INDEX],
-            self._quantize(
-                input_features[input_name],
-                params[_SCALES],
-                params[_ZERO_POINTS],
-                i[_DTYPE],
-            ),
-        )
-      interpreter.invoke()
+        Args:
+        ----
+          input_detail: the details for a model input.
 
-      outputs = {}
-      for o in output_details:
-        tensor = interpreter.get_tensor(o[_INDEX])
-        params = o[_QUANTIZATION_PARAMETERS]
-        dequantized_tensor = self._dequantize(
-            tensor, params[_SCALES], params[_ZERO_POINTS]
-        )
+        Returns:
+        -------
+          Input name. The signature key prefix and argument postfix will be removed.
+        """
+        input_name = input_detail["name"]
+        # TFLite saved model converter inserts the signature key name at beginning
+        # of the input names. TFLite rewriter assumes that the default signature key
+        # ('serving_default') will be used as an exported name when saving.
+        if input_name.startswith("serving_default_"):
+            input_name = input_name[len("serving_default_") :]
+        # Remove argument that starts with ':'.
+        input_name = input_name.split(":")[0]
+        return input_name
 
-        outputs[o['name']] = self._post_process_result(dequantized_tensor)
+    # TODO: cr/540071949 - Consider deduplicating this code.
+    def _dequantize(
+        self, tensor: np.ndarray, scale: np.ndarray, zero_point: np.ndarray
+    ) -> np.ndarray:
+        """Performs dequantization according to the spec: http://shortn/_QPyWQx5mhW."""
+        if scale.size == 0 or zero_point.size == 0:
+            return tensor.astype(np.float64)
+        return (tensor - zero_point) * scale
 
-      for v in outputs.values():
-        if util.batch_size(v) != batch_size:
-          raise ValueError('Did not get the expected number of results.')
+    def _quantize(
+        self,
+        tensor: np.ndarray,
+        scale: np.ndarray,
+        zero_point: np.ndarray,
+        dtype: np.dtype,
+    ) -> np.ndarray:
+        """Performs quantization according to the spec: http://shortn/_QPyWQx5mhW."""
+        if scale.size == 0 or zero_point.size == 0:
+            return tensor
+        return (tensor / scale + zero_point).astype(dtype)
 
-      if len(outputs) == 1:
-        outputs = list(outputs.values())[0]
+    def _batch_reducible_process(
+        self, element: types.Extracts
+    ) -> Sequence[types.Extracts]:
+        """Invokes the tflite model on the provided inputs and stores the result."""
+        result = copy.copy(element)
 
-      if len(self._eval_config.model_specs) == 1:
-        result[constants.PREDICTIONS_KEY] = outputs
-      else:
-        if constants.PREDICTIONS_KEY not in result:
-          result[constants.PREDICTIONS_KEY] = {}
-        result[constants.PREDICTIONS_KEY][spec.name] = outputs
-    return [result]
+        batched_features = element[constants.FEATURES_KEY]
+        batch_size = util.batch_size(batched_features)
+
+        for spec in self._eval_config.model_specs:
+            model_name = spec.name if len(self._eval_config.model_specs) > 1 else ""
+            if model_name not in self._loaded_models:
+                raise ValueError(
+                    f'model for "{spec.name}" not found: eval_config={self._eval_config}'
+                )
+
+            interpreter = self._interpreters[model_name]
+
+            input_details = interpreter.get_input_details()
+            output_details = interpreter.get_output_details()
+
+            input_features = collections.defaultdict(list)
+            for i in input_details:
+                input_name = self._get_input_name_from_input_detail(i)
+                # The batch dimension is the specific batch size of the last time the
+                # model was invoked. Set it to 1 to "reset".
+                input_shape = [1] + list(i["shape"])[1:]
+                input_type = i[_DTYPE]
+                for idx in range(batch_size):
+                    if input_name in batched_features:
+                        value = batched_features[input_name][idx]
+                    else:
+                        value = None
+                    if value is None or np.any(np.equal(value, None)):
+                        default = -1 if input_type in [np.float32, np.int64] else ""
+                        value = np.full(input_shape, default, dtype=input_type)
+                        logging.log_every_n(
+                            logging.WARNING,
+                            "Feature %s not found. Setting default value.",
+                            100,
+                            input_name,
+                        )
+                    else:
+                        value = np.reshape(value, input_shape)
+                    input_features[input_name].append(value)
+                # Concatenate with numpy to avoid implicit conversion to tf.Tensor
+                # which causes byte-string inputs to fail the set_tensor call.
+                input_features[input_name] = np.concatenate(
+                    input_features[input_name], axis=0
+                )
+                if np.shape(input_features[input_name]) != tuple(i["shape"]):
+                    interpreter.resize_tensor_input(
+                        i[_INDEX], np.shape(input_features[input_name])
+                    )
+            interpreter.allocate_tensors()
+
+            for i in input_details:
+                input_name = self._get_input_name_from_input_detail(i)
+                params = i[_QUANTIZATION_PARAMETERS]
+                interpreter.set_tensor(
+                    i[_INDEX],
+                    self._quantize(
+                        input_features[input_name],
+                        params[_SCALES],
+                        params[_ZERO_POINTS],
+                        i[_DTYPE],
+                    ),
+                )
+            interpreter.invoke()
+
+            outputs = {}
+            for o in output_details:
+                tensor = interpreter.get_tensor(o[_INDEX])
+                params = o[_QUANTIZATION_PARAMETERS]
+                dequantized_tensor = self._dequantize(
+                    tensor, params[_SCALES], params[_ZERO_POINTS]
+                )
+
+                outputs[o["name"]] = self._post_process_result(dequantized_tensor)
+
+            for v in outputs.values():
+                if util.batch_size(v) != batch_size:
+                    raise ValueError("Did not get the expected number of results.")
+
+            if len(outputs) == 1:
+                outputs = list(outputs.values())[0]
+
+            if len(self._eval_config.model_specs) == 1:
+                result[constants.PREDICTIONS_KEY] = outputs
+            else:
+                if constants.PREDICTIONS_KEY not in result:
+                    result[constants.PREDICTIONS_KEY] = {}
+                result[constants.PREDICTIONS_KEY][spec.name] = outputs
+        return [result]
 
 
 @beam.ptransform_fn
@@ -222,60 +222,62 @@ def _ExtractTFLitePredictions(  # pylint: disable=invalid-name
     eval_shared_models: Dict[str, types.EvalSharedModel],
     do_fn: Callable[..., TFLitePredictionDoFn],
 ) -> beam.pvalue.PCollection:
-  """A PTransform that adds predictions and possibly other tensors to extracts.
+    """A PTransform that adds predictions and possibly other tensors to extracts.
 
-  Args:
-    extracts: PCollection of extracts containing model inputs keyed by
-      tfma.FEATURES_KEY.
-    eval_config: Eval config.
-    eval_shared_models: Shared model parameters keyed by model name.
-    do_fn: Constructor for TFLitePredictionDoFn.
+    Args:
+    ----
+      extracts: PCollection of extracts containing model inputs keyed by
+        tfma.FEATURES_KEY.
+      eval_config: Eval config.
+      eval_shared_models: Shared model parameters keyed by model name.
+      do_fn: Constructor for TFLitePredictionDoFn.
 
-  Returns:
-    PCollection of Extracts updated with the predictions.
-  """
-  return extracts | 'Predict' >> beam.ParDo(
-      do_fn(
-          eval_config=eval_config,
-          eval_shared_models=eval_shared_models,
-      )
-  )
+    Returns:
+    -------
+      PCollection of Extracts updated with the predictions.
+    """
+    return extracts | "Predict" >> beam.ParDo(
+        do_fn(
+            eval_config=eval_config,
+            eval_shared_models=eval_shared_models,
+        )
+    )
 
 
 def TFLitePredictExtractor(
     eval_config: config_pb2.EvalConfig,
-    eval_shared_model: Union[
-        types.EvalSharedModel, Dict[str, types.EvalSharedModel]
-    ],
+    eval_shared_model: Union[types.EvalSharedModel, Dict[str, types.EvalSharedModel]],
     do_fn: Callable[..., TFLitePredictionDoFn] = TFLitePredictionDoFn,
 ) -> extractor.Extractor:
-  """Creates an extractor for performing predictions on tflite models.
+    """Creates an extractor for performing predictions on tflite models.
 
-  The extractor's PTransform loads and interprets the tflite flatbuffer against
-  every extract yielding a copy of the incoming extracts with an additional
-  extract added for the predictions keyed by tfma.PREDICTIONS_KEY. The model
-  inputs are searched for under tfma.FEATURES_KEY. If multiple
-  models are used the predictions will be stored in a dict keyed by model name.
+    The extractor's PTransform loads and interprets the tflite flatbuffer against
+    every extract yielding a copy of the incoming extracts with an additional
+    extract added for the predictions keyed by tfma.PREDICTIONS_KEY. The model
+    inputs are searched for under tfma.FEATURES_KEY. If multiple
+    models are used the predictions will be stored in a dict keyed by model name.
 
-  Args:
-    eval_config: Eval config.
-    eval_shared_model: Shared model (single-model evaluation) or dict of shared
-      models keyed by model name (multi-model evaluation).
-    do_fn: Constructor for TFLitePredictionDoFn.
+    Args:
+    ----
+      eval_config: Eval config.
+      eval_shared_model: Shared model (single-model evaluation) or dict of shared
+        models keyed by model name (multi-model evaluation).
+      do_fn: Constructor for TFLitePredictionDoFn.
 
-  Returns:
-    Extractor for extracting predictions.
-  """
-  eval_shared_models = model_util.verify_and_update_eval_shared_models(
-      eval_shared_model
-  )
+    Returns:
+    -------
+      Extractor for extracting predictions.
+    """
+    eval_shared_models = model_util.verify_and_update_eval_shared_models(
+        eval_shared_model
+    )
 
-  # pylint: disable=no-value-for-parameter
-  return extractor.Extractor(
-      stage_name=_TFLITE_PREDICT_EXTRACTOR_STAGE_NAME,
-      ptransform=_ExtractTFLitePredictions(
-          eval_config=eval_config,
-          eval_shared_models={m.model_name: m for m in eval_shared_models},
-          do_fn=do_fn,
-      ),
-  )
+    # pylint: disable=no-value-for-parameter
+    return extractor.Extractor(
+        stage_name=_TFLITE_PREDICT_EXTRACTOR_STAGE_NAME,
+        ptransform=_ExtractTFLitePredictions(
+            eval_config=eval_config,
+            eval_shared_models={m.model_name: m for m in eval_shared_models},
+            do_fn=do_fn,
+        ),
+    )

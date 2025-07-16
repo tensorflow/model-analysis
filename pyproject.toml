@@ -1,0 +1,140 @@
+# Copyright 2020 Google LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#      http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+[build-system]
+requires = [
+  "setuptools",
+  "wheel",
+]
+
+[tool.ruff]
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    # pycodestyle
+    "E",
+    "W",
+    # Pyflakes
+    "F",
+    # pyupgrade
+    "UP",
+    # flake8-bugbear
+    "B",
+    # flake8-simplify
+    "SIM",
+    # isort
+    "I",
+    # pep8 naming
+    "N",
+    # pydocstyle
+    "D",
+    # annotations
+    "ANN",
+    # debugger
+    "T10",
+    # flake8-pytest
+    "PT",
+    # flake8-return
+    "RET",
+    # flake8-unused-arguments
+    "ARG",
+    # flake8-fixme
+    "FIX",
+    # flake8-eradicate
+    "ERA",
+    # pandas-vet
+    "PD",
+    # numpy-specific rules
+    "NPY",
+]
+
+ignore = [
+    "D104",   # Missing docstring in public package
+    "D100",   # Missing docstring in public module
+    "D211",   # No blank line before class
+    "PD901",  # Avoid using 'df' for pandas dataframes. Perfectly fine in functions with limited scope
+    "ANN201", # Missing return type annotation for public function (makes no sense for NoneType return types...)
+    "ANN101", # Missing type annotation for `self`
+    "ANN204", # Missing return type annotation for special method
+    "ANN002", # Missing type annotation for `*args`
+    "ANN003", # Missing type annotation for `**kwargs`
+    "D105",   # Missing docstring in magic method
+    "D203",   # 1 blank line before after class docstring
+    "D204",   # 1 blank line required after class docstring
+    "D413",   # 1 blank line after parameters
+    "SIM108", # Simplify if/else to one line; not always clearer
+    "D206",   # Docstrings should be indented with spaces; unnecessary when running ruff-format
+    "E501",   # Line length too long; unnecessary when running ruff-format
+    "W191",   # Indentation contains tabs; unnecessary when running ruff-format
+
+    # FIX AND REMOVE BELOW CODES
+    "ANN001", # Missing type annotation for function argument
+    "ANN102", # Missing type annotation for `cls` in classmethod
+    "ANN202", # Missing return type annotation for private function
+    "ANN401", # Dynamically typed expressions (typing.Any) are disallowed
+    "ARG001", # Unused function argument
+    "ARG002", # Unused method argument
+    "ARG005", # Unused lambda argument
+    "B007",   # Loop control variable not used within loop body
+    "B008",   # Do not perform function call in argument defaults
+    "B020",   # Loop control variable overrides iterable it iterates
+    "B028",   # No explicit `stacklevel` keyword argument for `warnings.warn`
+    "B904",   # Within an `except` clause, raise exceptions with `raise ... from err` or `raise ... from None`
+    "D101",   # Missing docstring in public class
+    "D102",   # Missing docstring in public method
+    "D103",   # Missing docstring in public function
+    "D106",   # Missing docstring in public nested class
+    "D107",   # Missing docstring in `__init__`
+    "D210",   # No whitespaces allowed surrounding docstring text
+    "D401",   # First line of docstring should be in imperative mood
+    "D404",   # First word of the docstring should not be "This"
+    "E721",   # Use `is` or `isinstance()` for type comparisons
+    "E722",   # Do not use bare `except`
+    "E731",   # Do not assign a `lambda` expression, use a `def`
+    "E741",   # Ambiguous variable name
+    "ERA001", # Found commented-out code
+    "F403",   # `from module import *` used; unable to detect undefined names
+    "F405",   # import module may be undefined, or defined from star imports
+    "F841",   # Local variable is assigned to but never used
+    "FIX002", # Line contains TODO, consider resolving the issue
+    "N801",   # Class name should use CapWords convention
+    "N802",   # Function name should be lowercase
+    "N811",   # Constant imported as non-constant
+    "NPY002", # Replace legacy `np.random` call with `np.random.Generator`
+    "PD004",  # `.notna` is preferred to `.notnull`
+    "PD010",  # `.pivot_table` is preferred to `.pivot` or `.unstack`
+    "PD011",  # Use `.to_numpy()` instead of `.values`
+    "PT009",  # Use a regular `assert` instead of unittest-style assert
+    "PT018",  # Assertion should be broken down into multiple parts
+    "PT027",  # Use `pytest.raises` instead of unittest-style `assertRaises` or `assertRaisesRegex`
+    "RET503", # Missing explicit `return` at the end of function able to return non-`None` value
+    "RET504", # Unnecessary assignment to `result` before `return` statement
+    "RET505", # Unnecessary `elif` or `else` after `return` statement
+    "RET506", # Unnecessary `else` after `raise` statement
+    "SIM101", # Multiple `isinstance` calls, merge into a single call
+    "SIM102", # Use a single `if` statement instead of nested `if` statements
+    "SIM103", # Return the condition directly
+    "SIM109", # Use `in` for multiple equality comparisons
+    "SIM110", # Use `any(...)` instead of `for` loop for early return
+    "SIM117", # Use a single `with` statement with multiple contexts instead of nested `with` statements
+    "SIM118", # Use `key in dict` instead of `key in dict.keys()`
+    "SIM401", # Use `self.get(key, None)` instead of an `if` block
+    "UP008",  # Use `super()` instead of `super(__class__, self)`
+    "UP028",  # Replace `yield` over `for` loop with `yield from`
+    "UP031",  # Use format specifiers instead of percent format
+]
+
+[tool.ruff.lint.per-file-ignores]
+"__init__.py" = ["F401"]
