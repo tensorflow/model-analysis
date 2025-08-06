@@ -1,0 +1,158 @@
+# Automatically generated file; please do not edit
+toc:
+  - title: tfma
+    section:
+    - title: Overview
+      path: /tfx/model_analysis/api_docs/python/tfma
+    - title: compound_key
+      path: /tfx/model_analysis/api_docs/python/tfma/compound_key
+    - title: create_keys_key
+      path: /tfx/model_analysis/api_docs/python/tfma/create_keys_key
+    - title: create_values_key
+      path: /tfx/model_analysis/api_docs/python/tfma/create_values_key
+    - title: default_evaluators
+      path: /tfx/model_analysis/api_docs/python/tfma/default_evaluators
+    - title: default_eval_shared_model
+      path: /tfx/model_analysis/api_docs/python/tfma/default_eval_shared_model
+    - title: default_extractors
+      path: /tfx/model_analysis/api_docs/python/tfma/default_extractors
+    - title: default_writers
+      path: /tfx/model_analysis/api_docs/python/tfma/default_writers
+    - title: EvalConfig
+      path: /tfx/model_analysis/api_docs/python/tfma/EvalConfig
+    - title: EvalResult
+      path: /tfx/model_analysis/api_docs/python/tfma/EvalResult
+    - title: ExtractAndEvaluate
+      path: /tfx/model_analysis/api_docs/python/tfma/ExtractAndEvaluate
+    - title: ExtractEvaluateAndWriteResults
+      path: /tfx/model_analysis/api_docs/python/tfma/ExtractEvaluateAndWriteResults
+    - title: InputsToExtracts
+      path: /tfx/model_analysis/api_docs/python/tfma/InputsToExtracts
+    - title: load_eval_result
+      path: /tfx/model_analysis/api_docs/python/tfma/load_eval_result
+    - title: load_eval_results
+      path: /tfx/model_analysis/api_docs/python/tfma/load_eval_results
+    - title: make_eval_results
+      path: /tfx/model_analysis/api_docs/python/tfma/make_eval_results
+    - title: multiple_data_analysis
+      path: /tfx/model_analysis/api_docs/python/tfma/multiple_data_analysis
+    - title: multiple_model_analysis
+      path: /tfx/model_analysis/api_docs/python/tfma/multiple_model_analysis
+    - title: run_model_analysis
+      path: /tfx/model_analysis/api_docs/python/tfma/run_model_analysis
+    - title: unique_key
+      path: /tfx/model_analysis/api_docs/python/tfma/unique_key
+    - title: Validate
+      path: /tfx/model_analysis/api_docs/python/tfma/Validate
+    - title: WriteResults
+      path: /tfx/model_analysis/api_docs/python/tfma/WriteResults
+  - title: tfma.constants
+    section:
+    - title: Overview
+      path: /tfx/model_analysis/api_docs/python/tfma/constants
+  - title: tfma.evaluators
+    section:
+    - title: Overview
+      path: /tfx/model_analysis/api_docs/python/tfma/evaluators
+    - title: AnalysisTableEvaluator
+      path: /tfx/model_analysis/api_docs/python/tfma/evaluators/AnalysisTableEvaluator
+    - title: Evaluator
+      path: /tfx/model_analysis/api_docs/python/tfma/evaluators/Evaluator
+    - title: MetricsAndPlotsEvaluator
+      path: /tfx/model_analysis/api_docs/python/tfma/evaluators/MetricsAndPlotsEvaluator
+    - title: verify_evaluator
+      path: /tfx/model_analysis/api_docs/python/tfma/evaluators/verify_evaluator
+  - title: tfma.export
+    section:
+    - title: Overview
+      path: /tfx/model_analysis/api_docs/python/tfma/export
+    - title: build_parsing_eval_input_receiver_fn
+      path: /tfx/model_analysis/api_docs/python/tfma/export/build_parsing_eval_input_receiver_fn
+  - title: tfma.exporter
+    section:
+    - title: Overview
+      path: /tfx/model_analysis/api_docs/python/tfma/exporter
+    - title: FinalExporter
+      path: /tfx/model_analysis/api_docs/python/tfma/exporter/FinalExporter
+    - title: LatestExporter
+      path: /tfx/model_analysis/api_docs/python/tfma/exporter/LatestExporter
+  - title: tfma.extractors
+    section:
+    - title: Overview
+      path: /tfx/model_analysis/api_docs/python/tfma/extractors
+    - title: Extractor
+      path: /tfx/model_analysis/api_docs/python/tfma/extractors/Extractor
+    - title: FeatureExtractor
+      path: /tfx/model_analysis/api_docs/python/tfma/extractors/FeatureExtractor
+    - title: Filter
+      path: /tfx/model_analysis/api_docs/python/tfma/extractors/Filter
+    - title: PredictExtractor
+      path: /tfx/model_analysis/api_docs/python/tfma/extractors/PredictExtractor
+    - title: SliceKeyExtractor
+      path: /tfx/model_analysis/api_docs/python/tfma/extractors/SliceKeyExtractor
+  - title: tfma.post_export_metrics
+    section:
+    - title: Overview
+      path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics
+    - title: auc
+      path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/auc
+    - title: auc_plots
+      path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/auc_plots
+    - title: calibration_plot_and_prediction_histogram
+      path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/calibration_plot_and_prediction_histogram
+    - title: confusion_matrix_at_thresholds
+      path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/confusion_matrix_at_thresholds
+    - title: example_count
+      path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/example_count
+    - title: example_weight
+      path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/example_weight
+    - title: mean_absolute_error
+      path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/mean_absolute_error
+    - title: precision_at_k
+      path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/precision_at_k
+    - title: recall_at_k
+      path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/recall_at_k
+    - title: squared_pearson_correlation
+      path: /tfx/model_analysis/api_docs/python/tfma/post_export_metrics/squared_pearson_correlation
+  - title: tfma.types
+    section:
+    - title: Overview
+      path: /tfx/model_analysis/api_docs/python/tfma/types
+    - title: EvalSharedModel
+      path: /tfx/model_analysis/api_docs/python/tfma/types/EvalSharedModel
+    - title: FeaturesPredictionsLabels
+      path: /tfx/model_analysis/api_docs/python/tfma/types/FeaturesPredictionsLabels
+    - title: is_tensor
+      path: /tfx/model_analysis/api_docs/python/tfma/types/is_tensor
+    - title: MaterializedColumn
+      path: /tfx/model_analysis/api_docs/python/tfma/types/MaterializedColumn
+    - title: ValueWithConfidenceInterval
+      path: /tfx/model_analysis/api_docs/python/tfma/types/ValueWithConfidenceInterval
+  - title: tfma.validators
+    section:
+    - title: Overview
+      path: /tfx/model_analysis/api_docs/python/tfma/validators
+    - title: Validator
+      path: /tfx/model_analysis/api_docs/python/tfma/validators/Validator
+  - title: tfma.version
+    section:
+    - title: Overview
+      path: /tfx/model_analysis/api_docs/python/tfma/version
+  - title: tfma.view
+    section:
+    - title: Overview
+      path: /tfx/model_analysis/api_docs/python/tfma/view
+    - title: render_plot
+      path: /tfx/model_analysis/api_docs/python/tfma/view/render_plot
+    - title: render_slicing_metrics
+      path: /tfx/model_analysis/api_docs/python/tfma/view/render_slicing_metrics
+    - title: render_time_series
+      path: /tfx/model_analysis/api_docs/python/tfma/view/render_time_series
+  - title: tfma.writers
+    section:
+    - title: Overview
+      path: /tfx/model_analysis/api_docs/python/tfma/writers
+    - title: Write
+      path: /tfx/model_analysis/api_docs/python/tfma/writers/Write
+    - title: Writer
+      path: /tfx/model_analysis/api_docs/python/tfma/writers/Writer
