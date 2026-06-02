@@ -12,6 +12,7 @@ on:
 
 env:
   USE_BAZEL_VERSION: 7.7.0
+  PYTHONVERBOSE: 1
 
 jobs:
   unit-tests:
