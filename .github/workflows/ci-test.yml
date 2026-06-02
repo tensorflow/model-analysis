@@ -40,16 +40,12 @@ jobs:
         sudo find /opt/ -name "*sitecustomize*" -print -delete || true
         sudo find /home/runner/ -name "*sitecustomize*" -print -delete || true
 
-    - name: Debug sitecustomize
-      run: |
-        python -c "import sys; print('sys.path:', sys.path)"
-        PYTHONVERBOSE=1 python -c "import sitecustomize" || true
-
     - name: Install dependencies
       run: |
         sudo apt update
         sudo apt install -y protobuf-compiler
-        pip install .
+        pip install --upgrade pip setuptools wheel numpy pyarrow
+        pip install --no-build-isolation .
 
     - name: Run unit tests
       shell: bash

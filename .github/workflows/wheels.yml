@@ -32,17 +32,14 @@ jobs:
         sudo find /opt/ -name "*sitecustomize*" -print -delete || true
         sudo find /home/runner/ -name "*sitecustomize*" -print -delete || true
 
-    - name: Debug sitecustomize
-      run: |
-        python -c "import sys; print('sys.path:', sys.path)"
-        PYTHONVERBOSE=1 python -c "import sitecustomize" || true
-
     - name: install python dependencies
-      run: pip install --upgrade pip build twine
+      run: |
+        pip install --upgrade pip setuptools wheel numpy pyarrow build twine
+        pip install --no-build-isolation .
 
     - name: build sdist
       run: |
-        python -m build --sdist --wheel -o wheelhouse
+        python -m build --sdist --wheel --no-isolation -o wheelhouse
 
     - name: List and check sdist
       run: |
