@@ -35,8 +35,8 @@ jobs:
 
     - name: Remove buggy sitecustomize
       run: |
-        sudo rm -f /usr/lib/python3/*/sitecustomize.py || true
-        find /opt/hostedtoolcache/ -name "sitecustomize.py" -print -delete || true
+        sudo find /usr/ -name "sitecustomize.py" -print -delete || true
+        sudo find /opt/ -name "sitecustomize.py" -print -delete || true
 
     - name: Install dependencies
       run: |
