@@ -10,6 +10,9 @@ on:
       - 'docs/**'
   workflow_dispatch:
 
+env:
+  USE_BAZEL_VERSION: 7.4.1
+
 jobs:
   unit-tests:
     runs-on: ubuntu-latest

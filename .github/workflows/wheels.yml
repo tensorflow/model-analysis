@@ -6,6 +6,9 @@ on:
   release:
     types: [published]
 
+env:
+  USE_BAZEL_VERSION: 7.4.1
+
 jobs:
   build_wheels:
     name: Build wheels
