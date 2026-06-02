@@ -12,7 +12,6 @@ on:
 
 env:
   USE_BAZEL_VERSION: 7.7.0
-  PYTHONVERBOSE: 1
 
 jobs:
   unit-tests:
@@ -40,6 +39,11 @@ jobs:
         sudo find /usr/ -name "*sitecustomize*" -print -delete || true
         sudo find /opt/ -name "*sitecustomize*" -print -delete || true
         sudo find /home/runner/ -name "*sitecustomize*" -print -delete || true
+
+    - name: Debug sitecustomize
+      run: |
+        python -c "import sys; print('sys.path:', sys.path)"
+        PYTHONVERBOSE=1 python -c "import sitecustomize" || true
 
     - name: Install dependencies
       run: |
