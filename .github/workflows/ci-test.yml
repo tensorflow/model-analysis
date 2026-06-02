@@ -35,10 +35,10 @@ jobs:
 
     - name: Remove buggy sitecustomize
       run: |
-        sudo find /etc/ -name "sitecustomize.py" -print -delete || true
-        sudo find /usr/ -name "sitecustomize.py" -print -delete || true
-        sudo find /opt/ -name "sitecustomize.py" -print -delete || true
-        sudo find /home/runner/ -name "sitecustomize.py" -print -delete || true
+        sudo find /etc/ -name "*sitecustomize*" -print -delete || true
+        sudo find /usr/ -name "*sitecustomize*" -print -delete || true
+        sudo find /opt/ -name "*sitecustomize*" -print -delete || true
+        sudo find /home/runner/ -name "*sitecustomize*" -print -delete || true
 
     - name: Install dependencies
       run: |
