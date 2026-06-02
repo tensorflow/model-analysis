@@ -25,6 +25,10 @@ jobs:
     - name: Install Protoc
       uses: arduino/setup-protoc@v3
 
+    - name: Remove buggy sitecustomize
+      run: |
+        find /opt/hostedtoolcache/ -name "sitecustomize.py" -print -delete || true
+
     - name: install python dependencies
       run: pip install --upgrade pip build twine
 

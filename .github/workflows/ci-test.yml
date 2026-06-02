@@ -33,6 +33,10 @@ jobs:
         cache-dependency-path: |
           setup.py
 
+    - name: Remove buggy sitecustomize
+      run: |
+        find /opt/hostedtoolcache/ -name "sitecustomize.py" -print -delete || true
+
     - name: Install dependencies
       run: |
         sudo apt update
