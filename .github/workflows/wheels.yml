@@ -7,7 +7,7 @@ on:
     types: [published]
 
 env:
-  USE_BAZEL_VERSION: 7.4.1
+  USE_BAZEL_VERSION: 7.7.0
 
 jobs:
   build_wheels:
