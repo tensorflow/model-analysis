@@ -335,14 +335,14 @@ setup_args = {
         "tensorflow-estimator>=2.10",
         "tensorflow-metadata"
         + select_constraint(
-            default="@git+https://github.com/tensorflow/metadata@master",
-            nightly=">=1.18.0.dev",
+            default=">=1.21.0,<1.22.0",
+            nightly=">=1.22.0.dev",
             git_master="@git+https://github.com/tensorflow/metadata@master",
         ),
         "tfx-bsl"
         + select_constraint(
-            default="@git+https://github.com/tensorflow/tfx-bsl@master",
-            nightly=">=1.18.0.dev",
+            default=">=1.21.0,<1.22.0",
+            nightly=">=1.22.0.dev",
             git_master="@git+https://github.com/tensorflow/tfx-bsl@master",
         ),
         "tf-keras",

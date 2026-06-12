@@ -34,23 +34,23 @@ jobs:
 
     - name: install python dependencies
       run: |
-        pip install --upgrade pip setuptools wheel numpy pyarrow build twine
-        pip install --no-build-isolation .
+        pip install --upgrade pip build twine
+        pip install .
 
-    - name: build sdist
+    - name: build wheel
       run: |
-        python -m build --sdist --wheel --no-isolation -o wheelhouse
+        python -m build --wheel -o wheelhouse
 
-    - name: List and check sdist
+    - name: List and check wheel
       run: |
         ls -lh wheelhouse/
         twine check wheelhouse/*
 
-    - name: Upload sdist
+    - name: Upload wheel
       uses: actions/upload-artifact@v4
       with:
         name: wheels
-        path: ./wheelhouse/*.tar.gz
+        path: ./wheelhouse/*.whl
 
   upload_to_pypi:
     name: Upload to PyPI
@@ -74,6 +74,9 @@ jobs:
           ls -lAs wheels/
 
       - name: Upload to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1.9
+        uses: pypa/gh-action-pypi-publish@release/v1
         with:
+          password: ${{ secrets.PYPI_API_TOKEN }}
           packages_dir: wheels/
+          verify-metadata: false
+          verbose: true

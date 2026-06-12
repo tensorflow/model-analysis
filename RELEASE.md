@@ -4,6 +4,24 @@
 
 ## Major Features and Improvements
 
+*   N/A
+
+## Bug fixes and other Changes
+
+*   N/A
+
+## Breaking Changes
+
+*   N/A
+
+## Deprecations
+
+*   N/A
+
+# Version 0.52.0
+
+## Major Features and Improvements
+
 *   Adds official support for Python 3.12 and 3.13.
 *   Drops support for Python 3.9.
 *   Depends on `tensorflow>=2.21.0,<2.22.0`.
@@ -38,6 +56,7 @@
 *   Python 3.9 is no longer supported. The minimum supported Python version is now 3.10.
 
 ## Deprecations
+*   N/A
 
 # Version 0.48.0
 
