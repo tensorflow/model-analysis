@@ -37,20 +37,20 @@ jobs:
         pip install --upgrade pip build twine
         pip install .
 
-    - name: build sdist
+    - name: build wheel
       run: |
-        python -m build --sdist --wheel -o wheelhouse
+        python -m build --wheel -o wheelhouse
 
-    - name: List and check sdist
+    - name: List and check wheel
       run: |
         ls -lh wheelhouse/
         twine check wheelhouse/*
 
-    - name: Upload sdist
+    - name: Upload wheel
       uses: actions/upload-artifact@v4
       with:
         name: wheels
-        path: ./wheelhouse/*.tar.gz
+        path: ./wheelhouse/*.whl
 
   upload_to_pypi:
     name: Upload to PyPI
