@@ -3,19 +3,25 @@ name: pre-commit
 on:
   pull_request:
   push:
-     branches: [master]
+    branches: [master]
+
+permissions:
+  contents: read
 
 jobs:
   pre-commit:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-    - uses: actions/checkout@v4.1.7
+    - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
       with:
         # Ensure the full history is fetched
         # This is required to run pre-commit on a specific set of commits
         # TODO: Remove this when all the pre-commit issues are fixed
         fetch-depth: 0
-    - uses: actions/setup-python@v5.1.1
+        persist-credentials: false
+    - uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38 # v5.4.0
       with:
-        python-version: 3.13
-    - uses: pre-commit/action@v3.0.1
+        python-version: "3.13"
+    - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
